@@ -111,6 +111,19 @@ artifact o botão vira "Baixar todas (PNG)" e salva um PNG de cada vez, com uma
 confirmação por arquivo — recusar um interrompe o lote. No arquivo local o zip continua
 igual. O app detecta sozinho onde está rodando e troca o rótulo do botão.
 
+### Publicar uma atualização
+
+```bash
+./publicar.sh "o que mudou"
+```
+
+Reconstrói, comita e envia. A Vercel publica sozinha depois do push, em ~30s.
+
+Um hook de `pre-commit` roda `build.py` antes de cada commit e adiciona
+`dist/` e `gerador-carrossel.html` junto — então é impossível enviar um `dist/`
+atrasado em relação a `src/`. O hook vive em `.git/hooks/`, que **não vai no clone**:
+quem clonar o repositório precisa recriá-lo, ou rodar o build na mão.
+
 ### Subir na Vercel
 
 `python3 build.py --static` monta `dist/`, que é a pasta a publicar — **deploy a partir
@@ -125,8 +138,19 @@ dist/
   favicon.svg
 ```
 
-Se preferir importar o repositório em vez de subir a pasta, aponte o **Root Directory**
-do projeto para `dist`, framework `Other`, build command vazio.
+**O deploy é por Git.** No projeto da Vercel:
+
+| Campo | Valor |
+|---|---|
+| Repositório | `iamCaioGomes10/geradordecarrossel` |
+| Root Directory | `dist` |
+| Framework Preset | `Other` |
+| Build Command | vazio |
+| Output Directory | vazio |
+
+`Root Directory = dist` é o que importa. Sem isso a Vercel serve a raiz do
+repositório, que não tem `index.html`, e o resultado é `404: NOT_FOUND` — foi o que
+aconteceu nas tentativas por upload manual.
 
 **Atenção:** a CLI da Vercel roda em Node, que não está instalado nesta máquina
 (ver `maquina-sem-node`). Ou instala o Node, ou usa o fluxo pelo painel.
