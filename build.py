@@ -31,6 +31,15 @@ assets = {
     "trBadge":     b64("tr-badge.png"),
     "trNomeSvg":   b64("tr-nome-light.svg"),    # fill="black"   -> recolorido em runtime
     "trHandleSvg": b64("tr-handle-light.svg"),  # fill="#868686" -> recolorido em runtime
+    "caladea400":  b64("caladea-400.woff2"),
+    "caladea700":  b64("caladea-700.woff2"),
+    "snAvatar":    b64("sn-avatar.png"),
+    "snBadge":     b64("sn-badge.png"),
+    "snNomeSvg":   b64("sn-nome-light.svg"),
+    "snHandleSvg": b64("sn-handle-light.svg"),
+    "snRasgoTopo": b64("sn-rasgo-topo.png"),
+    "snRasgoBase": b64("sn-rasgo-base.png"),
+    "snTextura":   b64("sn-textura.jpg"),
 }
 js_assets = "window.__ASSETS__={" + ",".join('%s:"%s"' % kv for kv in assets.items()) + "};"
 

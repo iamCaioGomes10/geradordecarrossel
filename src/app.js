@@ -37,11 +37,14 @@
     var fonts = [
       new FontFace('Inter', b64ToBuf(A.inter), { weight: '100 900' }),
       new FontFace('Staatliches', b64ToBuf(A.staatliches), { weight: '400' }),
-      new FontFace('Poppins', b64ToBuf(A.poppins), { weight: '400' })
+      new FontFace('Poppins', b64ToBuf(A.poppins), { weight: '400' }),
+      new FontFace('Caladea', b64ToBuf(A.caladea400), { weight: '400' }),
+      new FontFace('Caladea', b64ToBuf(A.caladea700), { weight: '700' })
     ];
     fonts.forEach(function (f) { document.fonts.add(f); });
     var svgName = atob(A.nameSvg), svgHandle = atob(A.handleSvg);
     var trNome = atob(A.trNomeSvg), trHandle = atob(A.trHandleSvg);
+    var snNome = atob(A.snNomeSvg), snHandle = atob(A.snHandleSvg);
     return Promise.all([
       Promise.all(fonts.map(function (f) { return f.load(); })),
       loadImage('data:image/png;base64,' + A.avatar).then(function (i) { IMG.avatar = i; }),
@@ -49,6 +52,11 @@
       loadImage('data:image/png;base64,' + A.sunoLogo).then(function (i) { IMG.sunoLogo = i; }),
       loadImage('data:image/png;base64,' + A.trAvatar).then(function (i) { IMG.trAvatar = i; }),
       loadImage('data:image/png;base64,' + A.trBadge).then(function (i) { IMG.trBadge = i; }),
+      loadImage('data:image/png;base64,' + A.snAvatar).then(function (i) { IMG.snAvatar = i; }),
+      loadImage('data:image/png;base64,' + A.snBadge).then(function (i) { IMG.snBadge = i; }),
+      loadImage('data:image/png;base64,' + A.snRasgoTopo).then(function (i) { IMG.snRasgoTopo = i; }),
+      loadImage('data:image/png;base64,' + A.snRasgoBase).then(function (i) { IMG.snRasgoBase = i; }),
+      loadImage('data:image/jpeg;base64,' + A.snTextura).then(function (i) { IMG.snTextura = i; }),
       loadImage(svgFill(svgName, 'black', '#ffffff')).then(function (i) { IMG.nameDark = i; }),
       loadImage(svgFill(svgName, 'black', '#000000')).then(function (i) { IMG.nameLight = i; }),
       loadImage(svgFill(svgHandle, '#6F7377', '#B8B8B8')).then(function (i) { IMG.handleDark = i; }),
@@ -56,7 +64,11 @@
       loadImage(svgFill(trNome, 'black', '#ffffff')).then(function (i) { IMG.trNomeDark = i; }),
       loadImage(svgFill(trNome, 'black', '#000000')).then(function (i) { IMG.trNomeLight = i; }),
       loadImage(svgFill(trHandle, '#868686', '#868686')).then(function (i) { IMG.trHandleDark = i; }),
-      loadImage(svgFill(trHandle, '#868686', '#868686')).then(function (i) { IMG.trHandleLight = i; })
+      loadImage(svgFill(trHandle, '#868686', '#868686')).then(function (i) { IMG.trHandleLight = i; }),
+      loadImage(svgFill(snNome, 'black', '#ffffff')).then(function (i) { IMG.snNomeDark = i; }),
+      loadImage(svgFill(snNome, 'black', '#000000')).then(function (i) { IMG.snNomeLight = i; }),
+      loadImage(svgFill(snHandle, '#6F7377', '#B6B6B6')).then(function (i) { IMG.snHandleDark = i; }),
+      loadImage(svgFill(snHandle, '#6F7377', '#6F7377')).then(function (i) { IMG.snHandleLight = i; })
     ]).then(function () { return document.fonts.ready; });
   }
 
@@ -535,7 +547,115 @@
   function trFoto(ctx, s, cfg) { return trCorpo(ctx, s, cfg, true); }
 
   /* =========================================================
-     7. Registro de marcas
+     7. MARCA: @sunonoticias
+     ========================================================= */
+  var SN_HEAD = { av: 91, nameDx: 110.59, nameDy: 12, nameW: 213.829, nameH: 27.667,
+                  hDx: 110.45, hDy: 48.28, hW: 189.24, hH: 28.253, bDx: 336, bDy: 15, bW: 26.483 };
+
+  function snHeader(ctx, x, y, theme) {
+    tweetHeader(ctx, SN_HEAD, { avatar: IMG.snAvatar, badge: IMG.snBadge,
+      nameLight: IMG.snNomeLight, nameDark: IMG.snNomeDark,
+      handleLight: IMG.snHandleLight, handleDark: IMG.snHandleDark }, x, y, theme);
+  }
+
+  /* fundo de papel: gradiente claro + rasgo no topo + textura em "darken" a 30% */
+  function snPapel(ctx) {
+    ctx.fillStyle = cssGrad(ctx, TR_BG.angle, 0, 0, W, H, TR_BG.stops);
+    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(IMG.snRasgoTopo, 0, 0, 1080, 413);
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    ctx.globalCompositeOperation = 'darken';
+    ctx.drawImage(IMG.snTextura, 0, 0, 1080, 1350);
+    ctx.restore();
+  }
+
+  var N = {
+    capa: { label: 'Capa', campos: ['title', 'img'],
+      x: 108, minTop: 40, gapHeadTitle: 60.3, titleBottom: 1163.9, rasgoTop: 842,
+      title: { font: 'Caladea', size: 96, lh: 1.03, ls: -4.8, w: 915, weight: 700, color: '#ffffff', caps: true } },
+    texto: { label: 'S&oacute; texto', campos: ['body'],
+      x: 115, gapHeadText: 94, textCenter: 691,
+      body: { font: 'Caladea', size: 50, lh: 1.28, ls: -1, w: 892, weight: 400, color: '#000000', emWeight: 700 } },
+    imagem: { label: 'Texto + imagem', campos: ['body', 'img'],
+      x: 138, gapHeadText: 48, gapTextImg: 48,
+      body: { font: 'Caladea', size: 50, lh: 1.28, ls: -1, w: 810, weight: 400, color: '#000000', emWeight: 700 },
+      img: { w: 768, h: 394, r: 11, border: '#d6d6d6' } }
+  };
+
+  function snCapa(ctx, s, cfg) {
+    var t = N.capa, of = false;
+    ctx.fillStyle = '#141414'; ctx.fillRect(0, 0, W, H);
+    var ts = Object.assign({}, t.title), tb, headTop;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts);
+      headTop = t.titleBottom - tb.height - t.gapHeadTitle - SN_HEAD.av;
+      if (headTop >= t.minTop || !cfg.autofit || ts.size < 46) break;
+      ts.size = Math.round(ts.size * 0.94);
+    }
+    if (headTop < t.minTop) of = true;
+    var titleTop = t.titleBottom - tb.height;
+
+    if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
+    /* as duas sombras do arquivo tem alturas diferentes */
+    var g1 = ctx.createLinearGradient(0, 616, 0, H);
+    g1.addColorStop(0, 'rgba(0,0,0,0.06)'); g1.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = g1; ctx.fillRect(0, 616, W, H - 616);
+    var g2 = ctx.createLinearGradient(0, 456, 0, H);
+    g2.addColorStop(0, 'rgba(0,0,0,0.06)'); g2.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = g2; ctx.fillRect(0, 456, W, H - 456);
+
+    snHeader(ctx, t.x, headTop, 'dark');
+    paintSolid(ctx, tb, t.x, titleTop);
+    ctx.drawImage(IMG.snRasgoBase, 0, t.rasgoTop, 1080, 508);
+    return of;
+  }
+
+  function snTexto(ctx, s, cfg) {
+    var t = N.texto, of = false;
+    snPapel(ctx);
+    var bs = Object.assign({}, t.body), blk, headTop;
+    for (var p = 0; p < 14; p++) {
+      blk = layout(ctx, s.body || '', bs);
+      headTop = (t.textCenter - blk.height / 2) - t.gapHeadText - SN_HEAD.av;
+      if (headTop >= 60 || !cfg.autofit || bs.size < 26) break;
+      bs.size = Math.round(bs.size * 0.94);
+    }
+    if (headTop < 60) of = true;
+    var top = t.textCenter - blk.height / 2;
+    snHeader(ctx, t.x, headTop, 'light');
+    paintSolid(ctx, blk, t.x, top);
+    return of;
+  }
+
+  /* aqui o conjunto inteiro e centralizado, como no arquivo */
+  function snImagem(ctx, s, cfg) {
+    var t = N.imagem, of = false;
+    snPapel(ctx);
+    var bs = Object.assign({}, t.body), blk, total;
+    for (var p = 0; p < 14; p++) {
+      blk = layout(ctx, s.body || '', bs);
+      total = SN_HEAD.av + t.gapHeadText + blk.height + t.gapTextImg + t.img.h;
+      if (total <= H - 120 || !cfg.autofit || bs.size < 26) break;
+      bs.size = Math.round(bs.size * 0.94);
+    }
+    if (total > H - 120) of = true;
+    var y = (H - total) / 2; if (y < 50) y = 50;
+    snHeader(ctx, t.x, y, 'light');
+    y += SN_HEAD.av + t.gapHeadText;
+    paintSolid(ctx, blk, t.x, y);
+    y += blk.height + t.gapTextImg;
+    ctx.save(); roundRect(ctx, t.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
+    if (s.img) drawCover(ctx, s.img, t.x, y, t.img.w, t.img.h, s);
+    else { ctx.fillStyle = '#e2e2e2'; ctx.fillRect(t.x, y, t.img.w, t.img.h); }
+    ctx.restore();
+    ctx.strokeStyle = t.img.border; ctx.lineWidth = 1;
+    roundRect(ctx, t.x + .5, y + .5, t.img.w - 1, t.img.h - 1, t.img.r); ctx.stroke();
+    return of;
+  }
+
+  /* =========================================================
+     8. Registro de marcas
      ========================================================= */
   var MARCAS = {
     baroni: { nome: 'Professor Baroni', disclaimer: true, topAlign: true,
@@ -549,7 +669,11 @@
     tiago: { nome: 'Tiago Reis', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica azul no t&iacute;tulo e negrito no texto',
       tipos: { capa: T.capa, texto: T.texto, foto: T.foto },
-      render: { capa: trCapa, texto: trTexto, foto: trFoto } }
+      render: { capa: trCapa, texto: trTexto, foto: trFoto } },
+    noticias: { nome: 'Suno Not&iacute;cias', disclaimer: false, topAlign: false,
+      dica: '<kbd>**destaque**</kbd> deixa o trecho em negrito',
+      tipos: { capa: N.capa, texto: N.texto, imagem: N.imagem },
+      render: { capa: snCapa, texto: snTexto, imagem: snImagem } }
   };
 
   function render(canvas, marca, s, cfg) {
@@ -562,7 +686,7 @@
   }
 
   /* =========================================================
-     8. ZIP (metodo store) + download
+     9. ZIP (metodo store) + download
      ========================================================= */
   var CRC = (function () {
     var t = new Uint32Array(256);
@@ -630,7 +754,7 @@
   }
 
   /* =========================================================
-     9. Interface
+     10. Interface
      ========================================================= */
   var $ = function (id) { return document.getElementById(id); };
   var slides = [], sel = 0, marca = 'baroni';
@@ -802,8 +926,27 @@
     var paras = raw.replace(/\r/g, '').split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean);
     if (!paras.length) return [];
     var out = [], first = paras.shift().split('\n');
-    var capa = blank('capa'); capa.title = first[0] || ''; capa.sub = first.slice(1).join(' ');
+    var capa = blank('capa');
+    if (marca === 'noticias') {
+      /* a capa deste perfil nao tem subtitulo: o bloco inteiro vira o titulo */
+      capa.title = first.join(' ');
+    } else {
+      capa.title = first[0] || ''; capa.sub = first.slice(1).join(' ');
+    }
     out.push(capa);
+
+    if (marca === 'noticias') {
+      var ctxN = document.createElement('canvas').getContext('2d');
+      var espaco = 640, atual = '';
+      paras.forEach(function (pp) {
+        var teste = atual ? atual + '\n\n' + pp : pp;
+        if (atual && layout(ctxN, teste, N.texto.body).height > espaco) {
+          var sn = blank('texto'); sn.body = atual; out.push(sn); atual = pp;
+        } else atual = teste;
+      });
+      if (atual) { var sn2 = blank('texto'); sn2.body = atual; out.push(sn2); }
+      return out;
+    }
 
     if (marca === 'suno' || marca === 'tiago') {
       /* no Suno cada lamina tem titulo proprio: 1a linha do bloco vira titulo */

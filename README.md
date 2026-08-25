@@ -1,7 +1,7 @@
 # Gerador de Carrossel — Suno
 
 Você cola o texto das lâminas, o app monta o design e exporta os PNGs em 1080×1350.
-Três perfis: **@ProfessorBaroni**, **@suno** e **@tiagogreis**.
+Quatro perfis: **@ProfessorBaroni**, **@suno**, **@tiagogreis** e **@sunonoticias**.
 
 ## Como usar
 
@@ -36,9 +36,12 @@ do @ProfessorBaroni o corpo é um bloco de texto corrido.
 | Tiago | Capa | `2059:2` | imagem + gradiente preto |
 | Tiago | Só texto | `2059:40` | gradiente claro |
 | Tiago | Texto + foto | `2038:123` | gradiente claro, imagem 852×360 |
+| Notícias | Capa | `2153:173` | imagem + papel rasgado embaixo |
+| Notícias | Só texto | `2153:139` | papel rasgado + textura |
+| Notícias | Texto + imagem | `2126:419` | papel rasgado + textura, imagem 768×394 |
 
 Arquivos no Figma: PROF-BARONI `u2sVJDaj8RkhpcL0hIYpfG` · SUNO `fsm3eOqBWcd7TqjCnVpRY2`
-· TIAGO REIS `kFDh5RPJoMBI4FUqOdW8JH`.
+· TIAGO REIS `kFDh5RPJoMBI4FUqOdW8JH` · SUNO NOTÍCIAS `JRfQEu6t4kO3NaDOUudfE9`.
 
 ## Formatação no texto
 
@@ -48,8 +51,10 @@ Arquivos no Figma: PROF-BARONI `u2sVJDaj8RkhpcL0hIYpfG` · SUNO `fsm3eOqBWcd7Tqj
 - **@suno** → vermelho, no mesmo gradiente do Figma (`#ff0000` → `#ab0101`).
 - **@tiagogreis** → depende do campo: **azul** (`#42aff3`) no título, **negrito** no
   corpo. É assim no arquivo original, não é escolha do app.
+- **@sunonoticias** → negrito (Caladea Bold).
 
-Linha em branco vira parágrafo nos três.
+Linha em branco vira parágrafo nos quatro. No @sunonoticias a capa não tem subtítulo,
+então o primeiro bloco inteiro vira o título.
 
 ## Enquadramento de imagem
 
@@ -71,7 +76,7 @@ centralizado; o controle serve para reproduzir enquadramentos assim.
 ## Fidelidade ao Figma
 
 Medidas extraídas via Figma MCP e conferidas por diff de pixel contra os renders do
-Figma. Nos **nove layouts**, todas as linhas de texto caem dentro de **1–3 px** do
+Figma. Nos **doze layouts**, todas as linhas de texto caem dentro de **1–3 px** do
 original, com a mesma quebra de linha.
 
 Nos layouts de corpo do @tiagogreis o conjunto inteiro (perfil + título + texto + foto)
@@ -202,11 +207,23 @@ Depois de editar qualquer coisa em `src/`, rode:
 python3 build.py
 ```
 
+### Peso dos assets
+
+O @sunonoticias trouxe texturas (papel rasgado e grão) que somavam **12,5 MB** no
+Figma. Como tudo vai embutido no HTML, otimizei antes: cortei cada textura só na
+faixa que aparece na lâmina e converti o grão para JPEG, já que não usa transparência.
+Resultado: **454 KB**. O `sn-capa-grao.png` do Figma foi descartado — era a foto da
+matéria, não asset de marca.
+
+Se entrar outro perfil com textura, vale repetir isso: cortar o visível e escolher o
+formato pelo uso de alfa. O arquivo hoje tem ~930 KB.
+
 ### Onde ficam as medidas
 
 - `B` — layouts do @ProfessorBaroni
 - `S` — layouts do @suno
 - `T` — layouts do @tiagogreis
+- `N` — layouts do @sunonoticias
 - `MARCAS` — registro que liga cada perfil aos seus layouts, renderizadores e opções
 
 Para adicionar um perfil novo: um objeto de layouts, uma função de render por layout,
