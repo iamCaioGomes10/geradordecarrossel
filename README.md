@@ -1,7 +1,7 @@
 # Gerador de Carrossel — Suno
 
 Você cola o texto das lâminas, o app monta o design e exporta os PNGs em 1080×1350.
-Dois perfis: **@ProfessorBaroni** e **@suno**.
+Três perfis: **@ProfessorBaroni**, **@suno** e **@tiagogreis**.
 
 ## Como usar
 
@@ -33,8 +33,12 @@ do @ProfessorBaroni o corpo é um bloco de texto corrido.
 | Suno | Capa | `705:2` | imagem + gradiente preto, logo branco |
 | Suno | Corpo + imagem | `630:104` | branco, imagem 825×422 |
 | Suno | Só texto | `2290:18` | branco |
+| Tiago | Capa | `2059:2` | imagem + gradiente preto |
+| Tiago | Só texto | `2059:40` | gradiente claro |
+| Tiago | Texto + foto | `2038:123` | gradiente claro, imagem 852×360 |
 
-Arquivos: PROF-BARONI `u2sVJDaj8RkhpcL0hIYpfG` · SUNO `fsm3eOqBWcd7TqjCnVpRY2`.
+Arquivos no Figma: PROF-BARONI `u2sVJDaj8RkhpcL0hIYpfG` · SUNO `fsm3eOqBWcd7TqjCnVpRY2`
+· TIAGO REIS `kFDh5RPJoMBI4FUqOdW8JH`.
 
 ## Formatação no texto
 
@@ -42,8 +46,10 @@ Arquivos: PROF-BARONI `u2sVJDaj8RkhpcL0hIYpfG` · SUNO `fsm3eOqBWcd7TqjCnVpRY2`.
 
 - **@ProfessorBaroni** → negrito (Inter SemiBold). `__assim__` vira sublinhado.
 - **@suno** → vermelho, no mesmo gradiente do Figma (`#ff0000` → `#ab0101`).
+- **@tiagogreis** → depende do campo: **azul** (`#42aff3`) no título, **negrito** no
+  corpo. É assim no arquivo original, não é escolha do app.
 
-Linha em branco vira parágrafo nos dois.
+Linha em branco vira parágrafo nos três.
 
 ## Enquadramento de imagem
 
@@ -65,8 +71,11 @@ centralizado; o controle serve para reproduzir enquadramentos assim.
 ## Fidelidade ao Figma
 
 Medidas extraídas via Figma MCP e conferidas por diff de pixel contra os renders do
-Figma. Nos **seis layouts**, todas as linhas de texto caem dentro de **1–3 px** do
+Figma. Nos **nove layouts**, todas as linhas de texto caem dentro de **1–3 px** do
 original, com a mesma quebra de linha.
+
+Nos layouts de corpo do @tiagogreis o conjunto inteiro (perfil + título + texto + foto)
+é centralizado verticalmente — não é aproximação, a conta bate no pixel com o Figma.
 
 No @suno o texto é preenchido por gradiente (`bg-clip-text`), não por cor sólida.
 Comparando pelo mesmo caminho de reamostragem da referência, o gradiente cinza bate
@@ -197,6 +206,7 @@ python3 build.py
 
 - `B` — layouts do @ProfessorBaroni
 - `S` — layouts do @suno
+- `T` — layouts do @tiagogreis
 - `MARCAS` — registro que liga cada perfil aos seus layouts, renderizadores e opções
 
 Para adicionar um perfil novo: um objeto de layouts, uma função de render por layout,

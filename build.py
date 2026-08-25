@@ -27,6 +27,10 @@ assets = {
     "handleSvg":   b64("handle-light.svg"),  # fill="#6F7377" -> recolorido em runtime
     "poppins":     b64("poppins.woff2"),
     "sunoLogo":    b64("suno-logo-white.png"),
+    "trAvatar":    b64("tr-avatar.png"),
+    "trBadge":     b64("tr-badge.png"),
+    "trNomeSvg":   b64("tr-nome-light.svg"),    # fill="black"   -> recolorido em runtime
+    "trHandleSvg": b64("tr-handle-light.svg"),  # fill="#868686" -> recolorido em runtime
 }
 js_assets = "window.__ASSETS__={" + ",".join('%s:"%s"' % kv for kv in assets.items()) + "};"
 

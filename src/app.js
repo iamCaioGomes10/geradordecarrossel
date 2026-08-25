@@ -41,15 +41,22 @@
     ];
     fonts.forEach(function (f) { document.fonts.add(f); });
     var svgName = atob(A.nameSvg), svgHandle = atob(A.handleSvg);
+    var trNome = atob(A.trNomeSvg), trHandle = atob(A.trHandleSvg);
     return Promise.all([
       Promise.all(fonts.map(function (f) { return f.load(); })),
       loadImage('data:image/png;base64,' + A.avatar).then(function (i) { IMG.avatar = i; }),
       loadImage('data:image/png;base64,' + A.badge).then(function (i) { IMG.badge = i; }),
       loadImage('data:image/png;base64,' + A.sunoLogo).then(function (i) { IMG.sunoLogo = i; }),
+      loadImage('data:image/png;base64,' + A.trAvatar).then(function (i) { IMG.trAvatar = i; }),
+      loadImage('data:image/png;base64,' + A.trBadge).then(function (i) { IMG.trBadge = i; }),
       loadImage(svgFill(svgName, 'black', '#ffffff')).then(function (i) { IMG.nameDark = i; }),
       loadImage(svgFill(svgName, 'black', '#000000')).then(function (i) { IMG.nameLight = i; }),
       loadImage(svgFill(svgHandle, '#6F7377', '#B8B8B8')).then(function (i) { IMG.handleDark = i; }),
-      loadImage(svgFill(svgHandle, '#6F7377', '#6F7377')).then(function (i) { IMG.handleLight = i; })
+      loadImage(svgFill(svgHandle, '#6F7377', '#6F7377')).then(function (i) { IMG.handleLight = i; }),
+      loadImage(svgFill(trNome, 'black', '#ffffff')).then(function (i) { IMG.trNomeDark = i; }),
+      loadImage(svgFill(trNome, 'black', '#000000')).then(function (i) { IMG.trNomeLight = i; }),
+      loadImage(svgFill(trHandle, '#868686', '#868686')).then(function (i) { IMG.trHandleDark = i; }),
+      loadImage(svgFill(trHandle, '#868686', '#868686')).then(function (i) { IMG.trHandleLight = i; })
     ]).then(function () { return document.fonts.ready; });
   }
 
@@ -105,12 +112,15 @@
     runs.forEach(function (run) {
       run.text.split('\n').forEach(function (para, pi) {
         if (pi > 0) flush();
-        (para.match(/\S+\s*/g) || []).forEach(function (tok) {
-          var word = tok.replace(/\s+$/, ''), trail = tok.slice(word.length);
-          var wW = measure(ctx, spec, run, word), wT = measure(ctx, spec, run, trail);
-          if (curW > 0 && curW + wW > spec.w) flush();
-          cur.push({ run: run, text: word, x: curW, w: wW }); curW += wW;
-          if (trail) { cur.push({ run: run, text: trail, x: curW, w: wT }); curW += wT; }
+        /* palavras e espacos como tokens separados: um trecho pode COMECAR
+           com espaco (caso de "**negrito** texto"), e esse espaco tem de sobreviver */
+        (para.match(/\s+|\S+/g) || []).forEach(function (tok) {
+          var espaco = /^\s/.test(tok);
+          if (espaco && curW === 0) return;          /* nao indenta inicio de linha */
+          var w = measure(ctx, spec, run, tok);
+          if (!espaco && curW > 0 && curW + w > spec.w) flush();
+          cur.push({ run: run, text: tok, x: curW, w: w });
+          curW += w;
         });
       });
     });
@@ -135,11 +145,11 @@
   function paintSolid(ctx, blk, x, top) {
     var off = baselineOffset(ctx, blk.spec);
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = blk.spec.color;
     blk.lines.forEach(function (line, i) {
       var base = top + i * blk.lh + off;
       line.items.forEach(function (it) {
         if (!it.text.trim()) return;
+        ctx.fillStyle = (it.run.em && blk.spec.emColor) ? blk.spec.emColor : blk.spec.color;
         drawRun(ctx, blk.spec, it.run, it.text, x + it.x, base);
         if (it.run.alt && blk.spec.underlineAlt) {
           ctx.fillRect(x + it.x, base + blk.spec.size * 0.15, it.w, Math.max(2, blk.spec.size * 0.05));
@@ -244,11 +254,19 @@
   var HEAD = { av: 93.793, nameDx: 112.72, nameDy: 13.38, nameW: 236.112, nameH: 25.6034,
                hDx: 110.34, hDy: 54.07, hW: 230.621, hH: 27.109, bDx: 357.52, bDy: 13.24, bW: 26.483 };
 
+  /* bloco de perfil (avatar, nome, arroba, selo) — os deslocamentos sao
+     relativos ao canto do avatar e vem das medidas de cada arquivo */
+  function tweetHeader(ctx, m, im, x, y, theme) {
+    var claro = theme === 'light';
+    ctx.drawImage(im.avatar, x, y, m.av, m.av);
+    ctx.drawImage(claro ? im.nameLight : im.nameDark, x + m.nameDx, y + m.nameDy, m.nameW, m.nameH);
+    ctx.drawImage(claro ? im.handleLight : im.handleDark, x + m.hDx, y + m.hDy, m.hW, m.hH);
+    ctx.drawImage(im.badge, x + m.bDx, y + m.bDy, m.bW, m.bW);
+  }
   function baroniHeader(ctx, x, y, theme) {
-    ctx.drawImage(IMG.avatar, x, y, HEAD.av, HEAD.av);
-    ctx.drawImage(theme === 'light' ? IMG.nameLight : IMG.nameDark, x + HEAD.nameDx, y + HEAD.nameDy, HEAD.nameW, HEAD.nameH);
-    ctx.drawImage(theme === 'light' ? IMG.handleLight : IMG.handleDark, x + HEAD.hDx, y + HEAD.hDy, HEAD.hW, HEAD.hH);
-    ctx.drawImage(IMG.badge, x + HEAD.bDx, y + HEAD.bDy, HEAD.bW, HEAD.bW);
+    tweetHeader(ctx, HEAD, { avatar: IMG.avatar, badge: IMG.badge,
+      nameLight: IMG.nameLight, nameDark: IMG.nameDark,
+      handleLight: IMG.handleLight, handleDark: IMG.handleDark }, x, y, theme);
   }
   function baroniDisc(ctx, t, cfg) {
     if (!cfg.discOn || !cfg.disc.trim()) return;
@@ -428,7 +446,96 @@
   }
 
   /* =========================================================
-     6. Registro de marcas
+     6. MARCA: @tiagogreis
+     ========================================================= */
+  var TR_HEAD = { av: 92.779, nameDx: 106, nameDy: 14, nameW: 143, nameH: 32.447,
+                  hDx: 109, hDy: 50, hW: 138, hH: 27.678, bDx: 257, bDy: 15, bW: 26.195 };
+  var TR_BG = { angle: 154.4523, stops: [[0.084259, 'rgb(255,255,255)'], [0.95185, 'rgb(240,240,240)']] };
+
+  function trHeader(ctx, x, y, theme) {
+    tweetHeader(ctx, TR_HEAD, { avatar: IMG.trAvatar, badge: IMG.trBadge,
+      nameLight: IMG.trNomeLight, nameDark: IMG.trNomeDark,
+      handleLight: IMG.trHandleLight, handleDark: IMG.trHandleDark }, x, y, theme);
+  }
+  function trFundo(ctx) {
+    ctx.fillStyle = cssGrad(ctx, TR_BG.angle, 0, 0, W, H, TR_BG.stops);
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  var T = {
+    capa: { label: 'Capa', campos: ['title', 'sub', 'img'],
+      x: 102, minTop: 40, shadeTop: 598, shadeN: 2,
+      title: { font: 'Inter', size: 100, lh: 1.03, ls: -7, w: 877, weight: 600, color: '#ffffff' },
+      sub: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 341, weight: 500, color: '#ececec' },
+      subBottom: 1233.7, gapTitleSub: 28.3, gapHeadTitle: 31.2 },
+    texto: { label: 'S&oacute; texto', campos: ['title', 'body'],
+      x: 101, gapHeadTitle: 34.3, gapTitleBody: 31.9,
+      title: { font: 'Inter', size: 64, lh: 1.03, ls: -4.48, w: 699, weight: 600, color: '#1b1b1b', emColor: '#42aff3' },
+      body: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 901, weight: 500, color: '#242424', emWeight: 700 } },
+    foto: { label: 'Texto + foto', campos: ['title', 'body', 'img'],
+      x: 88, gapHeadTitle: 39.8, gapTitleBody: 48.2, gapBodyImg: 62.6,
+      title: { font: 'Inter', size: 64, lh: 1.03, ls: -4.48, w: 833, weight: 600, color: '#1b1b1b', emColor: '#42aff3' },
+      body: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 865, weight: 500, color: '#242424', emWeight: 700 },
+      img: { w: 852, h: 360, r: 25 } }
+  };
+
+  function trCapa(ctx, s, cfg) {
+    var t = T.capa, of = false;
+    trFundo(ctx);
+    var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts); sb = layout(ctx, s.sub || '', ss);
+      headTop = (t.subBottom - sb.height) - t.gapTitleSub - tb.height - t.gapHeadTitle - TR_HEAD.av;
+      if (headTop >= t.minTop || !cfg.autofit) break;
+      ts.size = Math.round(ts.size * 0.94);
+      if (ts.size < 52) ss.size = Math.round(ss.size * 0.94);
+    }
+    if (headTop < t.minTop) of = true;
+    var subTop = t.subBottom - sb.height, titleTop = subTop - t.gapTitleSub - tb.height;
+    if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
+    shade(ctx, Math.min(t.shadeTop, headTop), t.shadeN, 'rgba(0,0,0,0)');
+    trHeader(ctx, t.x, headTop, 'dark');
+    paintSolid(ctx, tb, t.x, titleTop);
+    paintSolid(ctx, sb, t.x, subTop);
+    return of;
+  }
+
+  /* nos dois layouts de corpo o conjunto inteiro e centralizado na vertical */
+  function trCorpo(ctx, s, cfg, comFoto) {
+    var t = comFoto ? T.foto : T.texto, of = false;
+    trFundo(ctx);
+    var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
+    var extra = comFoto ? (t.gapBodyImg + t.img.h) : 0;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts); bb = layout(ctx, s.body || '', bs);
+      total = TR_HEAD.av + t.gapHeadTitle + tb.height + t.gapTitleBody + bb.height + extra;
+      if (total <= H - 120 || !cfg.autofit || bs.size < 24) break;
+      bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
+    }
+    if (total > H - 120) of = true;
+
+    var y = (H - total) / 2;
+    if (y < 50) y = 50;
+    trHeader(ctx, t.x, y, 'light');
+    y += TR_HEAD.av + t.gapHeadTitle;
+    paintSolid(ctx, tb, t.x, y);
+    y += tb.height + t.gapTitleBody;
+    paintSolid(ctx, bb, t.x, y);
+
+    if (comFoto) {
+      y += bb.height + t.gapBodyImg;
+      ctx.save(); roundRect(ctx, 85, y, t.img.w, t.img.h, t.img.r); ctx.clip();
+      if (s.img) drawCover(ctx, s.img, 85, y, t.img.w, t.img.h, s);
+      else { ctx.fillStyle = '#e2e2e2'; ctx.fillRect(85, y, t.img.w, t.img.h); }
+      ctx.restore();
+    }
+    return of;
+  }
+  function trTexto(ctx, s, cfg) { return trCorpo(ctx, s, cfg, false); }
+  function trFoto(ctx, s, cfg) { return trCorpo(ctx, s, cfg, true); }
+
+  /* =========================================================
+     7. Registro de marcas
      ========================================================= */
   var MARCAS = {
     baroni: { nome: 'Professor Baroni', disclaimer: true, topAlign: true,
@@ -438,7 +545,11 @@
     suno: { nome: 'Suno', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> pinta o trecho em vermelho',
       tipos: { capa: S.capa, corpoImg: S.corpoImg, texto: S.texto },
-      render: { capa: sunoCapa, corpoImg: sunoCorpoImg, texto: sunoTexto } }
+      render: { capa: sunoCapa, corpoImg: sunoCorpoImg, texto: sunoTexto } },
+    tiago: { nome: 'Tiago Reis', disclaimer: false, topAlign: false,
+      dica: '<kbd>**destaque**</kbd> fica azul no t&iacute;tulo e negrito no texto',
+      tipos: { capa: T.capa, texto: T.texto, foto: T.foto },
+      render: { capa: trCapa, texto: trTexto, foto: trFoto } }
   };
 
   function render(canvas, marca, s, cfg) {
@@ -451,7 +562,7 @@
   }
 
   /* =========================================================
-     7. ZIP (metodo store) + download
+     8. ZIP (metodo store) + download
      ========================================================= */
   var CRC = (function () {
     var t = new Uint32Array(256);
@@ -519,7 +630,7 @@
   }
 
   /* =========================================================
-     8. Interface
+     9. Interface
      ========================================================= */
   var $ = function (id) { return document.getElementById(id); };
   var slides = [], sel = 0, marca = 'baroni';
@@ -694,7 +805,7 @@
     var capa = blank('capa'); capa.title = first[0] || ''; capa.sub = first.slice(1).join(' ');
     out.push(capa);
 
-    if (marca === 'suno') {
+    if (marca === 'suno' || marca === 'tiago') {
       /* no Suno cada lamina tem titulo proprio: 1a linha do bloco vira titulo */
       paras.forEach(function (p) {
         var ls = p.split('\n'), s = blank('texto');
