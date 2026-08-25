@@ -1,8 +1,8 @@
 # Gerador de Carrossel — Suno
 
 Você cola o texto das lâminas, o app monta o design e exporta os PNGs em 1080×1350.
-Cinco perfis: **@ProfessorBaroni**, **@suno**, **@tiagogreis**, **@sunonoticias** e
-**@SunoConsultoria**.
+Seis perfis: **@ProfessorBaroni**, **@suno**, **@tiagogreis**, **@sunonoticias**,
+**@SunoConsultoria** e **@fundsexplorer**.
 
 ## Como usar
 
@@ -43,10 +43,13 @@ do @ProfessorBaroni o corpo é um bloco de texto corrido.
 | Consultoria | Capa | `234:921` | imagem + brilho vermelho, texto centralizado |
 | Consultoria | Só texto | `232:532` | `#f7f7f7`, número em círculo |
 | Consultoria | Texto + imagem | `234:939` | `#f7f7f7`, imagem 705×328 |
+| Funds | Capa | `1:2` | imagem + gradiente, setas decorativas |
+| Funds | Só texto | `2:51` | gradiente claro |
+| Funds | Texto + imagem | `2:119` | gradiente claro, imagem 831×414 |
 
 Arquivos no Figma: PROF-BARONI `u2sVJDaj8RkhpcL0hIYpfG` · SUNO `fsm3eOqBWcd7TqjCnVpRY2`
 · TIAGO REIS `kFDh5RPJoMBI4FUqOdW8JH` · SUNO NOTÍCIAS `JRfQEu6t4kO3NaDOUudfE9`
-· CONSULTORIA `DWXmSiS60Ew0iKrnikKqXG`.
+· CONSULTORIA `DWXmSiS60Ew0iKrnikKqXG` · FUNDS `cFgsSWjIgoIajpxo9fIuK8`.
 
 ## Formatação no texto
 
@@ -58,8 +61,10 @@ Arquivos no Figma: PROF-BARONI `u2sVJDaj8RkhpcL0hIYpfG` · SUNO `fsm3eOqBWcd7Tqj
   corpo. É assim no arquivo original, não é escolha do app.
 - **@sunonoticias** → negrito (Caladea Bold).
 - **@SunoConsultoria** → **vermelho** na capa, **negrito** no corpo.
+- **@fundsexplorer** → **azul** (`#00c0f5`) na capa, **negrito** no corpo.
+  `__assim__` vira sublinhado, como no @ProfessorBaroni.
 
-Linha em branco vira parágrafo nos cinco. No @sunonoticias a capa não tem subtítulo,
+Linha em branco vira parágrafo nos seis. No @sunonoticias a capa não tem subtítulo,
 então o primeiro bloco inteiro vira o título.
 
 O @SunoConsultoria tem um campo a mais: o **número da lâmina**, que aparece no círculo
@@ -85,12 +90,14 @@ centralizado; o controle serve para reproduzir enquadramentos assim.
 ## Fidelidade ao Figma
 
 Medidas extraídas via Figma MCP e conferidas por diff de pixel contra os renders do
-Figma. Nos **quinze layouts**, todas as linhas de texto caem dentro de **0–3 px** do
+Figma. Nos **dezoito layouts**, todas as linhas de texto caem dentro de **0–3 px** do
 original, com a mesma quebra de linha.
 
-Uma armadilha que apareceu no @SunoConsultoria: o CSS exportado pelo Figma dizia
-`leading-none` no título e no subtítulo da capa, mas o arquivo usa 116 px e 51 px de
-entrelinha (1,208 e 1,133). Vale desconfiar do CSS exportado e medir o render.
+**O CSS exportado pelo Figma mente sobre entrelinha — duas vezes já.** No
+@SunoConsultoria dizia `leading-none` na capa e o arquivo usa 1,208 e 1,133. No
+@fundsexplorer dizia `1.07` e o real é 1,081 — diferença de meio pixel por linha, que
+só apareceu porque o desvio ia crescendo ao longo do bloco (de +2 px na primeira linha
+para −4 px na última). Sempre medir o PNG de referência, nunca confiar no CSS.
 
 Nos layouts de corpo do @tiagogreis o conjunto inteiro (perfil + título + texto + foto)
 é centralizado verticalmente — não é aproximação, a conta bate no pixel com o Figma.
@@ -238,6 +245,7 @@ formato pelo uso de alfa. O arquivo hoje tem ~930 KB.
 - `T` — layouts do @tiagogreis
 - `N` — layouts do @sunonoticias
 - `C` — layouts do @SunoConsultoria
+- `F` — layouts do @fundsexplorer
 - `MARCAS` — registro que liga cada perfil aos seus layouts, renderizadores e opções
 
 Para adicionar um perfil novo: um objeto de layouts, uma função de render por layout,

@@ -43,7 +43,9 @@
       new FontFace('Poppins', b64ToBuf(A.poppins), { weight: '400' }),
       new FontFace('Caladea', b64ToBuf(A.caladea400), { weight: '400' }),
       new FontFace('Caladea', b64ToBuf(A.caladea700), { weight: '700' }),
-      new FontFace('Montserrat', b64ToBuf(A.montserrat), { weight: '100 900' })
+      new FontFace('Montserrat', b64ToBuf(A.montserrat), { weight: '100 900' }),
+      new FontFace('Afacad', b64ToBuf(A.afacad), { weight: '100 900' }),
+      new FontFace('Instrument Sans', b64ToBuf(A.instrument), { weight: '100 900' })
     ];
     fonts.forEach(function (f) { document.fonts.add(f); });
     var svgName = atob(A.nameSvg), svgHandle = atob(A.handleSvg);
@@ -61,6 +63,14 @@
       loadImage('data:image/png;base64,' + A.snRasgoTopo).then(function (i) { IMG.snRasgoTopo = i; }),
       loadImage('data:image/png;base64,' + A.snRasgoBase).then(function (i) { IMG.snRasgoBase = i; }),
       loadImage('data:image/jpeg;base64,' + A.snTextura).then(function (i) { IMG.snTextura = i; }),
+      loadImage('data:image/png;base64,' + A.feLogo).then(function (i) { IMG.feLogo = i; }),
+      loadImage('data:image/png;base64,' + A.feBadge).then(function (i) { IMG.feBadge = i; }),
+      loadImage(svgUri(atob(A.feEllipse))).then(function (i) { IMG.feEllipse = i; }),
+      loadImage(svgUri(atob(A.feSeta1))).then(function (i) { IMG.feSeta1 = i; }),
+      loadImage(svgUri(atob(A.feSeta2))).then(function (i) { IMG.feSeta2 = i; }),
+      loadImage(svgFill(atob(A.feNomeSvg), '#1F1F1F', '#ffffff')).then(function (i) { IMG.feNomeDark = i; }),
+      loadImage(svgFill(atob(A.feNomeSvg), '#1F1F1F', '#1F1F1F')).then(function (i) { IMG.feNomeLight = i; }),
+      loadImage(svgFill(atob(A.feHandleSvg), '#B6B6B6', '#B6B6B6')).then(function (i) { IMG.feHandle = i; }),
       loadImage(svgUri(atob(A.coLogoCapa))).then(function (i) { IMG.coLogoCapa = i; }),
       loadImage(svgUri(atob(A.coLogoRed))).then(function (i) { IMG.coLogoRed = i; }),
       loadImage(svgUri(atob(A.coArrow))).then(function (i) { IMG.coArrow = i; }),
@@ -189,10 +199,25 @@
         if (!it.text.trim()) return;
         ctx.fillStyle = (it.run.em && blk.spec.emColor) ? blk.spec.emColor : blk.spec.color;
         drawRun(ctx, blk.spec, it.run, it.text, x + dx + it.x, base);
-        if (it.run.alt && blk.spec.underlineAlt) {
-          ctx.fillRect(x + dx + it.x, base + blk.spec.size * 0.15, it.w, Math.max(2, blk.spec.size * 0.05));
-        }
       });
+      /* sublinhado em passada propria: junta trechos vizinhos para a linha
+         nao quebrar nos espacos entre as palavras */
+      if (blk.spec.underlineAlt) {
+        var esp = blk.spec.size * 0.05 < 2 ? 2 : blk.spec.size * 0.05;
+        var y = base + blk.spec.size * 0.15, seg = null;
+        var risca = function () {
+          if (seg) ctx.fillRect(x + dx + seg.a, y, seg.b - seg.a, esp);
+          seg = null;
+        };
+        ctx.fillStyle = blk.spec.color;
+        line.items.forEach(function (it) {
+          if (it.run.alt) {
+            if (!seg) seg = { a: it.x, b: it.x + it.w };
+            else seg.b = it.x + it.w;
+          } else risca();
+        });
+        risca();
+      }
     });
   }
 
@@ -791,7 +816,125 @@
   function coImagem(ctx, s, cfg) { return coCorpo(ctx, s, cfg, true); }
 
   /* =========================================================
-     9. Registro de marcas
+     9. MARCA: @fundsexplorer
+     ========================================================= */
+  /* medidas na escala do layout "so texto"; os outros dois usam 0.93947 */
+  var FE_HEAD = { av: 100.056,
+    logoDx: 20.21, logoDy: 21.32, logoW: 61.765, logoH: 57.505,
+    nameDx: 114.96, nameDy: 21.31, nameW: 188.536, nameH: 32.931,
+    hDx: 114.47, hDy: 57.14, hW: 169.727, hH: 25.3,
+    bDx: 310.8, bDy: 21.31, bW: 28.202 };
+
+  function feHeader(ctx, x, y, theme, k) {
+    var m = FE_HEAD;
+    ctx.drawImage(IMG.feEllipse, x, y, m.av * k, m.av * k);
+    /* o passaro fica recortado dentro do circulo, com o mesmo enquadramento do arquivo */
+    var lx = x + m.logoDx * k, ly = y + m.logoDy * k;
+    var lw = m.logoW * k, lh = m.logoH * k;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(lx, ly, lw, lh); ctx.clip();
+    ctx.drawImage(IMG.feLogo, lx - 0.2261 * lw, ly - 0.3061 * lh, 3.7321 * lw, 1.5306 * lh);
+    ctx.restore();
+    ctx.drawImage(theme === 'light' ? IMG.feNomeLight : IMG.feNomeDark,
+      x + m.nameDx * k, y + m.nameDy * k, m.nameW * k, m.nameH * k);
+    ctx.drawImage(IMG.feHandle, x + m.hDx * k, y + m.hDy * k, m.hW * k, m.hH * k);
+    ctx.drawImage(IMG.feBadge, x + m.bDx * k, y + m.bDy * k, m.bW * k, m.bW * k);
+  }
+
+  var F = {
+    capa: { label: 'Capa', campos: ['title', 'sub', 'img'],
+      x: 95, k: 0.93947, minTop: 40, shadeTop: 616, shadeN: 4,
+      subBottom: 1238.5, gapTitleSub: 34.5, gapHeadTitle: 35,
+      title: { font: 'Instrument Sans', size: 100, lh: 1.03, ls: -7, w: 829, weight: 400,
+               color: '#ffffff', emColor: '#00c0f5' },
+      sub: { font: 'Afacad', size: 50, lh: 1.04, ls: -1, w: 658, weight: 400,
+             color: '#ffffff', align: 'center' },
+      setas: [[-211, 37, 611, 625], [560, 1156, 520, 532]] },
+    texto: { label: 'S&oacute; texto', campos: ['body'],
+      x: 117, k: 1, headY: 265, textCenter: 751.6, gapHeadText: 37.19,
+      body: { font: 'Afacad', size: 50, lh: 1.081, ls: -1, w: 845, weight: 400,
+              color: '#000000', emWeight: 700, underlineAlt: true } },
+    imagem: { label: 'Texto + imagem', campos: ['body', 'img'],
+      x: 95, k: 0.93947, gap: 44.75,
+      body: { font: 'Afacad', size: 50, lh: 1.081, ls: -1, w: 845, weight: 400,
+              color: '#000000', emWeight: 700, underlineAlt: true },
+      img: { w: 831, h: 414, r: 26 } }
+  };
+
+  function feCapa(ctx, s, cfg) {
+    var t = F.capa, of = false;
+    ctx.fillStyle = '#0b0b0b'; ctx.fillRect(0, 0, W, H);
+    var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts); sb = layout(ctx, s.sub || '', ss);
+      headTop = (t.subBottom - sb.height) - t.gapTitleSub - tb.height - t.gapHeadTitle - FE_HEAD.av * t.k;
+      if (headTop >= t.minTop || !cfg.autofit || ts.size < 54) break;
+      ts.size = Math.round(ts.size * 0.94);
+      if (ts.size < 70) ss.size = Math.round(ss.size * 0.96);
+    }
+    if (headTop < t.minTop) of = true;
+    var subTop = t.subBottom - sb.height, titleTop = subTop - t.gapTitleSub - tb.height;
+
+    if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
+    shade(ctx, Math.min(t.shadeTop, headTop), t.shadeN, 'rgba(0,0,0,0)');
+    feHeader(ctx, t.x, headTop, 'dark', t.k);
+    paintSolid(ctx, tb, t.x, titleTop);
+    paintSolid(ctx, sb, t.x, subTop);
+    /* setas decorativas por cima, como no arquivo (ja vem com opacidade 0.2) */
+    ctx.drawImage(IMG.feSeta1, t.setas[0][0], t.setas[0][1], t.setas[0][2], t.setas[0][3]);
+    ctx.drawImage(IMG.feSeta2, t.setas[1][0], t.setas[1][1], t.setas[1][2], t.setas[1][3]);
+    return of;
+  }
+
+  function feFundo(ctx) {
+    ctx.fillStyle = cssGrad(ctx, TR_BG.angle, 0, 0, W, H, TR_BG.stops);
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function feTexto(ctx, s, cfg) {
+    var t = F.texto, of = false;
+    feFundo(ctx);
+    var bs = Object.assign({}, t.body), blk, top, headTop;
+    for (var p = 0; p < 14; p++) {
+      blk = layout(ctx, s.body || '', bs);
+      top = t.textCenter - blk.height / 2;
+      headTop = Math.min(t.headY, top - t.gapHeadText - FE_HEAD.av * t.k);
+      if (headTop >= 50 || !cfg.autofit || bs.size < 26) break;
+      bs.size = Math.round(bs.size * 0.94);
+    }
+    if (headTop < 50) of = true;
+    feHeader(ctx, t.x, headTop, 'light', t.k);
+    paintSolid(ctx, blk, t.x, top);
+    return of;
+  }
+
+  /* aqui o conjunto e centralizado e os dois vaos sao iguais */
+  function feImagem(ctx, s, cfg) {
+    var t = F.imagem, of = false;
+    feFundo(ctx);
+    var bs = Object.assign({}, t.body), blk, total;
+    var avh = FE_HEAD.av * t.k;
+    for (var p = 0; p < 14; p++) {
+      blk = layout(ctx, s.body || '', bs);
+      total = avh + t.gap + blk.height + t.gap + t.img.h;
+      if (total <= H - 100 || !cfg.autofit || bs.size < 26) break;
+      bs.size = Math.round(bs.size * 0.94);
+    }
+    if (total > H - 100) of = true;
+    var y = (H - total) / 2; if (y < 40) y = 40;
+    feHeader(ctx, t.x, y, 'light', t.k);
+    y += avh + t.gap;
+    paintSolid(ctx, blk, t.x, y);
+    y += blk.height + t.gap;
+    ctx.save(); roundRect(ctx, t.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
+    if (s.img) drawCover(ctx, s.img, t.x, y, t.img.w, t.img.h, s);
+    else { ctx.fillStyle = '#e2e2e2'; ctx.fillRect(t.x, y, t.img.w, t.img.h); }
+    ctx.restore();
+    return of;
+  }
+
+  /* =========================================================
+     10. Registro de marcas
      ========================================================= */
   var MARCAS = {
     baroni: { nome: 'Professor Baroni', disclaimer: true, topAlign: true,
@@ -813,7 +956,11 @@
     consultoria: { nome: 'Suno Consultoria', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica vermelho na capa e negrito no texto',
       tipos: { capa: C.capa, texto: C.texto, imagem: C.imagem },
-      render: { capa: coCapa, texto: coTexto, imagem: coImagem } }
+      render: { capa: coCapa, texto: coTexto, imagem: coImagem } },
+    funds: { nome: 'Funds Explorer', disclaimer: false, topAlign: false,
+      dica: '<kbd>**destaque**</kbd> fica azul na capa e negrito no texto &middot; <kbd>__sublinhado__</kbd>',
+      tipos: { capa: F.capa, texto: F.texto, imagem: F.imagem },
+      render: { capa: feCapa, texto: feTexto, imagem: feImagem } }
   };
 
   function render(canvas, marca, s, cfg) {
@@ -826,7 +973,7 @@
   }
 
   /* =========================================================
-     10. ZIP (metodo store) + download
+     11. ZIP (metodo store) + download
      ========================================================= */
   var CRC = (function () {
     var t = new Uint32Array(256);
@@ -894,7 +1041,7 @@
   }
 
   /* =========================================================
-     11. Interface
+     12. Interface
      ========================================================= */
   var $ = function (id) { return document.getElementById(id); };
   var slides = [], sel = 0, marca = 'baroni';
@@ -1111,14 +1258,18 @@
       });
       return out;
     }
-    var t = B.corpo, avail = t.regionBottom - t.regionTop, cur = '';
+    /* agrupa paragrafos ate encher a lamina, medindo com a fonte da propria marca */
+    var tipo = tipoPadrao(), def = tipos()[tipo] || {};
+    var espec = def.body || B.corpo.body;
+    var avail = (marca === 'baroni') ? (B.corpo.regionBottom - B.corpo.regionTop) : 640;
+    var cur = '';
     paras.forEach(function (p) {
       var test = cur ? cur + '\n\n' + p : p;
-      if (cur && layout(ctx, test, t.body).height > avail) {
-        var s = blank('corpo'); s.body = cur; out.push(s); cur = p;
+      if (cur && layout(ctx, test, espec).height > avail) {
+        var s = blank(tipo); s.body = cur; out.push(s); cur = p;
       } else cur = test;
     });
-    if (cur) { var s2 = blank('corpo'); s2.body = cur; out.push(s2); }
+    if (cur) { var s2 = blank(tipo); s2.body = cur; out.push(s2); }
     return out;
   }
 

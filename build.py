@@ -45,6 +45,15 @@ assets = {
     "coLogoRed":   b64("co-logo-red.svg"),
     "coArrow":     b64("co-arrow.svg"),
     "coGlow":      b64("co-glow.svg"),
+    "afacad":      b64("afacad.woff2"),
+    "instrument":  b64("instrument-sans.woff2"),
+    "feLogo":      b64("fe-logo.png"),
+    "feBadge":     b64("fe-badge.png"),
+    "feEllipse":   b64("fe-ellipse.svg"),
+    "feSeta1":     b64("fe-seta1.svg"),
+    "feSeta2":     b64("fe-seta2.svg"),
+    "feNomeSvg":   b64("fe-nome-light.svg"),    # fill="#1F1F1F" -> recolorido
+    "feHandleSvg": b64("fe-handle-light.svg"),
 }
 js_assets = "window.__ASSETS__={" + ",".join('%s:"%s"' % kv for kv in assets.items()) + "};"
 
