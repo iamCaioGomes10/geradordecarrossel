@@ -40,6 +40,11 @@ assets = {
     "snRasgoTopo": b64("sn-rasgo-topo.png"),
     "snRasgoBase": b64("sn-rasgo-base.png"),
     "snTextura":   b64("sn-textura.jpg"),
+    "montserrat":  b64("montserrat.woff2"),
+    "coLogoCapa":  b64("co-logo-capa.svg"),
+    "coLogoRed":   b64("co-logo-red.svg"),
+    "coArrow":     b64("co-arrow.svg"),
+    "coGlow":      b64("co-glow.svg"),
 }
 js_assets = "window.__ASSETS__={" + ",".join('%s:"%s"' % kv for kv in assets.items()) + "};"
 

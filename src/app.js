@@ -27,6 +27,9 @@
     for (var i = 0; i < n; i++) u[i] = bin.charCodeAt(i);
     return u.buffer;
   }
+  function svgUri(svgText) {
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
+  }
   function svgFill(svgText, from, to) {
     return 'data:image/svg+xml;charset=utf-8,' +
       encodeURIComponent(svgText.split('fill="' + from + '"').join('fill="' + to + '"'));
@@ -39,7 +42,8 @@
       new FontFace('Staatliches', b64ToBuf(A.staatliches), { weight: '400' }),
       new FontFace('Poppins', b64ToBuf(A.poppins), { weight: '400' }),
       new FontFace('Caladea', b64ToBuf(A.caladea400), { weight: '400' }),
-      new FontFace('Caladea', b64ToBuf(A.caladea700), { weight: '700' })
+      new FontFace('Caladea', b64ToBuf(A.caladea700), { weight: '700' }),
+      new FontFace('Montserrat', b64ToBuf(A.montserrat), { weight: '100 900' })
     ];
     fonts.forEach(function (f) { document.fonts.add(f); });
     var svgName = atob(A.nameSvg), svgHandle = atob(A.handleSvg);
@@ -57,6 +61,16 @@
       loadImage('data:image/png;base64,' + A.snRasgoTopo).then(function (i) { IMG.snRasgoTopo = i; }),
       loadImage('data:image/png;base64,' + A.snRasgoBase).then(function (i) { IMG.snRasgoBase = i; }),
       loadImage('data:image/jpeg;base64,' + A.snTextura).then(function (i) { IMG.snTextura = i; }),
+      loadImage(svgUri(atob(A.coLogoCapa))).then(function (i) { IMG.coLogoCapa = i; }),
+      loadImage(svgUri(atob(A.coLogoRed))).then(function (i) { IMG.coLogoRed = i; }),
+      loadImage(svgUri(atob(A.coArrow))).then(function (i) { IMG.coArrow = i; }),
+      loadImage(svgUri(atob(A.coGlow))).then(function (i) {
+        /* o brilho e um circulo com desfoque de 350px: rasterizo uma vez em
+           baixa resolucao, porque e suave demais para a resolucao importar */
+        var c = layerOf(648, 648);
+        c.getContext('2d').drawImage(i, 0, 0, 648, 648);
+        IMG.coGlow = c;
+      }),
       loadImage(svgFill(svgName, 'black', '#ffffff')).then(function (i) { IMG.nameDark = i; }),
       loadImage(svgFill(svgName, 'black', '#000000')).then(function (i) { IMG.nameLight = i; }),
       loadImage(svgFill(svgHandle, '#6F7377', '#B8B8B8')).then(function (i) { IMG.handleDark = i; }),
@@ -144,6 +158,16 @@
     return { lines: lines, lh: lh, height: lines.length * lh, spec: spec };
   }
 
+  /* distancia do topo da caixa de linha ate o topo das maiusculas.
+     O Figma da Consultoria usa text-box-trim, que ancora por ai. */
+  function capTopOffset(ctx, spec) {
+    applyFont(ctx, spec, null);
+    var m = ctx.measureText('H');
+    var cap = m.actualBoundingBoxAscent;
+    if (!isFinite(cap) || !cap) cap = spec.size * 0.72;
+    return baselineOffset(ctx, spec) - cap;
+  }
+
   /* baseline no modelo half-leading do CSS */
   function baselineOffset(ctx, spec) {
     applyFont(ctx, spec, null);
@@ -157,14 +181,16 @@
   function paintSolid(ctx, blk, x, top) {
     var off = baselineOffset(ctx, blk.spec);
     ctx.textBaseline = 'alphabetic';
+    var centro = blk.spec.align === 'center';
     blk.lines.forEach(function (line, i) {
       var base = top + i * blk.lh + off;
+      var dx = centro ? (blk.spec.w - line.w) / 2 : 0;
       line.items.forEach(function (it) {
         if (!it.text.trim()) return;
         ctx.fillStyle = (it.run.em && blk.spec.emColor) ? blk.spec.emColor : blk.spec.color;
-        drawRun(ctx, blk.spec, it.run, it.text, x + it.x, base);
+        drawRun(ctx, blk.spec, it.run, it.text, x + dx + it.x, base);
         if (it.run.alt && blk.spec.underlineAlt) {
-          ctx.fillRect(x + it.x, base + blk.spec.size * 0.15, it.w, Math.max(2, blk.spec.size * 0.05));
+          ctx.fillRect(x + dx + it.x, base + blk.spec.size * 0.15, it.w, Math.max(2, blk.spec.size * 0.05));
         }
       });
     });
@@ -655,7 +681,117 @@
   }
 
   /* =========================================================
-     8. Registro de marcas
+     8. MARCA: @SunoConsultoria
+     ========================================================= */
+  var CO_RED = '#D42126';
+
+  var C = {
+    capa: { label: 'Capa', campos: ['title', 'sub', 'img'], minTop: 40,
+      logo: { x: 318, y: 89, w: 445, h: 34 }, arrow: { x: 951, y: 645, s: 60 },
+      glow: { x: -1521, y: -1149, s: 2586 },
+      titleX: 126, subX: 137, subBottom: 1251, gapTitleSub: 6.5,
+      title: { font: 'Montserrat', size: 96, lh: 1.2083, ls: -2.88, w: 828, weight: 300,
+               color: '#ffffff', emColor: '#ff1616', align: 'center' },
+      sub: { font: 'Montserrat', size: 45, lh: 1.1333, ls: -1.35, w: 806, weight: 300,
+             color: '#ffffff', emColor: '#ff0909', emWeight: 400, align: 'center' } },
+    texto: { label: 'S&oacute; texto', campos: ['numero', 'title', 'body'],
+      x: 101, badge: { x: 100, y: 303, d: 80 }, logo: { x: 206, y: 324, w: 109, h: 44 },
+      arrow: { x: 920, y: 648, s: 60 }, titleCapTop: 450, gapTitleBody: 66,
+      title: { font: 'Montserrat', size: 64, lh: 1.06, ls: -3.84, w: 844, weight: 700, color: '#1e1e1e' },
+      body: { font: 'Montserrat', size: 40, lh: 1.5, ls: -1.2, w: 844, weight: 400, color: '#1e1e1e', emWeight: 700 } },
+    imagem: { label: 'Texto + imagem', campos: ['numero', 'title', 'body', 'img'],
+      x: 85, badge: { x: 84, y: 71, d: 80 }, logo: { x: 190, y: 92, w: 109, h: 44 },
+      arrow: { x: 920, y: 648, s: 60 }, titleCapTop: 218, gapTitleImg: 44.5, gapImgBody: 53.5,
+      title: { font: 'Montserrat', size: 64, lh: 1.06, ls: -3.84, w: 911, weight: 700, color: '#1e1e1e' },
+      body: { font: 'Montserrat', size: 40, lh: 1.5, ls: -1.2, w: 911, weight: 400, color: '#1e1e1e', emWeight: 700 },
+      img: { w: 705, h: 328, r: 22 } }
+  };
+
+  /* numero da lamina dentro do circulo vermelho */
+  function coBadge(ctx, b, numero) {
+    ctx.fillStyle = CO_RED;
+    ctx.beginPath(); ctx.arc(b.x + b.d / 2, b.y + b.d / 2, b.d / 2, 0, Math.PI * 2); ctx.fill();
+    var txt = String(numero == null ? '' : numero).trim();
+    if (!txt) return;
+    var spec = { font: 'Montserrat', size: 50, lh: 1, ls: -1.5, w: 400, weight: 400, color: '#fff' };
+    applyFont(ctx, spec, null);
+    var m = ctx.measureText(txt);
+    var larg = HAS_LS ? m.width : measure(ctx, spec, null, txt);
+    var cap = m.actualBoundingBoxAscent || spec.size * 0.72;
+    ctx.fillStyle = '#ffffff'; ctx.textBaseline = 'alphabetic';
+    drawRun(ctx, spec, null, txt, b.x + b.d / 2 - larg / 2, b.y + b.d / 2 + cap / 2);
+  }
+  function coArrow(ctx, a) { ctx.drawImage(IMG.coArrow, a.x, a.y, a.s, a.s); }
+
+  function coCapa(ctx, s, cfg) {
+    var t = C.capa, of = false;
+    ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
+    var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, titleTop;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts); sb = layout(ctx, s.sub || '', ss);
+      titleTop = (t.subBottom - sb.height) - t.gapTitleSub - tb.height;
+      if (titleTop >= t.minTop + 120 || !cfg.autofit || ts.size < 52) break;
+      ts.size = Math.round(ts.size * 0.94); ss.size = Math.round(ss.size * 0.96);
+    }
+    if (titleTop < t.minTop + 120) of = true;
+    var subTop = t.subBottom - sb.height;
+
+    if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
+    /* brilho vermelho, aditivo, como o mix-blend-plus-lighter do arquivo */
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(IMG.coGlow, t.glow.x, t.glow.y, t.glow.s, t.glow.s);
+    ctx.restore();
+    /* quatro sombras: duas de 460 e duas de 761 */
+    [[460, 2], [761, 2]].forEach(function (par) {
+      for (var k = 0; k < par[1]; k++) {
+        var g = ctx.createLinearGradient(0, par[0], 0, H);
+        g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)');
+        ctx.fillStyle = g; ctx.fillRect(0, par[0], W, H - par[0]);
+      }
+    });
+    ctx.drawImage(IMG.coLogoCapa, t.logo.x, t.logo.y, t.logo.w, t.logo.h);
+    coArrow(ctx, t.arrow);
+    paintSolid(ctx, tb, t.titleX, titleTop);
+    paintSolid(ctx, sb, t.subX, subTop);
+    return of;
+  }
+
+  function coCorpo(ctx, s, cfg, comImagem) {
+    var t = comImagem ? C.imagem : C.texto, of = false;
+    ctx.fillStyle = '#f7f7f7'; ctx.fillRect(0, 0, W, H);
+    var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, fim;
+    var extra = comImagem ? (t.gapTitleImg + t.img.h + t.gapImgBody) : t.gapTitleBody;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts); bb = layout(ctx, s.body || '', bs);
+      fim = t.titleCapTop + tb.height + extra + bb.height;
+      if (fim <= H - 60 || !cfg.autofit || bs.size < 24) break;
+      bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
+    }
+    if (fim > H - 60) of = true;
+
+    coBadge(ctx, t.badge, s.numero);
+    ctx.drawImage(IMG.coLogoRed, t.logo.x, t.logo.y, t.logo.w, t.logo.h);
+    coArrow(ctx, t.arrow);
+
+    var y = t.titleCapTop - capTopOffset(ctx, ts);
+    paintSolid(ctx, tb, t.x, y);
+    y += tb.height;
+    if (comImagem) {
+      y += t.gapTitleImg;
+      ctx.save(); roundRect(ctx, t.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
+      if (s.img) drawCover(ctx, s.img, t.x, y, t.img.w, t.img.h, s);
+      else { ctx.fillStyle = '#e2e2e2'; ctx.fillRect(t.x, y, t.img.w, t.img.h); }
+      ctx.restore();
+      y += t.img.h + t.gapImgBody;
+    } else y += t.gapTitleBody;
+    paintSolid(ctx, bb, t.x, y);
+    return of;
+  }
+  function coTexto(ctx, s, cfg) { return coCorpo(ctx, s, cfg, false); }
+  function coImagem(ctx, s, cfg) { return coCorpo(ctx, s, cfg, true); }
+
+  /* =========================================================
+     9. Registro de marcas
      ========================================================= */
   var MARCAS = {
     baroni: { nome: 'Professor Baroni', disclaimer: true, topAlign: true,
@@ -673,7 +809,11 @@
     noticias: { nome: 'Suno Not&iacute;cias', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> deixa o trecho em negrito',
       tipos: { capa: N.capa, texto: N.texto, imagem: N.imagem },
-      render: { capa: snCapa, texto: snTexto, imagem: snImagem } }
+      render: { capa: snCapa, texto: snTexto, imagem: snImagem } },
+    consultoria: { nome: 'Suno Consultoria', disclaimer: false, topAlign: false,
+      dica: '<kbd>**destaque**</kbd> fica vermelho na capa e negrito no texto',
+      tipos: { capa: C.capa, texto: C.texto, imagem: C.imagem },
+      render: { capa: coCapa, texto: coTexto, imagem: coImagem } }
   };
 
   function render(canvas, marca, s, cfg) {
@@ -686,7 +826,7 @@
   }
 
   /* =========================================================
-     9. ZIP (metodo store) + download
+     10. ZIP (metodo store) + download
      ========================================================= */
   var CRC = (function () {
     var t = new Uint32Array(256);
@@ -754,7 +894,7 @@
   }
 
   /* =========================================================
-     10. Interface
+     11. Interface
      ========================================================= */
   var $ = function (id) { return document.getElementById(id); };
   var slides = [], sel = 0, marca = 'baroni';
@@ -765,7 +905,7 @@
   }
   function tipos() { return MARCAS[marca].tipos; }
   function tipoPadrao() { var k = Object.keys(tipos()); return k.indexOf('corpo') >= 0 ? 'corpo' : (k.indexOf('texto') >= 0 ? 'texto' : k[1] || k[0]); }
-  function blank(type) { return { type: type || tipoPadrao(), title: '', sub: '', body: '', img: null, imgName: '', zoom: 1, fx: 0.5, fy: 0.5 }; }
+  function blank(type) { return { type: type || tipoPadrao(), title: '', sub: '', body: '', img: null, imgName: '', zoom: 1, fx: 0.5, fy: 0.5, numero: '' }; }
   function labelDe(t) { var d = document.createElement('div'); d.innerHTML = (tipos()[t] || {}).label || t; return d.textContent; }
 
   function toast(m) {
@@ -881,6 +1021,18 @@
 
       var campos = (tipos()[s.type] || {}).campos || ['body'];
       var dica = MARCAS[marca].dica;
+
+      if (campos.indexOf('numero') >= 0) {
+        var ln = document.createElement('label'); ln.className = 'field';
+        ln.innerHTML = '<span>N&uacute;mero da l&acirc;mina</span>';
+        var inn = document.createElement('input');
+        inn.type = 'text'; inn.value = s.numero || ''; inn.style.maxWidth = '110px';
+        inn.oninput = function () { s.numero = inn.value; draw(); };
+        ln.appendChild(inn);
+        var hn = document.createElement('p'); hn.className = 'hint';
+        hn.textContent = 'Aparece no c\u00edrculo vermelho. Deixe vazio para esconder.';
+        ln.appendChild(hn); body.appendChild(ln);
+      }
       if (campos.indexOf('title') >= 0) textField('Título', 'title', s.type === 'capa' && marca === 'baroni' ? 'Staatliches 96px, vira caixa alta.' : null, 3);
       if (campos.indexOf('sub') >= 0) textField('Subtítulo', 'sub', null, 2);
       if (campos.indexOf('body') >= 0) textField('Texto', 'body', dica + ' · linha em branco = parágrafo', 5);
@@ -948,12 +1100,13 @@
       return out;
     }
 
-    if (marca === 'suno' || marca === 'tiago') {
+    if (marca === 'suno' || marca === 'tiago' || marca === 'consultoria') {
       /* no Suno cada lamina tem titulo proprio: 1a linha do bloco vira titulo */
-      paras.forEach(function (p) {
+      paras.forEach(function (p, i) {
         var ls = p.split('\n'), s = blank('texto');
         s.title = ls[0]; s.body = ls.slice(1).join('\n');
         if (!s.body) { s.body = s.title; s.title = ''; }
+        s.numero = String(i + 1);      /* numeracao da Consultoria; ignorada nas outras */
         out.push(s);
       });
       return out;
