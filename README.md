@@ -111,7 +111,12 @@ trecho destacado inteiro.
 Dando o mesmo enquadramento de imagem do Figma, a lâmina inteira do @suno difere em
 média **3/255** da referência.
 
-Duas divergências conhecidas, ambas deliberadas:
+Três divergências conhecidas, todas deliberadas:
+
+- **Subtítulo da capa do @fundsexplorer**: o arquivo do Figma traz `text-center`, o que
+  deixa o subtítulo flutuando no meio enquanto o título é alinhado à esquerda. Alinhado
+  à esquerda a pedido, e a largura foi de 658 para 829 px para acompanhar o título. A
+  posição vertical continua idêntica à referência.
 
 - **Line-height do corpo do Baroni**: o Figma reporta 1,28 mas na prática usa 1,275 —
   3 px acumulados ao longo de 14 linhas. Mantive 1,28, que é o valor da spec.

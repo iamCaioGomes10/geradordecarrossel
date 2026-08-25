@@ -847,8 +847,10 @@
       subBottom: 1238.5, gapTitleSub: 34.5, gapHeadTitle: 35,
       title: { font: 'Instrument Sans', size: 100, lh: 1.03, ls: -7, w: 829, weight: 400,
                color: '#ffffff', emColor: '#00c0f5' },
-      sub: { font: 'Afacad', size: 50, lh: 1.04, ls: -1, w: 658, weight: 400,
-             color: '#ffffff', align: 'center' },
+      /* o arquivo do Figma traz este subtitulo centralizado; alinhado a esquerda
+         a pedido, para acompanhar o titulo */
+      sub: { font: 'Afacad', size: 50, lh: 1.04, ls: -1, w: 829, weight: 400,
+             color: '#ffffff' },
       setas: [[-211, 37, 611, 625], [560, 1156, 520, 532]] },
     texto: { label: 'S&oacute; texto', campos: ['body'],
       x: 117, k: 1, headY: 265, textCenter: 751.6, gapHeadText: 37.19,
