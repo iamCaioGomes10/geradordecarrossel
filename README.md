@@ -111,7 +111,16 @@ trecho destacado inteiro.
 Dando o mesmo enquadramento de imagem do Figma, a lâmina inteira do @suno difere em
 média **3/255** da referência.
 
-Três divergências conhecidas, todas deliberadas:
+**Cuidado com caixa de texto dimensionada pelo conteúdo.** No Figma, a caixa reflete o
+texto de exemplo, não a medida do layout. O subtítulo da capa do @tiagogreis tinha
+341 px porque a referência era "Qual a diferença?" — com texto real, quebrava em coluna
+estreita. Ao portar um layout novo, comparar a largura de cada campo com a dos vizinhos:
+discrepância grande é sinal de caixa ajustada ao exemplo.
+
+Quatro divergências conhecidas, todas deliberadas:
+
+- **Subtítulo da capa do @tiagogreis**: largura de 341 para 877 px, igual à do título,
+  pelo motivo acima. Posição vertical inalterada.
 
 - **Subtítulo da capa do @fundsexplorer**: o arquivo do Figma traz `text-center`, o que
   deixa o subtítulo flutuando no meio enquanto o título é alinhado à esquerda. Alinhado

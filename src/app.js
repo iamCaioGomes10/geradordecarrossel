@@ -529,7 +529,9 @@
     capa: { label: 'Capa', campos: ['title', 'sub', 'img'],
       x: 102, minTop: 40, shadeTop: 598, shadeN: 2,
       title: { font: 'Inter', size: 100, lh: 1.03, ls: -7, w: 877, weight: 600, color: '#ffffff' },
-      sub: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 341, weight: 500, color: '#ececec' },
+      /* a caixa do Figma tem 341px porque o texto de referencia era curto
+             ("Qual a diferenca?"); alargada para a mesma medida do titulo */
+      sub: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 877, weight: 500, color: '#ececec' },
       subBottom: 1233.7, gapTitleSub: 28.3, gapHeadTitle: 31.2 },
     texto: { label: 'S&oacute; texto', campos: ['title', 'body'],
       x: 101, gapHeadTitle: 34.3, gapTitleBody: 31.9,
