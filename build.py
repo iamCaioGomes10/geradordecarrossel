@@ -68,6 +68,11 @@ html = (SRC / "index.html").read_text(encoding="utf-8")
 html = html.replace("/*__CSS__*/", (SRC / "style.css").read_text(encoding="utf-8"))
 html = html.replace("/*__ASSETS__*/", js_assets)
 html = html.replace("/*__JS__*/", (SRC / "app.js").read_text(encoding="utf-8"))
+# icone da aba: a marca Suno Design embutida, para valer nos tres empacotamentos
+# (o arquivo solto nao tem pasta ao lado de onde buscar um favicon separado)
+html = html.replace(
+    '<link rel="icon" href="favicon.svg" type="image/svg+xml">',
+    '<link rel="icon" href="data:image/png;base64,%s" type="image/png">' % assets["sdMarca"])
 
 if ARTIFACT:
     # o Artifact envolve o conteudo no proprio esqueleto de documento
@@ -83,12 +88,8 @@ if STATIC:
     html = html.replace("<head>", '<head>\n<meta name="robots" content="noindex, nofollow">', 1)
     (dist / "index.html").write_text(html, encoding="utf-8")
     (dist / "robots.txt").write_text("User-agent: *\nDisallow: /\n", encoding="utf-8")
-    (dist / "favicon.svg").write_text(
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
-        '<rect width="64" height="64" rx="12" fill="#0d0f11"/>'
-        '<rect x="14" y="12" width="26" height="34" rx="4" fill="#1d9bf0"/>'
-        '<rect x="30" y="18" width="26" height="34" rx="4" fill="#e9ecef"/>'
-        '</svg>\n', encoding="utf-8")
+    # tambem solto, para quem pedir /favicon.png na mao
+    (dist / "favicon.png").write_bytes((ASSETS / "sd-marca.png").read_bytes())
     # CSP fechada: o app nao busca nada na rede e nao manda nada para lugar nenhum
     csp = ("default-src 'none'; "
            "img-src 'self' data: blob:; "
