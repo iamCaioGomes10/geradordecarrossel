@@ -187,8 +187,16 @@
     return (spec.size * spec.lh - (a + d)) / 2 + a;
   }
 
+  /* Regioes dos campos na lamina, para traduzir clique em selecao.
+     Os renderizadores ja calculam essas caixas; aqui elas ficam registradas. */
+  var REGIOES = [], ESTOUROU = null;
+  function regiao(campo, x, y, w, h) {
+    if (campo) REGIOES.push({ campo: campo, x: x, y: y, w: w, h: h });
+  }
+
   /* --- pintura com cor solida (Baroni) --- */
-  function paintSolid(ctx, blk, x, top) {
+  function paintSolid(ctx, blk, x, top, campo) {
+    regiao(campo, x, top, blk.spec.w, blk.height);
     var off = baselineOffset(ctx, blk.spec);
     ctx.textBaseline = 'alphabetic';
     var centro = blk.spec.align === 'center';
@@ -242,7 +250,8 @@
 
   /* --- pintura com texto preenchido por gradiente (Suno) ---
      desenha em camada offscreen e recorta o gradiente com source-in */
-  function paintGrad(ctx, blk, x, top, style) {
+  function paintGrad(ctx, blk, x, top, style, campo) {
+    regiao(campo, x, top, blk.spec.w, blk.height);
     var pad = 80, ox = x - pad, oy = top - pad;
     var lw = Math.ceil(blk.spec.w + pad * 2), lh = Math.ceil(blk.height + pad * 2);
     var base = layerOf(lw, lh), bc = base.getContext('2d');
@@ -353,7 +362,7 @@
   };
 
   function baroniCapa(ctx, s, cfg) {
-    var t = B.capa, of = false;
+    var t = B.capa, of = false; if (0) ESTOUROU = null;
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, W, H);
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
     for (var p = 0; p < 14; p++) {
@@ -363,12 +372,13 @@
       ts.size = Math.round(ts.size * 0.94);
       if (ts.size < 48) ss.size = Math.round(ss.size * 0.94);
     }
-    if (headTop < t.minTop) of = true;
+    if (headTop < t.minTop) of = true, ESTOUROU = "titulo";
     var subTop = t.subBottom - sb.height, titleTop = subTop - t.gapTitleSub - tb.height;
+    regiao("imagem", 0, 0, W, H);
     if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     shade(ctx, Math.min(616, headTop), 2, 'rgba(0,0,0,0.06)');
     baroniHeader(ctx, t.x, headTop, 'dark');
-    paintSolid(ctx, tb, t.x, titleTop); paintSolid(ctx, sb, t.x, subTop);
+    paintSolid(ctx, tb, t.x, titleTop, "titulo"); paintSolid(ctx, sb, t.x, subTop, "sub");
     baroniDisc(ctx, t, cfg);
     return of;
   }
@@ -382,10 +392,10 @@
       if (blk.height <= avail || !cfg.autofit || spec.size < 22) break;
       spec.size = Math.round(spec.size * 0.94);
     }
-    if (blk.height > avail) of = true;
+    if (blk.height > avail) of = true, ESTOUROU = "corpo";
     var top = cfg.topAlign ? t.regionTop : t.regionTop + (avail - blk.height) / 2;
     baroniHeader(ctx, t.x, t.headY, 'light');
-    paintSolid(ctx, blk, t.x, Math.max(top, t.regionTop));
+    paintSolid(ctx, blk, t.x, Math.max(top, t.regionTop), "corpo");
     baroniDisc(ctx, t, cfg);
     return of;
   }
@@ -401,9 +411,10 @@
       if (headTop >= t.minTop || !cfg.autofit || spec.size < 22) break;
       spec.size = Math.round(spec.size * 0.94);
     }
-    if (headTop < t.minTop) of = true;
+    if (headTop < t.minTop) of = true, ESTOUROU = "titulo";
     baroniHeader(ctx, t.x, headTop, 'dark');
-    paintSolid(ctx, blk, t.x, textTop);
+    paintSolid(ctx, blk, t.x, textTop, "corpo");
+    regiao("imagem", t.x, imgTop, t.img.w, t.img.h);
     ctx.save(); roundRect(ctx, t.x, imgTop, t.img.w, t.img.h, t.img.r); ctx.clip();
     if (s.img) drawCover(ctx, s.img, t.x, imgTop, t.img.w, t.img.h, s);
     else { ctx.fillStyle = '#15181c'; ctx.fillRect(t.x, imgTop, t.img.w, t.img.h); }
@@ -460,11 +471,12 @@
     if (logoTop < t.minTop) of = true;
     var subTop = t.subBottom - sb.height, titleTop = subTop - t.gapTitleSub - tb.height;
 
+    regiao("imagem", 0, 0, W, H);
     if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     shade(ctx, Math.min(t.shadeTop, logoTop), t.shadeN, 'rgba(0,0,0,0)');
     ctx.drawImage(IMG.sunoLogo, t.x, logoTop, t.logo.w, t.logo.h);
-    paintGrad(ctx, tb, t.x, titleTop, { grad: GRAD_CAPA });
-    paintSolid(ctx, sb, t.x, subTop);
+    paintGrad(ctx, tb, t.x, titleTop, { grad: GRAD_CAPA }, "titulo");
+    paintSolid(ctx, sb, t.x, subTop, "sub");
     return of;
   }
 
@@ -478,11 +490,12 @@
       if (titleTop >= t.minTop || !cfg.autofit || bs.size < 24) break;
       bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
     }
-    if (titleTop < t.minTop) of = true;
+    if (titleTop < t.minTop) of = true, ESTOUROU = "titulo";
     var bodyTop = t.img.top - t.gapBodyImg - bb.height;
 
-    paintGrad(ctx, tb, t.x, titleTop, { grad: GRAD_TITLE });
-    paintGrad(ctx, bb, t.x, bodyTop, { grad: GRAD_BODY, emGrad: GRAD_EM });
+    paintGrad(ctx, tb, t.x, titleTop, { grad: GRAD_TITLE }, "titulo");
+    paintGrad(ctx, bb, t.x, bodyTop, { grad: GRAD_BODY, emGrad: GRAD_EM }, "corpo");
+    regiao("imagem", 130, t.img.top, t.img.w, t.img.h);
     ctx.save(); roundRect(ctx, 130, t.img.top, t.img.w, t.img.h, t.img.r); ctx.clip();
     if (s.img) drawCover(ctx, s.img, 130, t.img.top, t.img.w, t.img.h, s);
     else { ctx.fillStyle = '#ececec'; ctx.fillRect(130, t.img.top, t.img.w, t.img.h); }
@@ -500,11 +513,11 @@
       if (total <= H - 160 || !cfg.autofit || bs.size < 24) break;
       bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
     }
-    if (total > H - 160) of = true;
+    if (total > H - 160) of = true, ESTOUROU = "corpo";
     var top = (H - total) / 2 + t.bias;
     if (top < 60) top = 60;
-    paintGrad(ctx, tb, t.x, top, { grad: GRAD_TITLE });
-    paintGrad(ctx, bb, t.x, top + tb.height + t.gapTitleBody, { grad: GRAD_BODY, emGrad: GRAD_EM });
+    paintGrad(ctx, tb, t.x, top, { grad: GRAD_TITLE }, "titulo");
+    paintGrad(ctx, bb, t.x, top + tb.height + t.gapTitleBody, { grad: GRAD_BODY, emGrad: GRAD_EM }, "corpo");
     return of;
   }
 
@@ -555,13 +568,14 @@
       ts.size = Math.round(ts.size * 0.94);
       if (ts.size < 52) ss.size = Math.round(ss.size * 0.94);
     }
-    if (headTop < t.minTop) of = true;
+    if (headTop < t.minTop) of = true, ESTOUROU = "titulo";
     var subTop = t.subBottom - sb.height, titleTop = subTop - t.gapTitleSub - tb.height;
+    regiao("imagem", 0, 0, W, H);
     if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     shade(ctx, Math.min(t.shadeTop, headTop), t.shadeN, 'rgba(0,0,0,0)');
     trHeader(ctx, t.x, headTop, 'dark');
-    paintSolid(ctx, tb, t.x, titleTop);
-    paintSolid(ctx, sb, t.x, subTop);
+    paintSolid(ctx, tb, t.x, titleTop, "titulo");
+    paintSolid(ctx, sb, t.x, subTop, "sub");
     return of;
   }
 
@@ -577,18 +591,19 @@
       if (total <= H - 120 || !cfg.autofit || bs.size < 24) break;
       bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
     }
-    if (total > H - 120) of = true;
+    if (total > H - 120) of = true, ESTOUROU = "corpo";
 
     var y = (H - total) / 2;
     if (y < 50) y = 50;
     trHeader(ctx, t.x, y, 'light');
     y += TR_HEAD.av + t.gapHeadTitle;
-    paintSolid(ctx, tb, t.x, y);
+    paintSolid(ctx, tb, t.x, y, "titulo");
     y += tb.height + t.gapTitleBody;
-    paintSolid(ctx, bb, t.x, y);
+    paintSolid(ctx, bb, t.x, y, "corpo");
 
     if (comFoto) {
       y += bb.height + t.gapBodyImg;
+      regiao("imagem", 85, y, t.img.w, t.img.h);
       ctx.save(); roundRect(ctx, 85, y, t.img.w, t.img.h, t.img.r); ctx.clip();
       if (s.img) drawCover(ctx, s.img, 85, y, t.img.w, t.img.h, s);
       else { ctx.fillStyle = '#e2e2e2'; ctx.fillRect(85, y, t.img.w, t.img.h); }
@@ -646,9 +661,10 @@
       if (headTop >= t.minTop || !cfg.autofit || ts.size < 46) break;
       ts.size = Math.round(ts.size * 0.94);
     }
-    if (headTop < t.minTop) of = true;
+    if (headTop < t.minTop) of = true, ESTOUROU = "titulo";
     var titleTop = t.titleBottom - tb.height;
 
+    regiao("imagem", 0, 0, W, H);
     if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     /* as duas sombras do arquivo tem alturas diferentes */
     var g1 = ctx.createLinearGradient(0, 616, 0, H);
@@ -659,7 +675,7 @@
     ctx.fillStyle = g2; ctx.fillRect(0, 456, W, H - 456);
 
     snHeader(ctx, t.x, headTop, 'dark');
-    paintSolid(ctx, tb, t.x, titleTop);
+    paintSolid(ctx, tb, t.x, titleTop, "titulo");
     ctx.drawImage(IMG.snRasgoBase, 0, t.rasgoTop, 1080, 508);
     return of;
   }
@@ -674,10 +690,10 @@
       if (headTop >= 60 || !cfg.autofit || bs.size < 26) break;
       bs.size = Math.round(bs.size * 0.94);
     }
-    if (headTop < 60) of = true;
+    if (headTop < 60) of = true, ESTOUROU = "corpo";
     var top = t.textCenter - blk.height / 2;
     snHeader(ctx, t.x, headTop, 'light');
-    paintSolid(ctx, blk, t.x, top);
+    paintSolid(ctx, blk, t.x, top, "corpo");
     return of;
   }
 
@@ -692,12 +708,13 @@
       if (total <= H - 120 || !cfg.autofit || bs.size < 26) break;
       bs.size = Math.round(bs.size * 0.94);
     }
-    if (total > H - 120) of = true;
+    if (total > H - 120) of = true, ESTOUROU = "corpo";
     var y = (H - total) / 2; if (y < 50) y = 50;
     snHeader(ctx, t.x, y, 'light');
     y += SN_HEAD.av + t.gapHeadText;
-    paintSolid(ctx, blk, t.x, y);
+    paintSolid(ctx, blk, t.x, y, "corpo");
     y += blk.height + t.gapTextImg;
+    regiao("imagem", t.x, y, t.img.w, t.img.h);
     ctx.save(); roundRect(ctx, t.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
     if (s.img) drawCover(ctx, s.img, t.x, y, t.img.w, t.img.h, s);
     else { ctx.fillStyle = '#e2e2e2'; ctx.fillRect(t.x, y, t.img.w, t.img.h); }
@@ -760,9 +777,10 @@
       if (titleTop >= t.minTop + 120 || !cfg.autofit || ts.size < 52) break;
       ts.size = Math.round(ts.size * 0.94); ss.size = Math.round(ss.size * 0.96);
     }
-    if (titleTop < t.minTop + 120) of = true;
+    if (titleTop < t.minTop + 120) of = true, ESTOUROU = "titulo";
     var subTop = t.subBottom - sb.height;
 
+    regiao("imagem", 0, 0, W, H);
     if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     /* brilho vermelho, aditivo, como o mix-blend-plus-lighter do arquivo */
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -778,8 +796,8 @@
     });
     ctx.drawImage(IMG.coLogoCapa, t.logo.x, t.logo.y, t.logo.w, t.logo.h);
     coArrow(ctx, t.arrow);
-    paintSolid(ctx, tb, t.titleX, titleTop);
-    paintSolid(ctx, sb, t.subX, subTop);
+    paintSolid(ctx, tb, t.titleX, titleTop, "titulo");
+    paintSolid(ctx, sb, t.subX, subTop, "sub");
     return of;
   }
 
@@ -794,24 +812,25 @@
       if (fim <= H - 60 || !cfg.autofit || bs.size < 24) break;
       bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
     }
-    if (fim > H - 60) of = true;
+    if (fim > H - 60) of = true, ESTOUROU = "corpo";
 
     coBadge(ctx, t.badge, s.numero);
     ctx.drawImage(IMG.coLogoRed, t.logo.x, t.logo.y, t.logo.w, t.logo.h);
     coArrow(ctx, t.arrow);
 
     var y = t.titleCapTop - capTopOffset(ctx, ts);
-    paintSolid(ctx, tb, t.x, y);
+    paintSolid(ctx, tb, t.x, y, "titulo");
     y += tb.height;
     if (comImagem) {
       y += t.gapTitleImg;
-      ctx.save(); roundRect(ctx, t.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
+      regiao("imagem", t.x, y, t.img.w, t.img.h);
+    ctx.save(); roundRect(ctx, t.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
       if (s.img) drawCover(ctx, s.img, t.x, y, t.img.w, t.img.h, s);
       else { ctx.fillStyle = '#e2e2e2'; ctx.fillRect(t.x, y, t.img.w, t.img.h); }
       ctx.restore();
       y += t.img.h + t.gapImgBody;
     } else y += t.gapTitleBody;
-    paintSolid(ctx, bb, t.x, y);
+    paintSolid(ctx, bb, t.x, y, "corpo");
     return of;
   }
   function coTexto(ctx, s, cfg) { return coCorpo(ctx, s, cfg, false); }
@@ -876,14 +895,15 @@
       ts.size = Math.round(ts.size * 0.94);
       if (ts.size < 70) ss.size = Math.round(ss.size * 0.96);
     }
-    if (headTop < t.minTop) of = true;
+    if (headTop < t.minTop) of = true, ESTOUROU = "titulo";
     var subTop = t.subBottom - sb.height, titleTop = subTop - t.gapTitleSub - tb.height;
 
+    regiao("imagem", 0, 0, W, H);
     if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     shade(ctx, Math.min(t.shadeTop, headTop), t.shadeN, 'rgba(0,0,0,0)');
     feHeader(ctx, t.x, headTop, 'dark', t.k);
-    paintSolid(ctx, tb, t.x, titleTop);
-    paintSolid(ctx, sb, t.x, subTop);
+    paintSolid(ctx, tb, t.x, titleTop, "titulo");
+    paintSolid(ctx, sb, t.x, subTop, "sub");
     /* setas decorativas por cima, como no arquivo (ja vem com opacidade 0.2) */
     ctx.drawImage(IMG.feSeta1, t.setas[0][0], t.setas[0][1], t.setas[0][2], t.setas[0][3]);
     ctx.drawImage(IMG.feSeta2, t.setas[1][0], t.setas[1][1], t.setas[1][2], t.setas[1][3]);
@@ -906,9 +926,9 @@
       if (headTop >= 50 || !cfg.autofit || bs.size < 26) break;
       bs.size = Math.round(bs.size * 0.94);
     }
-    if (headTop < 50) of = true;
+    if (headTop < 50) of = true, ESTOUROU = "corpo";
     feHeader(ctx, t.x, headTop, 'light', t.k);
-    paintSolid(ctx, blk, t.x, top);
+    paintSolid(ctx, blk, t.x, top, "corpo");
     return of;
   }
 
@@ -924,12 +944,13 @@
       if (total <= H - 100 || !cfg.autofit || bs.size < 26) break;
       bs.size = Math.round(bs.size * 0.94);
     }
-    if (total > H - 100) of = true;
+    if (total > H - 100) of = true, ESTOUROU = "corpo";
     var y = (H - total) / 2; if (y < 40) y = 40;
     feHeader(ctx, t.x, y, 'light', t.k);
     y += avh + t.gap;
-    paintSolid(ctx, blk, t.x, y);
+    paintSolid(ctx, blk, t.x, y, "corpo");
     y += blk.height + t.gap;
+    regiao("imagem", t.x, y, t.img.w, t.img.h);
     ctx.save(); roundRect(ctx, t.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
     if (s.img) drawCover(ctx, s.img, t.x, y, t.img.w, t.img.h, s);
     else { ctx.fillStyle = '#e2e2e2'; ctx.fillRect(t.x, y, t.img.w, t.img.h); }
@@ -941,27 +962,27 @@
      10. Registro de marcas
      ========================================================= */
   var MARCAS = {
-    baroni: { nome: 'Professor Baroni', disclaimer: true, topAlign: true,
+    baroni: { nome: 'Professor Baroni', arroba: '@ProfessorBaroni', cor: '#3fbf68', disclaimer: true, topAlign: true,
       dica: '<kbd>**negrito**</kbd> <kbd>__sublinhado__</kbd>',
       tipos: { capa: B.capa, corpo: B.corpo, corpoImg: B.corpoImg },
       render: { capa: baroniCapa, corpo: baroniCorpo, corpoImg: baroniCorpoImg } },
-    suno: { nome: 'Suno', disclaimer: false, topAlign: false,
+    suno: { nome: 'Suno', arroba: '@suno', cor: '#ff2020', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> pinta o trecho em vermelho',
       tipos: { capa: S.capa, corpoImg: S.corpoImg, texto: S.texto },
       render: { capa: sunoCapa, corpoImg: sunoCorpoImg, texto: sunoTexto } },
-    tiago: { nome: 'Tiago Reis', disclaimer: false, topAlign: false,
+    tiago: { nome: 'Tiago Reis', arroba: '@tiagogreis', cor: '#42aff3', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica azul no t&iacute;tulo e negrito no texto',
       tipos: { capa: T.capa, texto: T.texto, foto: T.foto },
       render: { capa: trCapa, texto: trTexto, foto: trFoto } },
-    noticias: { nome: 'Suno Not&iacute;cias', disclaimer: false, topAlign: false,
+    noticias: { nome: 'Suno Not&iacute;cias', arroba: '@sunonoticias', cor: '#c9c2b4', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> deixa o trecho em negrito',
       tipos: { capa: N.capa, texto: N.texto, imagem: N.imagem },
       render: { capa: snCapa, texto: snTexto, imagem: snImagem } },
-    consultoria: { nome: 'Suno Consultoria', disclaimer: false, topAlign: false,
+    consultoria: { nome: 'Suno Consultoria', arroba: '@SunoConsultoria', cor: '#d42126', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica vermelho na capa e negrito no texto',
       tipos: { capa: C.capa, texto: C.texto, imagem: C.imagem },
       render: { capa: coCapa, texto: coTexto, imagem: coImagem } },
-    funds: { nome: 'Funds Explorer', disclaimer: false, topAlign: false,
+    funds: { nome: 'Funds Explorer', arroba: '@fundsexplorer', cor: '#00c0f5', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica azul na capa e negrito no texto &middot; <kbd>__sublinhado__</kbd>',
       tipos: { capa: F.capa, texto: F.texto, imagem: F.imagem },
       render: { capa: feCapa, texto: feTexto, imagem: feImagem } }
@@ -971,9 +992,25 @@
     var ctx = canvas.getContext('2d');
     canvas.width = W; canvas.height = H;
     ctx.clearRect(0, 0, W, H); ctx.textAlign = 'left';
+    REGIOES = []; ESTOUROU = null;
     var M = MARCAS[marca];
     var fn = M.render[s.type] || M.render[Object.keys(M.render)[0]];
-    return fn(ctx, s, cfg);
+    var of = fn(ctx, s, cfg);
+    /* guarda o resultado na propria lamina: a interface le dali */
+    s._regioes = REGIOES.slice();
+    s._estouro = of ? (ESTOUROU || 'corpo') : null;
+    return of;
+  }
+
+  /* qual campo esta sob o ponto (x,y) em coordenadas de 1080x1350.
+     Percorre de tras para frente: o desenhado por ultimo ganha. */
+  function campoEm(s, x, y) {
+    var r = s._regioes || [];
+    for (var i = r.length - 1; i >= 0; i--) {
+      var c = r[i];
+      if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) return c.campo;
+    }
+    return null;
   }
 
   /* =========================================================
@@ -1045,224 +1082,292 @@
   }
 
   /* =========================================================
-     12. Interface
+     12. Interface — mesa de trabalho
+     A lamina e o objeto principal: edita-se em cima dela, e o painel
+     acompanha o que estiver selecionado.
      ========================================================= */
   var $ = function (id) { return document.getElementById(id); };
-  var slides = [], sel = 0, marca = 'baroni';
+  var slides = [], foco = 0, sel = null, marca = 'baroni';
+  var opts = { disc: '', discOn: true, autofit: true, topAlign: false };
 
   function cfg() {
-    return { disc: $('disc').value, discOn: $('disc-on').checked,
-             autofit: $('autofit').checked, topAlign: $('topalign').checked };
+    return { disc: opts.disc, discOn: opts.discOn, autofit: opts.autofit, topAlign: opts.topAlign };
   }
   function tipos() { return MARCAS[marca].tipos; }
-  function tipoPadrao() { var k = Object.keys(tipos()); return k.indexOf('corpo') >= 0 ? 'corpo' : (k.indexOf('texto') >= 0 ? 'texto' : k[1] || k[0]); }
-  function blank(type) { return { type: type || tipoPadrao(), title: '', sub: '', body: '', img: null, imgName: '', zoom: 1, fx: 0.5, fy: 0.5, numero: '' }; }
-  function labelDe(t) { var d = document.createElement('div'); d.innerHTML = (tipos()[t] || {}).label || t; return d.textContent; }
-
-  function toast(m) {
-    var t = $('toast'); t.textContent = m; t.classList.add('show');
-    clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  function tipoPadrao() {
+    var k = Object.keys(tipos());
+    return k.indexOf('corpo') >= 0 ? 'corpo' : (k.indexOf('texto') >= 0 ? 'texto' : (k[1] || k[0]));
   }
-  function summary(s) {
-    var txt = ((s.title || '') + ' ' + (s.sub || '') + ' ' + (s.body || '')).replace(/\s+/g, ' ').trim();
-    return labelDe(s.type) + (txt ? ' - ' + txt.slice(0, 38) : ' - (vazia)');
+  function blank(type) {
+    return { type: type || tipoPadrao(), title: '', sub: '', body: '', numero: '',
+             img: null, imgName: '', zoom: 1, fx: 0.5, fy: 0.5 };
   }
-
-  function buildEditor() {
-    var host = $('slides'); host.innerHTML = '';
-    slides.forEach(function (s, i) {
-      var card = document.createElement('div');
-      card.className = 'slide-card' + (i === sel ? ' sel' : '');
-      var head = document.createElement('div');
-      head.className = 'slide-head';
-      head.innerHTML = '<div class="slide-n">' + (i + 1) + '</div><div class="slide-title"></div>';
-      head.querySelector('.slide-title').textContent = summary(s);
-      head.onclick = function () { sel = i; buildEditor(); draw(); };
-
-      var tools = document.createElement('div'); tools.className = 'row tight';
-      [['↑', function () { if (i > 0) { slides.splice(i - 1, 0, slides.splice(i, 1)[0]); sel = i - 1; buildEditor(); draw(); } }],
-       ['↓', function () { if (i < slides.length - 1) { slides.splice(i + 1, 0, slides.splice(i, 1)[0]); sel = i + 1; buildEditor(); draw(); } }],
-       ['✕', function () { slides.splice(i, 1); if (sel >= slides.length) sel = slides.length - 1; buildEditor(); draw(); }]
-      ].forEach(function (p) {
-        var b = document.createElement('button'); b.className = 'btn tiny ghost'; b.textContent = p[0];
-        b.onclick = function (e) { e.stopPropagation(); p[1](); }; tools.appendChild(b);
-      });
-      head.appendChild(tools); card.appendChild(head);
-
-      var body = document.createElement('div'); body.className = 'slide-body';
-      var sl = document.createElement('label'); sl.className = 'field';
-      sl.innerHTML = '<span>Layout</span>';
-      var se = document.createElement('select');
-      Object.keys(tipos()).forEach(function (k) {
-        var o = document.createElement('option'); o.value = k; o.textContent = labelDe(k);
-        if (s.type === k) o.selected = true; se.appendChild(o);
-      });
-      se.onchange = function () { s.type = se.value; buildEditor(); draw(); };
-      sl.appendChild(se); body.appendChild(sl);
-
-      function textField(lb, key, hint, rows) {
-        var l = document.createElement('label'); l.className = 'field';
-        l.innerHTML = '<span></span>'; l.querySelector('span').textContent = lb;
-        var ta = document.createElement('textarea'); ta.value = s[key] || ''; ta.rows = rows || 3;
-        ta.oninput = function () { s[key] = ta.value; head.querySelector('.slide-title').textContent = summary(s); draw(); };
-        l.appendChild(ta);
-        if (hint) { var h = document.createElement('p'); h.className = 'hint'; h.innerHTML = hint; l.appendChild(h); }
-        body.appendChild(l);
-      }
-      function imgField(lb) {
-        var l = document.createElement('label'); l.className = 'field';
-        l.innerHTML = '<span></span>'; l.querySelector('span').textContent = lb;
-        var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
-        inp.onchange = function () {
-          var f = inp.files[0]; if (!f) return;
-          var r = new FileReader();
-          r.onload = function () { loadImage(r.result).then(function (im) { s.img = im; s.imgName = f.name; buildEditor(); draw(); }); };
-          r.readAsDataURL(f);
-        };
-        l.appendChild(inp);
-        if (s.img) {
-          var th = document.createElement('div'); th.className = 'thumb';
-          var im = document.createElement('img'); im.src = s.img.src; th.appendChild(im);
-          var rm = document.createElement('button'); rm.className = 'btn tiny ghost'; rm.textContent = 'Remover';
-          rm.onclick = function (e) { e.preventDefault(); s.img = null; s.imgName = ''; buildEditor(); draw(); };
-          th.appendChild(rm); l.appendChild(th);
-
-          var t2 = tipos()[s.type];
-          var cw = t2.img ? t2.img.w : W, ch = t2.img ? t2.img.h : H;
-
-          function slider(rotulo, min, max, val, aoMudar) {
-            var wrap = document.createElement('div');
-            wrap.className = 'row'; wrap.style.marginTop = '7px';
-            var cap = document.createElement('span');
-            cap.className = 'hint'; cap.style.margin = '0'; cap.style.minWidth = '78px';
-            cap.textContent = rotulo;
-            var rg = document.createElement('input');
-            rg.type = 'range'; rg.min = min; rg.max = max; rg.step = '1'; rg.value = String(val);
-            rg.style.flex = '1'; rg.style.accentColor = 'var(--accent)';
-            rg.oninput = function (e) { e.stopPropagation(); aoMudar(+rg.value); draw(); };
-            rg.onclick = function (e) { e.stopPropagation(); };
-            wrap.appendChild(cap); wrap.appendChild(rg); l.appendChild(wrap);
-            return wrap;
-          }
-
-          var wH, wV;
-          /* um eixo so aceita ajuste quando a imagem sobra nele;
-             atualizado sem refazer o editor, para nao perder o arraste */
-          function sincronizaEixos() {
-            var f = folga(s.img, cw, ch, s.zoom);
-            [[wH, f.x], [wV, f.y]].forEach(function (par) {
-              if (!par[0]) return;
-              var ativo = par[1] > 1;
-              par[0].style.opacity = ativo ? '1' : '.35';
-              par[0].querySelector('input').disabled = !ativo;
-            });
-          }
-
-          slider('Zoom', 100, 300, Math.round((s.zoom || 1) * 100), function (v) {
-            s.zoom = v / 100; sincronizaEixos();
-          });
-          wH = slider('Horizontal', 0, 100, Math.round((s.fx == null ? .5 : s.fx) * 100),
-            function (v) { s.fx = v / 100; });
-          wV = slider('Vertical', 0, 100, Math.round((s.fy == null ? .5 : s.fy) * 100),
-            function (v) { s.fy = v / 100; });
-          sincronizaEixos();
-        }
-        body.appendChild(l);
-      }
-
-      var campos = (tipos()[s.type] || {}).campos || ['body'];
-      var dica = MARCAS[marca].dica;
-
-      if (campos.indexOf('numero') >= 0) {
-        var ln = document.createElement('label'); ln.className = 'field';
-        ln.innerHTML = '<span>N&uacute;mero da l&acirc;mina</span>';
-        var inn = document.createElement('input');
-        inn.type = 'text'; inn.value = s.numero || ''; inn.style.maxWidth = '110px';
-        inn.oninput = function () { s.numero = inn.value; draw(); };
-        ln.appendChild(inn);
-        var hn = document.createElement('p'); hn.className = 'hint';
-        hn.textContent = 'Aparece no c\u00edrculo vermelho. Deixe vazio para esconder.';
-        ln.appendChild(hn); body.appendChild(ln);
-      }
-      if (campos.indexOf('title') >= 0) textField('Título', 'title', s.type === 'capa' && marca === 'baroni' ? 'Staatliches 96px, vira caixa alta.' : null, 3);
-      if (campos.indexOf('sub') >= 0) textField('Subtítulo', 'sub', null, 2);
-      if (campos.indexOf('body') >= 0) textField('Texto', 'body', dica + ' · linha em branco = parágrafo', 5);
-      if (campos.indexOf('img') >= 0) imgField(s.type === 'capa' ? 'Imagem de fundo' : 'Imagem');
-
-      card.appendChild(body); host.appendChild(card);
-    });
-  }
-
-  var canvases = [];
+  function txtDe(html) { var d = document.createElement('div'); d.innerHTML = html; return d.textContent; }
+  function labelDe(t) { return txtDe((tipos()[t] || {}).label || t); }
   function pad(n) { return (n < 10 ? '0' : '') + n; }
 
-  function draw() {
-    var c = cfg(), grid = $('grid');
-    $('count').textContent = slides.length + (slides.length === 1 ? ' lâmina' : ' lâminas');
-    if (!slides.length) {
-      grid.innerHTML = '<p class="empty">Nenhuma lâmina ainda. Cole o texto ao lado e clique em <strong>Gerar lâminas</strong>.</p>';
-      canvases = []; return;
+  function toast(m) {
+    var t = $('toast'); t.textContent = m; t.classList.add('on');
+    clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove('on'); }, 2400);
+  }
+
+  /* quais campos cada layout aceita — deriva das regioes que o render registra */
+  function camposDe(lam) {
+    var vistos = {}, ordem = [];
+    (lam._regioes || []).forEach(function (r) {
+      if (!vistos[r.campo]) { vistos[r.campo] = 1; ordem.push(r.campo); }
+    });
+    var pref = ['titulo', 'sub', 'corpo', 'imagem'];
+    return pref.filter(function (c) { return vistos[c]; });
+  }
+  var CHAVE = { titulo: 'title', sub: 'sub', corpo: 'body' };
+  var NOME = { titulo: 'Título', sub: 'Subtítulo', corpo: 'Texto', imagem: 'Imagem' };
+
+  /* ---------- perfis ---------- */
+  function pintaPerfis() {
+    var el = $('perfis');
+    if (!el.firstChild) {
+      el.innerHTML = Object.keys(MARCAS).map(function (k) {
+        var m = MARCAS[k];
+        return '<button class="perfil" data-marca="' + k + '" aria-pressed="false">' +
+          '<i style="background:' + (m.cor || '#7e848b') + '"></i><span>' + txtDe(m.arroba || m.nome) + '</span></button>';
+      }).join('');
     }
-    grid.innerHTML = ''; canvases = [];
-    slides.forEach(function (s, i) {
-      var frame = document.createElement('div');
-      frame.className = 'frame' + (i === sel ? ' sel' : '');
-      var cv = document.createElement('canvas'); frame.appendChild(cv);
-      if (render(cv, marca, s, c)) {
-        var b = document.createElement('div'); b.className = 'badge-of';
-        b.textContent = 'texto longo demais'; frame.appendChild(b);
-      }
-      var bar = document.createElement('div'); bar.className = 'frame-bar';
-      bar.innerHTML = '<span class="grow"></span>';
-      bar.querySelector('.grow').textContent = (i + 1) + '. ' + labelDe(s.type);
-      var dl = document.createElement('button'); dl.className = 'btn tiny'; dl.textContent = 'PNG';
-      dl.onclick = function () { cv.toBlob(function (b2) { save(b2, pad(i + 1) + '.png'); }, 'image/png'); };
-      bar.appendChild(dl); frame.appendChild(bar);
-      cv.onclick = function () { sel = i; buildEditor(); draw(); };
-      grid.appendChild(frame); canvases.push(cv);
+    el.querySelectorAll('.perfil').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.marca === marca));
     });
   }
 
-  /* divisao automatica do texto colado */
+  /* ---------- palco ---------- */
+  function molde(i, alt, focada) {
+    var lam = slides[i], larg = alt * 0.8, k = larg / W;
+    var d = document.createElement('div');
+    d.className = 'lam'; d.dataset.foco = focada ? '1' : '0'; d.dataset.i = i;
+    var env = document.createElement('div'); env.className = 'envelope';
+    var cv = document.createElement('canvas');
+    cv.style.width = larg + 'px'; cv.style.height = alt + 'px';
+    render(cv, marca, lam, cfg());
+    env.appendChild(cv);
+    if (focada && sel) {
+      (lam._regioes || []).filter(function (r) { return r.campo === sel; }).forEach(function (r) {
+        var m = document.createElement('div'); m.className = 'marcador';
+        m.style.left = (r.x * k) + 'px'; m.style.top = (r.y * k) + 'px';
+        m.style.width = (r.w * k) + 'px'; m.style.height = (r.h * k) + 'px';
+        env.appendChild(m);
+      });
+      var s2 = document.createElement('div'); s2.className = 'selo';
+      s2.style.left = '8px'; s2.style.top = '8px';
+      s2.textContent = (NOME[sel] || sel).toUpperCase();
+      env.appendChild(s2);
+    }
+    d.appendChild(env);
+    var cap = document.createElement('div'); cap.className = 'cap mono';
+    cap.textContent = pad(i + 1) + ' · ' + labelDe(lam.type).toUpperCase();
+    d.appendChild(cap);
+    return d;
+  }
+
+  function pintaPalco() {
+    var p = $('palco'); p.innerHTML = '';
+    if (!slides.length) {
+      var v = document.createElement('div'); v.className = 'vazio';
+      v.innerHTML = '<b>Nenhuma lâmina ainda</b>Cole o texto do carrossel para gerar as lâminas, ' +
+        'ou comece uma em branco pelo <span class="mono">+</span> na esteira abaixo.';
+      p.appendChild(v); return;
+    }
+    if (foco >= slides.length) foco = slides.length - 1;
+    var porAlt = p.clientHeight - 52;
+    var porLarg = ((p.clientWidth - 56 - 52) / 2.48) / 0.8;
+    var altF = Math.max(200, Math.min(porAlt, porLarg, 620));
+    [foco - 1, foco, foco + 1].forEach(function (i) {
+      if (i < 0 || i >= slides.length) return;
+      p.appendChild(molde(i, i === foco ? altF : altF * 0.74, i === foco));
+    });
+  }
+
+  /* ---------- esteira ---------- */
+  function pintaEsteira() {
+    var el = $('esteira'); el.innerHTML = '';
+    slides.forEach(function (lam, i) {
+      var b = document.createElement('button');
+      b.className = 'quadro'; b.dataset.foco = (i === foco) ? '1' : '0'; b.dataset.i = i;
+      b.setAttribute('aria-label', 'Lâmina ' + (i + 1));
+      var cv = document.createElement('canvas');
+      var k = 46 / W;
+      cv.style.transform = 'scale(' + k + ')';
+      render(cv, marca, lam, cfg());
+      b.appendChild(cv);
+      var n = document.createElement('span'); n.className = 'n'; n.textContent = pad(i + 1);
+      b.appendChild(n);
+      if (lam._estouro) { var a = document.createElement('span'); a.className = 'alerta'; b.appendChild(a); }
+      el.appendChild(b);
+    });
+    var mais = document.createElement('button');
+    mais.className = 'maisq'; mais.id = 'add'; mais.setAttribute('aria-label', 'Adicionar lâmina');
+    mais.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    el.appendChild(mais);
+  }
+
+  /* ---------- recorte da imagem, desenhado como sai na lamina ---------- */
+  function caixaImg(lam) {
+    var t = tipos()[lam.type] || {};
+    return t.img ? { w: t.img.w, h: t.img.h } : { w: W, h: H };
+  }
+  function pintaRecorte() {
+    var cv = document.querySelector('.recorte canvas');
+    if (!cv) return;
+    var lam = slides[foco], c = caixaImg(lam);
+    var esc = 260 / c.w;
+    cv.width = Math.round(c.w * esc); cv.height = Math.round(c.h * esc);
+    var x = cv.getContext('2d');
+    x.fillStyle = '#0f1114'; x.fillRect(0, 0, cv.width, cv.height);
+    if (lam.img) { x.save(); x.scale(esc, esc); drawCover(x, lam.img, 0, 0, c.w, c.h, lam); x.restore(); }
+  }
+
+  /* ---------- painel ---------- */
+  function pintaPainel() {
+    var el = $('painel');
+    if (!slides.length) {
+      el.innerHTML = '<div class="pbloco"><p class="ajuda">O painel mostra os campos da lâmina selecionada.</p></div>';
+      return;
+    }
+    var lam = slides[foco], M = MARCAS[marca];
+    var campos = camposDe(lam);
+    if (campos.indexOf(sel) < 0) sel = campos[0] || null;
+    var h = [];
+
+    h.push('<div class="pcab"><div class="k mono">LÂMINA ' + pad(foco + 1) + '</div>' +
+      '<div class="v">' + txtDe(NOME[sel] || 'Lâmina') + '</div></div>');
+
+    h.push('<div class="pbloco">');
+    h.push('<div><div class="rot mono">LAYOUT</div><select class="campo" id="tipo">' +
+      Object.keys(tipos()).map(function (k) {
+        return '<option value="' + k + '"' + (k === lam.type ? ' selected' : '') + '>' + txtDe(labelDe(k)) + '</option>';
+      }).join('') + '</select></div>');
+
+    if (marca === 'consultoria' && lam.type !== 'capa')
+      h.push('<div><div class="rot mono">NÚMERO NO CÍRCULO</div>' +
+        '<input class="campo" id="num" value="' + txtDe(lam.numero || '') + '" style="max-width:96px"></div>');
+
+    if (sel === 'imagem') {
+      var c = caixaImg(lam), fg = lam.img ? folga(lam.img, c.w, c.h, lam.zoom) : { x: 0, y: 0 };
+      h.push('<div><div class="rot mono">IMAGEM</div>' +
+        '<input class="campo" type="file" id="arq" accept="image/*"></div>');
+      if (lam.img) {
+        h.push('<div><div class="rot mono">ENQUADRAMENTO</div><div class="recorte"><canvas></canvas></div></div>');
+        h.push(ctrl('zoom', 'Zoom', Math.round((lam.zoom || 1) * 100), 100, 300, Math.round((lam.zoom || 1) * 100) + '%', false));
+        h.push(ctrl('fx', 'Horizontal', Math.round((lam.fx == null ? .5 : lam.fx) * 100), 0, 100,
+          fg.x > 1 ? Math.round((lam.fx == null ? .5 : lam.fx) * 100) + '%' : 'sem folga', fg.x <= 1));
+        h.push(ctrl('fy', 'Vertical', Math.round((lam.fy == null ? .5 : lam.fy) * 100), 0, 100,
+          fg.y > 1 ? Math.round((lam.fy == null ? .5 : lam.fy) * 100) + '%' : 'sem folga', fg.y <= 1));
+        h.push('<div class="acoes"><button class="btn2 perigo" id="semimg">Remover imagem</button></div>');
+      }
+    } else if (sel) {
+      h.push('<div><div class="rot mono">' + txtDe((NOME[sel] || sel).toUpperCase()) + '</div>' +
+        '<textarea class="campo" id="txt" rows="' + (sel === 'corpo' ? 8 : 3) + '">' +
+        txtDe(lam[CHAVE[sel]] || '').replace(/[&<>]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]; }) +
+        '</textarea><p class="ajuda">' + M.dica + '</p></div>');
+    }
+
+    h.push('<div id="aviso-slot"></div>');
+
+    h.push('<div class="acoes">' +
+      '<button class="btn2" id="esq" ' + (foco === 0 ? 'disabled' : '') + ' aria-label="Mover para trás">←</button>' +
+      '<button class="btn2" id="dir" ' + (foco === slides.length - 1 ? 'disabled' : '') + ' aria-label="Mover para frente">→</button>' +
+      '<button class="btn2" id="dup">Duplicar</button>' +
+      (slides.length > 1 ? '<button class="btn2 perigo" id="del">Excluir</button>' : '') + '</div>');
+    h.push('<div class="acoes"><button class="btn2" id="dl-one">Baixar esta lâmina</button></div>');
+    h.push('</div>');
+
+    /* ajustes gerais no fim, porque mudam pouco */
+    h.push('<div class="pbloco">');
+    h.push('<div class="rot mono">AJUSTES</div>');
+    if (M.disclaimer) {
+      h.push('<label class="check"><input type="checkbox" id="disc-on"' + (opts.discOn ? ' checked' : '') + '> Mostrar disclaimer</label>');
+      h.push('<input class="campo" id="disc" value="' + txtDe(opts.disc).replace(/"/g, '&quot;') + '">');
+    }
+    h.push('<label class="check"><input type="checkbox" id="autofit"' + (opts.autofit ? ' checked' : '') + '> Reduzir a fonte quando o texto estourar</label>');
+    if (M.topAlign)
+      h.push('<label class="check"><input type="checkbox" id="topalign"' + (opts.topAlign ? ' checked' : '') + '> Alinhar corpo no topo</label>');
+    h.push('</div>');
+
+    el.innerHTML = h.join('');
+    pintaRecorte();
+    marcaEstouro();
+  }
+
+  function ctrl(id, rot, val, min, max, txt, off) {
+    return '<div class="ctrl" data-off="' + (off ? '1' : '0') + '">' +
+      '<div class="lin"><span>' + rot + '</span><span class="mono">' + txt + '</span></div>' +
+      '<input type="range" id="' + id + '" min="' + min + '" max="' + max + '" value="' + val + '"' +
+      (off ? ' disabled' : '') + ' aria-label="' + rot + '"></div>';
+  }
+
+  /* aviso de estouro: selo na esteira e explicacao no painel, sem refazer
+     nenhum dos dois inteiros — refazer o painel mataria o foco de quem digita */
+  function marcaEstouro() {
+    if (!slides.length) return;
+    var lam = slides[foco], campo = lam._estouro;
+    var q = $('esteira').querySelector('.quadro[data-i="' + foco + '"]');
+    if (q) {
+      var tem = q.querySelector('.alerta');
+      if (campo && !tem) { var a = document.createElement('span'); a.className = 'alerta'; q.appendChild(a); }
+      if (!campo && tem) tem.remove();
+    }
+    var slot = $('aviso-slot');
+    if (!slot) return;
+    if (!campo) { slot.innerHTML = ''; return; }
+    slot.innerHTML = '<div class="aviso"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="1.8" stroke-linecap="round" style="flex:none;margin-top:1px" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+      '<div><b>' + (NOME[campo] || campo) + ' longo demais</b><p>' +
+      (opts.autofit ? 'A fonte foi reduzida para caber.' : 'Passou do espaço da lâmina e vai sair cortado.') +
+      '</p></div></div>';
+  }
+
+  function pinta() {
+    $('conta').textContent = slides.length + ' / 20 lâminas';
+    $('rot-exportar').textContent = slides.length > 1 ? 'Exportar' : 'Exportar';
+    pintaPerfis(); pintaPalco(); pintaEsteira(); pintaPainel();
+  }
+  /* so o palco e o quadro em foco, para digitar sem engasgo */
+  function pintaLeve() {
+    pintaPalco();
+    var q = $('esteira').querySelector('.quadro[data-i="' + foco + '"]');
+    if (q) { var cv = q.querySelector('canvas'); if (cv) render(cv, marca, slides[foco], cfg()); }
+    marcaEstouro();
+  }
+
+  /* ---------- divisao automatica do texto colado ---------- */
   function autoSplit(raw) {
     var ctx = document.createElement('canvas').getContext('2d');
     var paras = raw.replace(/\r/g, '').split(/\n\s*\n/).map(function (p) { return p.trim(); }).filter(Boolean);
     if (!paras.length) return [];
     var out = [], first = paras.shift().split('\n');
     var capa = blank('capa');
-    if (marca === 'noticias') {
-      /* a capa deste perfil nao tem subtitulo: o bloco inteiro vira o titulo */
-      capa.title = first.join(' ');
-    } else {
-      capa.title = first[0] || ''; capa.sub = first.slice(1).join(' ');
-    }
+    if (marca === 'noticias') capa.title = first.join(' ');
+    else { capa.title = first[0] || ''; capa.sub = first.slice(1).join(' '); }
     out.push(capa);
 
     if (marca === 'noticias') {
-      var ctxN = document.createElement('canvas').getContext('2d');
       var espaco = 640, atual = '';
       paras.forEach(function (pp) {
         var teste = atual ? atual + '\n\n' + pp : pp;
-        if (atual && layout(ctxN, teste, N.texto.body).height > espaco) {
+        if (atual && layout(ctx, teste, N.texto.body).height > espaco) {
           var sn = blank('texto'); sn.body = atual; out.push(sn); atual = pp;
         } else atual = teste;
       });
       if (atual) { var sn2 = blank('texto'); sn2.body = atual; out.push(sn2); }
       return out;
     }
-
     if (marca === 'suno' || marca === 'tiago' || marca === 'consultoria') {
-      /* no Suno cada lamina tem titulo proprio: 1a linha do bloco vira titulo */
       paras.forEach(function (p, i) {
         var ls = p.split('\n'), s = blank('texto');
         s.title = ls[0]; s.body = ls.slice(1).join('\n');
         if (!s.body) { s.body = s.title; s.title = ''; }
-        s.numero = String(i + 1);      /* numeracao da Consultoria; ignorada nas outras */
+        s.numero = String(i + 1);
         out.push(s);
       });
       return out;
     }
-    /* agrupa paragrafos ate encher a lamina, medindo com a fonte da propria marca */
     var tipo = tipoPadrao(), def = tipos()[tipo] || {};
     var espec = def.body || B.corpo.body;
     var avail = (marca === 'baroni') ? (B.corpo.regionBottom - B.corpo.regionTop) : 640;
@@ -1277,97 +1382,180 @@
     return out;
   }
 
+  /* ---------- exportar ---------- */
+  function pngDe(i) {
+    var cv = document.createElement('canvas');
+    render(cv, marca, slides[i], cfg());
+    return new Promise(function (res) { cv.toBlob(res, 'image/png'); });
+  }
+  function baixarUma(i) {
+    pngDe(i).then(function (b) { save(b, pad(i + 1) + '.png'); });
+  }
+  function baixarTodas() {
+    if (!slides.length) { toast('Nada para exportar.'); return; }
+    Promise.all(slides.map(function (_, i) {
+      return pngDe(i).then(function (b) { return { name: pad(i + 1) + '.png', blob: b }; });
+    })).then(function (arqs) {
+      return capDownloads.then(function (d) {
+        if (!d) {
+          return Promise.all(arqs.map(function (f) {
+            return f.blob.arrayBuffer().then(function (ab) { return { name: f.name, data: new Uint8Array(ab) }; });
+          })).then(function (ent) {
+            saveLocal(zip(ent), 'carrossel-' + marca + '.zip');
+            toast(ent.length + ' PNGs no zip.');
+          });
+        }
+        var n = 0;
+        return arqs.reduce(function (ch, f) {
+          return ch.then(function (parar) {
+            if (parar) return true;
+            return save(f.blob, f.name).then(function (r) {
+              if (r === 'salvo') { n++; return false; }
+              return r === 'recusado';
+            });
+          });
+        }, Promise.resolve(false)).then(function () { toast(n + ' de ' + arqs.length + ' PNGs salvos.'); });
+      });
+    });
+  }
+
+  /* ---------- eventos ---------- */
   function aplicaMarca() {
-    var M = MARCAS[marca];
-    $('opt-disc').style.display = M.disclaimer ? '' : 'none';
-    $('opt-topalign').style.display = M.topAlign ? '' : 'none';
-    $('brand-hint').innerHTML = 'Formatação no texto: ' + M.dica + ' · linha em branco = parágrafo.';
     var validos = Object.keys(tipos());
     slides.forEach(function (s) { if (validos.indexOf(s.type) < 0) s.type = tipoPadrao(); });
-    buildEditor(); draw();
+    sel = null; pinta();
   }
 
-  function wire() {
-    $('marca').onchange = function () { marca = $('marca').value; aplicaMarca(); };
-    $('bulk-go').onclick = function () {
+  function coordNaLamina(ev, cv) {
+    var r = cv.getBoundingClientRect();
+    return { x: (ev.clientX - r.left) * (W / r.width), y: (ev.clientY - r.top) * (H / r.height) };
+  }
+
+  document.addEventListener('click', function (ev) {
+    var b;
+    if ((b = ev.target.closest('[data-marca]'))) {
+      marca = b.dataset.marca; aplicaMarca();
+      toast('Perfil: ' + txtDe(MARCAS[marca].arroba || MARCAS[marca].nome)); return;
+    }
+    var lamEl = ev.target.closest('.lam');
+    if (lamEl) {
+      var i = +lamEl.dataset.i;
+      if (i === foco) {
+        var cv = lamEl.querySelector('canvas');
+        var pt = coordNaLamina(ev, cv);
+        var campo = campoEm(slides[i], pt.x, pt.y);
+        if (campo) { sel = campo; pinta(); return; }
+      }
+      foco = i; pinta(); return;
+    }
+    var q = ev.target.closest('.quadro');
+    if (q) { foco = +q.dataset.i; pinta(); return; }
+
+    if (ev.target.closest('#add')) {
+      slides.push(blank()); foco = slides.length - 1; sel = null; pinta(); return;
+    }
+    if (ev.target.closest('#dup')) {
+      var c = Object.assign({}, slides[foco]); delete c._regioes; delete c._estouro;
+      slides.splice(foco + 1, 0, c); foco++; pinta(); return;
+    }
+    if (ev.target.closest('#del')) {
+      slides.splice(foco, 1); if (foco >= slides.length) foco = slides.length - 1; pinta(); return;
+    }
+    if (ev.target.closest('#esq') && foco > 0) {
+      slides.splice(foco - 1, 0, slides.splice(foco, 1)[0]); foco--; pinta(); return;
+    }
+    if (ev.target.closest('#dir') && foco < slides.length - 1) {
+      slides.splice(foco + 1, 0, slides.splice(foco, 1)[0]); foco++; pinta(); return;
+    }
+    if (ev.target.closest('#semimg')) { slides[foco].img = null; slides[foco].imgName = ''; pinta(); return; }
+    if (ev.target.closest('#dl-one')) { baixarUma(foco); return; }
+    if (ev.target.closest('#dl-all')) { baixarTodas(); return; }
+
+    if (ev.target.closest('#btn-colar')) { $('cortina').hidden = false; $('bulk').focus(); return; }
+    if (ev.target.closest('#fechar-colar') || ev.target.id === 'cortina') { $('cortina').hidden = true; return; }
+    if (ev.target.closest('#bulk-go')) {
       var raw = $('bulk').value.trim();
       if (!raw) { toast('Cole algum texto primeiro.'); return; }
-      slides = autoSplit(raw); sel = 0; buildEditor(); draw();
-      toast(slides.length + ' lâminas geradas.');
-    };
-    /* confirmacao em dois cliques: `confirm()` e bloqueado em iframe sandbox */
-    var armado = null;
-    $('bulk-clear').onclick = function () {
-      var b = $('bulk-clear');
-      if (!slides.length) { $('bulk').value = ''; return; }
-      if (!armado) {
-        b.textContent = 'Confirmar?'; b.classList.add('primary');
-        armado = setTimeout(function () {
-          armado = null; b.textContent = 'Limpar tudo'; b.classList.remove('primary');
-        }, 3500);
-        return;
+      slides = autoSplit(raw); foco = 0; sel = null;
+      $('cortina').hidden = true; pinta();
+      toast(slides.length + ' lâminas geradas.'); return;
+    }
+    if (ev.target.closest('#bulk-clear')) {
+      var bt = ev.target.closest('#bulk-clear');
+      if (!bt._armado) {
+        bt._armado = setTimeout(function () { bt._armado = null; bt.textContent = 'Limpar tudo'; }, 3500);
+        bt.textContent = 'Confirmar?'; return;
       }
-      clearTimeout(armado); armado = null;
-      b.textContent = 'Limpar tudo'; b.classList.remove('primary');
-      $('bulk').value = ''; slides = []; sel = 0; buildEditor(); draw();
-    };
-    $('add').onclick = function () { slides.push(blank()); sel = slides.length - 1; buildEditor(); draw(); };
-    ['disc', 'disc-on', 'autofit', 'topalign'].forEach(function (id) {
-      $(id).addEventListener('input', draw); $(id).addEventListener('change', draw);
-    });
-    $('dl-one').onclick = function () {
-      if (!canvases[sel]) { toast('Nada para baixar.'); return; }
-      canvases[sel].toBlob(function (b) { save(b, pad(sel + 1) + '.png'); }, 'image/png');
-    };
-    $('dl-all').onclick = function () {
-      if (!canvases.length) { toast('Nada para baixar.'); return; }
-      var pngs = canvases.map(function (cv, i) {
-        return new Promise(function (res) {
-          cv.toBlob(function (b) { res({ name: pad(i + 1) + '.png', blob: b }); }, 'image/png');
-        });
-      });
-      Promise.all(pngs).then(function (files) {
-        return capDownloads.then(function (d) {
-          if (!d) {
-            return Promise.all(files.map(function (f) {
-              return f.blob.arrayBuffer().then(function (ab) {
-                return { name: f.name, data: new Uint8Array(ab) };
-              });
-            })).then(function (entries) {
-              saveLocal(zip(entries), 'carrossel-' + marca + '.zip');
-              toast(entries.length + ' PNGs no zip.');
-            });
-          }
-          /* um pedido por vez: a capability so mantem um prompt aberto */
-          var n = 0;
-          return files.reduce(function (chain, f) {
-            return chain.then(function (parar) {
-              if (parar) return true;
-              return save(f.blob, f.name).then(function (r) {
-                if (r === 'salvo') { n++; return false; }
-                return r === 'recusado';
-              });
-            });
-          }, Promise.resolve(false)).then(function () {
-            toast(n + ' de ' + files.length + ' PNGs salvos.');
-          });
-        });
-      });
-    };
-  }
+      clearTimeout(bt._armado); bt._armado = null; bt.textContent = 'Limpar tudo';
+      $('bulk').value = ''; slides = []; foco = 0; sel = null; $('cortina').hidden = true; pinta(); return;
+    }
+  });
 
+  document.addEventListener('input', function (ev) {
+    var id = ev.target.id;
+    if (id === 'disc') { opts.disc = ev.target.value; pintaLeve(); return; }
+    if (!slides.length) return;
+    var lam = slides[foco];
+    if (id === 'txt') { lam[CHAVE[sel]] = ev.target.value; pintaLeve(); return; }
+    if (id === 'num') { lam.numero = ev.target.value; pintaLeve(); return; }
+    if (id === 'zoom' || id === 'fx' || id === 'fy') {
+      if (id === 'zoom') lam.zoom = ev.target.value / 100; else lam[id] = ev.target.value / 100;
+      pintaLeve(); pintaRecorte();
+      var c = caixaImg(lam), fg = folga(lam.img, c.w, c.h, lam.zoom);
+      ev.target.closest('.pbloco').querySelectorAll('.ctrl').forEach(function (cc) {
+        var r = cc.querySelector('input'), rot = cc.querySelector('.lin span:last-child');
+        if (!r) return;
+        if (r.id === 'zoom') rot.textContent = Math.round(lam.zoom * 100) + '%';
+        if (r.id === 'fx') { cc.dataset.off = fg.x > 1 ? '0' : '1'; r.disabled = !(fg.x > 1); rot.textContent = fg.x > 1 ? Math.round(lam.fx * 100) + '%' : 'sem folga'; }
+        if (r.id === 'fy') { cc.dataset.off = fg.y > 1 ? '0' : '1'; r.disabled = !(fg.y > 1); rot.textContent = fg.y > 1 ? Math.round(lam.fy * 100) + '%' : 'sem folga'; }
+      });
+      return;
+    }
+  });
+
+  document.addEventListener('change', function (ev) {
+    var id = ev.target.id;
+    if (id === 'tipo') { slides[foco].type = ev.target.value; sel = null; pinta(); return; }
+    if (id === 'disc-on') { opts.discOn = ev.target.checked; pinta(); return; }
+    if (id === 'autofit') { opts.autofit = ev.target.checked; pinta(); return; }
+    if (id === 'topalign') { opts.topAlign = ev.target.checked; pinta(); return; }
+    if (id === 'arq') {
+      var f = ev.target.files[0]; if (!f) return;
+      var r = new FileReader();
+      r.onload = function () {
+        loadImage(r.result).then(function (im) {
+          slides[foco].img = im; slides[foco].imgName = f.name; pinta();
+        });
+      };
+      r.readAsDataURL(f); return;
+    }
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && !$('cortina').hidden) { $('cortina').hidden = true; return; }
+    if (ev.target.matches('input,textarea,select')) return;
+    if (ev.key === 'ArrowLeft' && foco > 0) { foco--; pinta(); }
+    if (ev.key === 'ArrowRight' && foco < slides.length - 1) { foco++; pinta(); }
+  });
+
+  var reTempo;
+  window.addEventListener('resize', function () {
+    clearTimeout(reTempo); reTempo = setTimeout(pintaPalco, 120);
+  });
+
+  /* ---------- partida ---------- */
   bootAssets().then(function () {
-    $('fontstat').textContent = HAS_LS ? '' : 'aviso: navegador sem letter-spacing em canvas';
-    capDownloads.then(function (d) {
-      if (d) {
-        $('dl-all').textContent = 'Baixar todas (PNG)';
-        $('dl-hint').textContent = 'Cada PNG pede uma confirmação sua.';
-      }
-    });
-    wire(); aplicaMarca();
+    opts.disc = '⚠️ Este conteúdo não é uma recomendação de investimento.';
+    $('dica-colar').innerHTML = 'A primeira linha vira o título da capa. Parágrafos separados por linha em branco viram as lâminas seguintes.';
+    if (!HAS_LS) { $('fontstat').hidden = false; $('fontstat').textContent = 'aviso: navegador sem letter-spacing em canvas'; }
+    pinta();
     window.__render = render; window.__slides = function () { return slides; };
-    window.__blank = blank; window.__setMarca = function (m) { marca = m; $('marca').value = m; aplicaMarca(); };
-    window.__redraw = draw; window.__ready = true;
+    window.__blank = blank; window.__campoEm = campoEm; window.__tipos = tipos;
+    window.__setMarca = function (m) { marca = m; aplicaMarca(); };
+    window.__redraw = pinta; window.__foco = function (i) { foco = i; pinta(); };
+    window.__sel = function (c) { sel = c; pinta(); };
+    window.__opts = opts;
+    window.__ready = true;
   }).catch(function (e) {
     document.body.innerHTML = '<p style="padding:40px;font:16px sans-serif;color:#e5484d">Falha ao carregar fontes/assets: ' + e + '</p>';
   });

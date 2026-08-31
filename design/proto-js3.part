@@ -1,0 +1,231 @@
+  /* =======================  interface  ======================= */
+  var $ = function (id) { return document.getElementById(id); };
+
+  function tocar(msg) {
+    var t = $("toast"); t.textContent = msg; t.classList.add("on");
+    clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("on"); }, 2200);
+  }
+
+  function camposDe(tipo) {
+    var f = forma(e.marca, tipo), m = M[e.marca], out = [];
+    if (f === "capa") { out.push("titulo"); if (m.capa.ss) out.push("sub"); out.push("imagem"); }
+    else { if (m.tit) out.push("titulo"); out.push("corpo"); if (f === "imagem") out.push("imagem"); }
+    return out;
+  }
+  function nomeCampo(c) {
+    return { titulo: "Título", sub: "Subtítulo", corpo: "Texto", imagem: "Imagem" }[c] || c;
+  }
+
+  /* ---- barra de perfis ----
+     construída uma vez; depois só troca o estado, para não perder o foco
+     do teclado de quem navega por Tab ---- */
+  function pintaPerfis() {
+    var el = $("perfis");
+    if (!el.firstChild) {
+      el.innerHTML = Object.keys(M).map(function (k) {
+        var m = M[k];
+        return '<button class="perfil" data-marca="' + k + '" aria-pressed="false">' +
+          '<i style="background:' + m.cor + '"></i>' + esc(m.nome) + "</button>";
+      }).join("");
+    }
+    el.querySelectorAll(".perfil").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.marca === e.marca));
+    });
+  }
+
+  /* ---- palco ---- */
+  function moldura(i, alt, focada) {
+    var lam = e.laminas[i], larg = alt * 0.8, k = larg / 1080;
+    var d = document.createElement("div");
+    d.className = "lam"; d.dataset.foco = focada ? "1" : "0"; d.dataset.i = i;
+    d.innerHTML =
+      '<div class="arte" style="width:' + larg + "px;height:" + alt + 'px">' +
+        '<div style="position:absolute;left:0;top:0;width:1080px;height:1350px;transform:scale(' + k + ');transform-origin:top left">' +
+          arte(lam, i, focada) +
+        "</div>" +
+        (focada && e.sel ? '<div class="selo" style="left:8px;top:8px;font-size:' + Math.max(9, 11 * k * 3) + "px;padding:2px 7px" + '">' + esc(nomeCampo(e.sel).toUpperCase()) + "</div>" : "") +
+      "</div>" +
+      '<div class="cap mono">' + String(i + 1).padStart(2, "0") + " · " + esc(rotulo(e.marca, lam.tipo).toUpperCase()) + "</div>";
+    return d;
+  }
+
+  function pintaPalco() {
+    var p = $("palco"); p.innerHTML = "";
+    /* cabe pela altura E pela largura: foco + duas vizinhas a 74% + dois vãos */
+    var porAlt = p.clientHeight - 52;
+    var porLarg = ((p.clientWidth - 60 - 52) / 2.48) / 0.8;
+    var altF = Math.max(220, Math.min(porAlt, porLarg, 560));
+    var altV = altF * 0.74;
+    [e.foco - 1, e.foco, e.foco + 1].forEach(function (i) {
+      if (i < 0 || i >= e.laminas.length) return;
+      p.appendChild(moldura(i, i === e.foco ? altF : altV, i === e.foco));
+    });
+  }
+
+  /* ---- esteira ---- */
+  function pintaEsteira() {
+    var el = $("esteira"); el.innerHTML = "";
+    e.laminas.forEach(function (lam, i) {
+      var b = document.createElement("button");
+      b.className = "quadro"; b.dataset.foco = (i === e.foco) ? "1" : "0"; b.dataset.i = i;
+      b.setAttribute("aria-label", "Lâmina " + (i + 1));
+      b.innerHTML = '<span class="n">' + String(i + 1).padStart(2, "0") + "</span>" +
+        '<div class="fita" style="width:1080px;height:1350px;transform:scale(' + (48 / 1080) + ')">' + arte(lam, i, false) + "</div>" +
+        (estourou(lam) ? '<span class="alerta"></span>' : "");
+      el.appendChild(b);
+    });
+    var mais = document.createElement("button");
+    mais.className = "maisq"; mais.id = "add"; mais.setAttribute("aria-label", "Adicionar lâmina");
+    mais.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    el.appendChild(mais);
+  }
+
+  /* ---- painel ---- */
+  function pintaPainel() {
+    var lam = e.laminas[e.foco], m = M[e.marca], f = forma(e.marca, lam.tipo);
+    var campos = camposDe(lam.tipo);
+    var h = [];
+
+    h.push('<div class="pcab"><div class="k mono">LÂMINA ' + String(e.foco + 1).padStart(2, "0") + "</div>" +
+      '<div class="v">' + esc(nomeCampo(e.sel)) + "</div></div>");
+
+    h.push('<div class="pbloco">');
+    h.push('<div><div class="rot mono">LAYOUT</div><select class="campo" id="tipo">' +
+      chaves(e.marca).map(function (k) {
+        return '<option value="' + k + '"' + (k === lam.tipo ? " selected" : "") + ">" + esc(rotulo(e.marca, k)) + "</option>";
+      }).join("") + "</select></div>");
+
+    if (m.cab === "numero" && f !== "capa")
+      h.push('<div><div class="rot mono">NÚMERO NO CÍRCULO</div><input class="campo" id="num" value="' + esc(lam.n) + '" style="max-width:96px"></div>');
+
+    if (e.sel === "imagem") {
+      var im = (f === "capa") ? { w: 1080, h: 1350 } : m.img;
+      var g = geo(lam, im.w, im.h), k = 260 / im.w, fg = folga(lam, im.w, im.h);
+      h.push('<div><div class="rot mono">ENQUADRAMENTO</div>' +
+        '<div class="foco-img">' + (lam.img ?
+          '<img src="' + FOTO + '" alt="" style="left:' + (g.x * k) + "px;top:" + (g.y * k * (112 / (im.h * k))) + "px;width:" + (g.w * k) + "px;height:" + (g.h * k * (112 / (im.h * k))) + 'px">' : "") +
+        '<div class="janela"></div></div></div>');
+      h.push('<div class="ctrl"><div class="lin"><span>Zoom</span><span class="mono">' + Math.round(lam.zoom * 100) + '%</span></div>' +
+        '<input type="range" id="zoom" min="100" max="300" value="' + Math.round(lam.zoom * 100) + '"></div>');
+      h.push('<div class="ctrl" data-off="' + (fg.x > 1 ? "0" : "1") + '"><div class="lin"><span>Horizontal</span><span class="mono">' +
+        (fg.x > 1 ? Math.round(lam.fx * 100) + "%" : "sem folga") + '</span></div>' +
+        '<input type="range" id="fx" min="0" max="100" value="' + Math.round(lam.fx * 100) + '"' + (fg.x > 1 ? "" : " disabled") + "></div>");
+      h.push('<div class="ctrl" data-off="' + (fg.y > 1 ? "0" : "1") + '"><div class="lin"><span>Vertical</span><span class="mono">' +
+        (fg.y > 1 ? Math.round(lam.fy * 100) + "%" : "sem folga") + '</span></div>' +
+        '<input type="range" id="fy" min="0" max="100" value="' + Math.round(lam.fy * 100) + '"' + (fg.y > 1 ? "" : " disabled") + "></div>");
+      h.push('<div class="btn-lin"><button class="btn2" id="trocaimg">' + (lam.img ? "Trocar imagem" : "Escolher imagem") + "</button>" +
+        (lam.img ? '<button class="btn2 perigo" id="semimg">Remover</button>' : "") + "</div>");
+    } else {
+      var val = lam[e.sel] || "";
+      h.push('<div><div class="rot mono">' + esc(nomeCampo(e.sel).toUpperCase()) + "</div>" +
+        '<textarea class="campo" id="txt" rows="' + (e.sel === "corpo" ? 7 : 3) + '">' + esc(val) + "</textarea>" +
+        '<p style="margin:7px 0 0;font-size:11.5px;color:var(--mute);line-height:1.45">' +
+        "<b class='mono' style='color:#a9afb6'>**destaque**</b> " + esc(
+          m.enfase.modo === "cor" ? "pinta o trecho na cor do perfil" :
+          m.enfase.modo === "peso" ? "deixa o trecho em negrito" :
+          "fica colorido no título e negrito no texto") + "</p></div>");
+    }
+
+    h.push('<div id="aviso-slot"></div>');
+    if (false)
+      h.push('<div class="aviso"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="1.8" stroke-linecap="round" style="flex:none;margin-top:1px" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+        "<div><b>" + esc(nomeCampo(forma(e.marca, lam.tipo) === "capa" ? "titulo" : "corpo")) + " longo demais</b>" +
+        "<p>Passou do espaço da lâmina. A fonte vai ser reduzida na exportação.</p></div></div>");
+
+    h.push('<div class="btn-lin"><button class="btn2" id="dup">Duplicar</button>' +
+      (e.laminas.length > 1 ? '<button class="btn2 perigo" id="del">Excluir</button>' : "") + "</div>");
+    h.push("</div>");
+    $("painel").innerHTML = h.join("");
+    marcaEstouro();
+  }
+
+  /* selo na esteira e aviso no painel, sem refazer nenhum dos dois inteiros
+     (refazer o painel mataria o foco de quem está digitando) */
+  function marcaEstouro() {
+    var lam = e.laminas[e.foco], deve = estourou(lam);
+    var q = $("esteira").querySelector('.quadro[data-i="' + e.foco + '"]');
+    if (q) {
+      var tem = q.querySelector(".alerta");
+      if (deve && !tem) { var s2 = document.createElement("span"); s2.className = "alerta"; q.appendChild(s2); }
+      if (!deve && tem) tem.remove();
+    }
+    var slot = $("aviso-slot");
+    if (!slot) return;
+    if (!deve) { slot.innerHTML = ""; return; }
+    var qual = (forma(e.marca, lam.tipo) === "capa") ? "titulo" : "corpo";
+    slot.innerHTML = '<div class="aviso"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="1.8" stroke-linecap="round" style="flex:none;margin-top:1px" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+      "<div><b>" + esc(nomeCampo(qual)) + " longo demais</b>" +
+      "<p>Passou do espaço da lâmina. A fonte vai ser reduzida na exportação.</p></div></div>";
+  }
+
+  function pinta() {
+    var validos = camposDe(e.laminas[e.foco].tipo);
+    if (validos.indexOf(e.sel) < 0) e.sel = validos[0];
+    $("conta").textContent = e.laminas.length + " / 20 lâminas";
+    pintaPerfis(); pintaPalco(); pintaEsteira(); pintaPainel();
+  }
+
+  /* ---- eventos ---- */
+  document.addEventListener("click", function (ev) {
+    var p = ev.target.closest("[data-marca]");
+    if (p) { e.marca = p.dataset.marca; semear(); e.sel = null; pinta(); tocar("Perfil: " + M[e.marca].nome); return; }
+
+    var alvo = ev.target.closest(".alvo");
+    var lamEl = ev.target.closest(".lam");
+    if (alvo && lamEl && lamEl.dataset.foco === "1") { e.sel = alvo.dataset.campo; pinta(); return; }
+    if (lamEl) { e.foco = +lamEl.dataset.i; pinta(); return; }
+
+    var q = ev.target.closest(".quadro");
+    if (q) { e.foco = +q.dataset.i; pinta(); return; }
+
+    if (ev.target.closest("#add")) {
+      var ks = chaves(e.marca), kT = ks.filter(function (k) { return forma(e.marca, k) === "texto"; })[0] || ks[1];
+      e.laminas.push({ tipo: kT, titulo: "", sub: "", corpo: "", img: false, zoom: 1, fx: .5, fy: .5, n: String(e.laminas.length) });
+      e.foco = e.laminas.length - 1; e.sel = null; pinta(); return;
+    }
+    if (ev.target.closest("#dup")) {
+      var c = Object.assign({}, e.laminas[e.foco]);
+      e.laminas.splice(e.foco + 1, 0, c); e.foco++; pinta(); return;
+    }
+    if (ev.target.closest("#del")) {
+      e.laminas.splice(e.foco, 1); if (e.foco >= e.laminas.length) e.foco = e.laminas.length - 1; pinta(); return;
+    }
+    if (ev.target.closest("#semimg")) { e.laminas[e.foco].img = false; pinta(); return; }
+    if (ev.target.closest("#trocaimg")) { e.laminas[e.foco].img = true; pinta(); tocar("Numa versão real isto abre o seletor de arquivo."); return; }
+    if (ev.target.closest("#exportar")) { tocar(e.laminas.length + " PNGs de 1080×1350 — no protótipo, só o aviso."); return; }
+  });
+
+  document.addEventListener("input", function (ev) {
+    var lam = e.laminas[e.foco], id = ev.target.id;
+    if (id === "txt" || id === "num") {
+      if (id === "txt") lam[e.sel] = ev.target.value; else lam.n = ev.target.value;
+      pintaPalco(); marcaEstouro(); return;
+    }
+    if (id === "zoom" || id === "fx" || id === "fy") {
+      if (id === "zoom") lam.zoom = ev.target.value / 100; else lam[id] = ev.target.value / 100;
+      pintaPalco(); pintaEsteira();
+      var m = M[e.marca], f = forma(e.marca, lam.tipo);
+      var im = (f === "capa") ? { w: 1080, h: 1350 } : m.img, fg = folga(lam, im.w, im.h);
+      var cx = ev.target.closest(".pbloco");
+      cx.querySelectorAll(".ctrl").forEach(function (c) {
+        var r = c.querySelector("input"), rot = c.querySelector(".lin span:last-child");
+        if (!r) return;
+        if (r.id === "zoom") rot.textContent = Math.round(lam.zoom * 100) + "%";
+        if (r.id === "fx") { c.dataset.off = fg.x > 1 ? "0" : "1"; r.disabled = !(fg.x > 1); rot.textContent = fg.x > 1 ? Math.round(lam.fx * 100) + "%" : "sem folga"; }
+        if (r.id === "fy") { c.dataset.off = fg.y > 1 ? "0" : "1"; r.disabled = !(fg.y > 1); rot.textContent = fg.y > 1 ? Math.round(lam.fy * 100) + "%" : "sem folga"; }
+      });
+      var pv = cx.querySelector(".foco-img img");
+      if (pv) { var g = geo(lam, im.w, im.h), k = 260 / im.w, ky = 112 / (im.h * k);
+        pv.style.left = (g.x * k) + "px"; pv.style.top = (g.y * k * ky) + "px";
+        pv.style.width = (g.w * k) + "px"; pv.style.height = (g.h * k * ky) + "px"; }
+      return;
+    }
+  });
+
+  document.addEventListener("change", function (ev) {
+    if (ev.target.id === "tipo") { e.laminas[e.foco].tipo = ev.target.value; e.sel = null; pinta(); }
+  });
+
+  window.addEventListener("resize", function () { pintaPalco(); });
+
+  semear(); pinta();

@@ -1,0 +1,14 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",     "x": 0,    "y": 0, "w": 1440, "h": 900, "title": "A · Mesa de trabalho" },
+    { "file": "Redacao.dc.html",  "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "B · Redação" },
+    { "file": "Esteira.dc.html",  "x": 3120, "y": 0, "w": 1440, "h": 900, "title": "C · Esteira" }
+  ],
+  "annotations": [
+    { "id": "nota-a", "x": 0,    "y": -150, "w": 460, "text": "A · MESA DE TRABALHO\nVocê edita em cima da arte, não num formulário ao lado. Painel de enquadramento com prévia junto do controle.\n\nAtaca: prévia pequena, editar/ver separados, enquadrar às cegas.\nCusto: pra quem só quer colar um texto e sair, é mais clique." },
+    { "id": "nota-b", "x": 1560, "y": -150, "w": 460, "text": "B · REDAÇÃO\nO carrossel é um documento. Você escreve corrido e a arte aparece na goteira ao lado.\n\nAtaca: escrever sem atrito, ver o texto todo de uma vez.\nCusto: a arte fica pequena e secundária; enquadrar imagem é um desvio." },
+    { "id": "nota-c", "x": 3120, "y": -150, "w": 460, "text": "C · ESTEIRA\nUma lâmina por vez, na ordem em que o post é lido. A interface toma a cor do perfil ativo.\n\nAtaca: conferir antes de postar, saber em que perfil você está.\nCusto: não dá pra ver o conjunto; num carrossel de 10 é muita navegação." },
+    { "id": "nota-brief", "x": 1560, "y": 990, "w": 620, "text": "Três eixos diferentes de propósito: manipulação direta (A), escrita (B) e sequência (C).\nEscolha um e eu construo a interface inteira nele, com os controles funcionando.\nDá pra misturar — por exemplo, a esteira do C dentro da mesa do A." }
+  ],
+  "launch": { "view": "canvas" }
+}

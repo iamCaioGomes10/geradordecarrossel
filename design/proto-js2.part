@@ -1,0 +1,157 @@
+<script>
+(function () {
+  "use strict";
+  var e = window.__E, M = window.__M, forma = window.__forma, rotulo = window.__rotulo,
+      chaves = window.__chaves, semear = window.__semear, FOTO = window.__FOTO;
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  /* **destaque** vira cor, peso, ou os dois — conforme o perfil */
+  function enf(txt, m, onde) {
+    var cfg = m.enfase, out = esc(txt);
+    return out.replace(/\*\*([\s\S]+?)\*\*/g, function (_, dentro) {
+      var est = "";
+      if (cfg.modo === "cor") est = "color:" + cfg.cor;
+      else if (cfg.modo === "peso") est = "font-weight:700";
+      else est = (onde === "tit") ? "color:" + cfg.cor : "font-weight:700";
+      return '<span style="' + est + '">' + dentro + "</span>";
+    });
+  }
+
+  /* estimativa de linhas, para o aviso de texto longo */
+  function linhas(txt, larg, tam) {
+    if (!txt) return 0;
+    var porLinha = Math.max(8, Math.floor(larg / (tam * 0.5)));
+    return txt.replace(/\*\*/g, "").split("\n").reduce(function (n, p) {
+      return n + Math.max(1, Math.ceil(p.length / porLinha)); }, 0);
+  }
+
+  function cabTweetFluxo(cor, m) {
+    var q = m.perfil; if (!q) return "";
+    var claro = cor !== "#fff", A = AT;
+    var h = ['<div style="position:relative;flex:none;width:' + (q.bx + q.bw) + "px;height:" + q.av + 'px">'];
+    if (q.elipse) {
+      h.push('<img src="' + A[q.elipse] + '" alt="" style="position:absolute;left:0;top:0;width:' + q.av + "px;height:" + q.av + 'px">');
+      h.push('<div style="position:absolute;left:' + q.lx + "px;top:" + q.ly + "px;width:" + q.lw + "px;height:" + q.lh + 'px;overflow:hidden">' +
+        '<img src="' + A[q.logo] + '" alt="" style="position:absolute;max-width:none;left:' + (-0.2261 * q.lw) + "px;top:" + (-0.3061 * q.lh) +
+        "px;width:" + (3.7321 * q.lw) + "px;height:" + (1.5306 * q.lh) + 'px"></div>');
+    } else {
+      h.push('<img src="' + A[q.avatar] + '" alt="" style="position:absolute;left:0;top:0;width:' + q.av + "px;height:" + q.av + 'px">');
+    }
+    h.push('<img src="' + A[claro ? q.nome : q.nomeC] + '" alt="" style="position:absolute;left:' + q.nx + "px;top:" + q.ny +
+      "px;width:" + q.nw + "px;height:" + q.nh + 'px">');
+    h.push('<img src="' + A[claro ? q.handle : (q.handleC || q.handle)] + '" alt="" style="position:absolute;left:' + q.hx + "px;top:" + q.hy +
+      "px;width:" + q.hw + "px;height:" + q.hh + 'px">');
+    h.push('<img src="' + A[q.badge] + '" alt="" style="position:absolute;left:' + q.bx + "px;top:" + q.by +
+      "px;width:" + q.bw + "px;height:" + q.bw + 'px">');
+    return h.join("") + "</div>";
+  }
+
+  /* papel do Notícias: rasgo no topo + textura em "darken" a 30%, como no app */
+  function papelNoticias(m) {
+    var h = [];
+    if (m.rasgoTopo) h.push('<img src="' + AT[m.rasgoTopo] + '" alt="" style="position:absolute;left:0;top:0;width:1080px;height:413px;z-index:1">');
+    if (m.papel) h.push('<img src="' + AT[m.papel] + '" alt="" style="position:absolute;left:0;top:0;width:1080px;height:1350px;opacity:.3;mix-blend-mode:darken;z-index:1;pointer-events:none">');
+    return h.join("");
+  }
+
+  function cabNumeroFluxo(n, m) {
+    return '<div style="display:flex;align-items:center;gap:26px;flex:none;height:80px">' +
+      '<div style="width:80px;height:80px;border-radius:50%;background:' + m.cor +
+        ';display:grid;place-items:center;font:600 50px/1 Montserrat,sans-serif;color:#fff;flex:none">' + esc(n || "") + "</div>" +
+      (m.logoRed ? '<img src="' + AT[m.logoRed] + '" alt="" style="width:109px;height:44px">' : "") + "</div>";
+  }
+
+  /* ---- a arte de uma lâmina, em 1080x1350 ----
+     Posição por flex, não por conta: a capa ancora embaixo e cresce para
+     cima; o corpo centraliza. Assim o número de linhas real manda, e não
+     uma estimativa que erra com caixa alta. ---- */
+  function arte(lam, iSel, focada) {
+    var m = M[e.marca], f = forma(e.marca, lam.tipo), h = [];
+    var sel = function (campo) { return (focada && e.sel === campo) ? "1" : "0"; };
+    var caixa = function (campo, estilo, conteudo) {
+      return '<div class="alvo" data-campo="' + campo + '" data-sel="' + sel(campo) + '" style="' + estilo + '">' + conteudo + "</div>";
+    };
+
+    if (f === "capa") {
+      var c = m.capa;
+      h.push('<div style="position:absolute;inset:0;background:#0c0c0c"></div>');
+      if (lam.img) h.push('<img src="' + FOTO + '" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">');
+      if (c.brilho) h.push('<img src="' + AT[c.brilho] + '" alt="" style="position:absolute;left:-1521px;top:-1149px;width:2586px;height:2586px;mix-blend-mode:lighter;z-index:1">');
+      for (var k = 0; k < (c.n || 2); k++)
+        h.push('<div style="position:absolute;left:0;right:0;top:' + c.sombra + 'px;bottom:0;background:linear-gradient(rgba(0,0,0,0),#000)"></div>');
+      if (c.rasgo) h.push('<img src="' + AT[c.rasgo] + '" alt="" style="position:absolute;left:0;top:842px;width:1080px;height:508px;z-index:3">');
+      if (c.topo) h.push('<img src="' + AT[c.topo] + '" alt="" style="position:absolute;left:' + Math.round(540 - c.tw / 2) + 'px;top:89px;width:' + c.tw + 'px;height:' + c.th + 'px;z-index:2">');
+      if (c.seta) h.push('<img src="' + AT[c.seta] + '" alt="" style="position:absolute;left:951px;top:645px;width:60px;height:60px;z-index:2">');
+      if (c.setas) { h.push('<img src="' + AT[c.setas[0]] + '" alt="" style="position:absolute;left:-211px;top:37px;width:611px;height:625px;z-index:3">');
+        h.push('<img src="' + AT[c.setas[1]] + '" alt="" style="position:absolute;left:560px;top:1156px;width:520px;height:532px;z-index:3">'); }
+      if (lam.img) h.push(caixa("imagem", "position:absolute;left:0;top:0;right:0;height:" + Math.max(120, (c.sombra || 500) - 60) + "px", ""));
+
+      var pilha = [];
+      if (c.logo) pilha.push('<img src="' + AT[c.logo] + '" alt="" style="width:' + c.lw + "px;height:" + c.lh + 'px;flex:none">');
+      if (c.cab) pilha.push(cabTweetFluxo("#fff", m));
+      pilha.push(caixa("titulo",
+        "font-family:" + (c.fonteCapa || m.fonte) + ",sans-serif;font-weight:" + (c.tp || 400) +
+        ";font-size:" + c.ts + "px;line-height:" + c.tlh + ";letter-spacing:" + c.tls + "px;color:" + c.tc +
+        (c.caps ? ";text-transform:uppercase" : "") + (c.centro ? ";text-align:center" : ""),
+        enf(lam.titulo, m, "tit")));
+      if (c.ss) pilha.push(caixa("sub",
+        "font-family:" + m.fonte + ",sans-serif;font-weight:" + (c.sp || 400) +
+        ";font-size:" + c.ss + "px;line-height:" + c.slh + ";letter-spacing:" + c.sls + "px;color:" + c.sc +
+        (c.centro ? ";text-align:center" : ""),
+        enf(lam.sub, m, "txt")));
+
+      h.push('<div style="position:absolute;left:' + c.x + "px;width:" + c.w + "px;bottom:" + (1350 - (c.base || 1240)) +
+        'px;display:flex;flex-direction:column;gap:34px;z-index:2">' + pilha.join("") + "</div>");
+      return h.join("");
+    }
+
+    /* corpo: só texto, ou texto + imagem — pilha centralizada */
+    h.push('<div style="position:absolute;inset:0;background:' + m.fundo + '"></div>');
+    if (m.papel || m.rasgoTopo) h.push(papelNoticias(m));
+    var it = [];
+    if (m.cab === "tweet") it.push(cabTweetFluxo(m.cabCor, m));
+    else if (m.cab === "numero") it.push(cabNumeroFluxo(lam.n, m));
+    if (m.tit) it.push(caixa("titulo",
+      "font-family:" + m.fonte + ",sans-serif;font-weight:" + m.tit.p + ";font-size:" + m.tit.s +
+      "px;line-height:" + m.tit.lh + ";letter-spacing:" + m.tit.ls + "px;color:" + m.tit.c,
+      enf(lam.titulo, m, "tit")));
+    it.push(caixa("corpo",
+      "font-family:" + m.fonte + ",sans-serif;font-weight:" + m.txt.p + ";font-size:" + m.txt.s +
+      "px;line-height:" + m.txt.lh + ";letter-spacing:" + m.txt.ls + "px;color:" + m.txt.c + ";white-space:pre-wrap",
+      enf(lam.corpo, m, "txt")));
+    if (f === "imagem") {
+      var im = m.img, g = geo(lam, im.w, im.h);
+      it.push(caixa("imagem",
+        "width:" + im.w + "px;height:" + im.h + "px;border-radius:" + im.r + "px;overflow:hidden;background:#e2e2e2;position:relative;flex:none",
+        lam.img ? '<img src="' + FOTO + '" alt="" style="position:absolute;max-width:none;left:' + g.x + "px;top:" + g.y +
+          "px;width:" + g.w + "px;height:" + g.h + 'px">' : ""));
+    }
+    if (m.seta) h.push('<img src="' + AT[m.seta] + '" alt="" style="position:absolute;left:920px;top:648px;width:60px;height:60px;z-index:2">');
+    h.push('<div style="position:absolute;left:' + m.x + "px;width:" + Math.max(m.w, m.img ? m.img.w : 0) +
+      'px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:46px;z-index:2">' + it.join("") + "</div>");
+    return h.join("");
+  }
+
+  /* recorte tipo cover com zoom e ponto focal — o mesmo modelo do app */
+  function geo(lam, cw, ch) {
+    var iw = 560, ih = 420;
+    var s = Math.max(cw / iw, ch / ih) * (lam.zoom || 1);
+    var w = iw * s, hh = ih * s;
+    return { w: w, h: hh, x: (cw - w) * (lam.fx == null ? .5 : lam.fx), y: (ch - hh) * (lam.fy == null ? .5 : lam.fy) };
+  }
+  function folga(lam, cw, ch) { var g = geo(lam, cw, ch); return { x: Math.round(g.w - cw), y: Math.round(g.h - ch) }; }
+
+  function estourou(lam) {
+    var m = M[e.marca], f = forma(e.marca, lam.tipo);
+    if (f === "capa") return linhas(lam.titulo, m.capa.w, m.capa.ts) > 4;
+    var n = linhas(lam.corpo, m.w, m.txt.s);
+    return n > (f === "imagem" ? 7 : 13);
+  }
+
+  window.__arte = arte; window.__geo = geo; window.__folga = folga;
+  window.__estourou = estourou; window.__esc = esc; window.__linhas = linhas;
+})();
+</script>

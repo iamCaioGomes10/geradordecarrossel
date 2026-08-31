@@ -10,79 +10,43 @@
 <body>
 <div class="app">
 
-  <aside class="side">
-    <div class="side-head">
-      <h1>Gerador de Carrossel</h1>
-      <p class="sub">1080&times;1350 &middot; PNG pronto pra postar</p>
+  <div class="top">
+    <div class="sigla"><i></i><b>Carrossel</b></div>
+    <div class="perfis" id="perfis" role="group" aria-label="Perfil"></div>
+    <span class="conta mono" id="conta"></span>
+    <button class="btn" id="btn-colar">Colar texto</button>
+    <button class="btn primary" id="dl-all">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span id="rot-exportar">Exportar</span>
+    </button>
+  </div>
+
+  <div class="meio">
+    <div class="centro">
+      <div class="palco" id="palco"></div>
+      <div class="esteira" id="esteira"></div>
     </div>
-
-    <div class="side-body">
-
-      <label class="field">
-        <span>Perfil</span>
-        <select id="marca">
-          <option value="baroni">@ProfessorBaroni</option>
-          <option value="suno">@suno</option>
-          <option value="tiago">@tiagogreis</option>
-          <option value="noticias">@sunonoticias</option>
-          <option value="consultoria">@SunoConsultoria</option>
-          <option value="funds">@fundsexplorer</option>
-        </select>
-      </label>
-
-      <label class="field">
-        <span>Colar texto corrido</span>
-        <textarea id="bulk" placeholder="Cole aqui o texto inteiro do carrossel.&#10;&#10;A primeira linha vira o t&iacute;tulo da capa.&#10;Par&aacute;grafos separados por linha em branco viram as l&acirc;minas seguintes."></textarea>
-      </label>
-      <div class="row">
-        <button class="btn primary" id="bulk-go">Gerar l&acirc;minas</button>
-        <button class="btn ghost" id="bulk-clear">Limpar tudo</button>
-      </div>
-      <p class="hint" id="brand-hint"></p>
-
-      <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
-
-      <div id="slides"></div>
-      <button class="btn" id="add" style="width:100%">+ Adicionar l&acirc;mina</button>
-
-      <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
-
-      <div id="opt-disc">
-        <label class="field">
-          <span>Disclaimer</span>
-          <input type="text" id="disc" value="&#9888;&#65039; Este conte&uacute;do n&atilde;o &eacute; uma recomenda&ccedil;&atilde;o de investimento.">
-        </label>
-        <div class="row" style="margin-bottom:8px">
-          <label class="check"><input type="checkbox" id="disc-on" checked> Mostrar disclaimer</label>
-        </div>
-      </div>
-      <div class="row">
-        <label class="check"><input type="checkbox" id="autofit" checked> Reduzir a fonte quando o texto estourar</label>
-      </div>
-      <div class="row" id="opt-topalign" style="margin-top:8px">
-        <label class="check"><input type="checkbox" id="topalign"> Alinhar corpo no topo (padr&atilde;o: centralizado)</label>
-      </div>
-    </div>
-
-    <div class="side-foot">
-      <button class="btn primary" id="dl-all">Baixar todas (.zip)</button>
-      <button class="btn" id="dl-one">Baixar l&acirc;mina atual</button>
-      <p class="hint" id="dl-hint" style="width:100%;margin:0"></p>
-    </div>
-  </aside>
-
-  <main class="main">
-    <div class="main-head">
-      <strong style="font-size:14px">Pr&eacute;via</strong>
-      <span class="sub" id="count">0 l&acirc;minas</span>
-      <span style="flex:1"></span>
-      <span class="sub" id="fontstat"></span>
-    </div>
-    <div class="stage"><div class="grid" id="grid"></div></div>
-  </main>
+    <aside class="painel" id="painel"></aside>
+  </div>
 
 </div>
+
+<div class="cortina" id="cortina" hidden>
+  <div class="folha" role="dialog" aria-modal="true" aria-labelledby="tit-colar">
+    <h2 id="tit-colar">Colar texto corrido</h2>
+    <p class="dica" id="dica-colar"></p>
+    <textarea id="bulk" rows="12" placeholder="Cole aqui o texto inteiro do carrossel.&#10;&#10;A primeira linha vira o t&iacute;tulo da capa.&#10;Par&aacute;grafos separados por linha em branco viram as l&acirc;minas seguintes."></textarea>
+    <div class="folha-pe">
+      <button class="btn ghost" id="bulk-clear">Limpar tudo</button>
+      <span style="flex:1"></span>
+      <button class="btn ghost" id="fechar-colar">Cancelar</button>
+      <button class="btn primary" id="bulk-go">Gerar l&acirc;minas</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
+<span class="mono" id="fontstat" hidden></span>
 <script>/*__ASSETS__*/</script>
 <script>/*__JS__*/</script>
 </body>

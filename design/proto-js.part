@@ -1,0 +1,127 @@
+<script>
+(function () {
+  "use strict";
+
+  var FOTO = "data:image/jpeg;base64,__FOTO__";
+
+  /* Tokens de cada perfil, com as medidas reais dos layouts do app.
+     A arte aqui é uma aproximação fiel — o motor de canvas entra na hora
+     de implementar; isto existe para julgar a interface. */
+  var M = {
+    suno: {
+      nome: "@suno", cor: "#ff2020", fonte: "Poppins", claro: true,
+      tipos: { capa: ["Capa", "capa"], corpoImg: ["Corpo + imagem", "imagem"], texto: ["Só texto", "texto"] },
+      fundo: "linear-gradient(154deg,#fff 8%,#f0f0f0 95%)",
+      x: 127, w: 716, cab: null,
+      tit: { s: 65, lh: 1.134, ls: -4.55, p: 400, c: "#1a1a1a" },
+      txt: { s: 45, lh: 1.22, ls: -1.8, p: 400, c: "#333" },
+      img: { x: 130, w: 825, h: 422, r: 27 },
+      capa: { x: 90, w: 858, ts: 90, tlh: 1.134, tls: -6.3, tc: "#fbfbfb",
+              ss: 40, slh: 1.134, sls: -1.6, sc: "#e5e5e5", sombra: 515, n: 4, logo: "sunoLogo", lw: 188, lh: 53 },
+      enfase: { modo: "cor", cor: "#ff2020" }
+    },
+    baroni: {
+      nome: "@ProfessorBaroni", cor: "#3fbf68", fonte: "Inter", claro: true,
+      tipos: { capa: ["Capa", "capa"], corpo: ["Corpo", "texto"], corpoImg: ["Corpo + imagem", "imagem"] },
+      fundo: "#ffffff", x: 125, w: 767, cab: "tweet", cabCor: "#000",
+      perfil: { av: 93.793, nome: "bNome", nomeC: "bNomeC", handle: "bHandle", handleC: "bHandleC",
+        avatar: "bAvatar", badge: "bBadge", nx: 112.72, ny: 13.38, nw: 236.112, nh: 25.6034,
+        hx: 110.34, hy: 54.07, hw: 230.621, hh: 27.109, bx: 357.52, by: 13.24, bw: 26.483 },
+      tit: null,
+      txt: { s: 40, lh: 1.28, ls: -0.8, p: 400, c: "#000" },
+      img: { x: 156, w: 768, h: 357, r: 11, escuro: true },
+      capa: { x: 108, w: 736, ts: 96, tlh: 1.03, tls: -3.84, tc: "#f1f1f1", fonteCapa: "Staatliches", caps: true,
+              ss: 40, slh: 1.28, sls: -0.8, sc: "#fff", sombra: 616, n: 2, cab: "tweet" },
+      enfase: { modo: "peso" }
+    },
+    tiago: {
+      nome: "@tiagogreis", cor: "#42aff3", fonte: "Inter", claro: true,
+      tipos: { capa: ["Capa", "capa"], texto: ["Só texto", "texto"], foto: ["Texto + foto", "imagem"] },
+      fundo: "linear-gradient(154deg,#fff 8%,#f0f0f0 95%)",
+      perfil: { av: 92.779, nome: "trNome", nomeC: "trNomeC", handle: "trHandle", handleC: "trHandle",
+        avatar: "trAvatar", badge: "trBadge", nx: 106, ny: 14, nw: 143, nh: 32.447,
+        hx: 109, hy: 50, hw: 138, hh: 27.678, bx: 257, by: 15, bw: 26.195 },
+      x: 101, w: 901, cab: "tweet", cabCor: "#000",
+      tit: { s: 64, lh: 1.03, ls: -4.48, p: 600, c: "#1b1b1b" },
+      txt: { s: 45, lh: 1.23, ls: -2.25, p: 500, c: "#242424" },
+      img: { x: 85, w: 852, h: 360, r: 25 },
+      capa: { x: 102, w: 877, ts: 100, tlh: 1.03, tls: -7, tc: "#fff", tp: 600,
+              ss: 45, slh: 1.23, sls: -2.25, sc: "#ececec", sombra: 598, n: 2, cab: "tweet" },
+      enfase: { modo: "misto", cor: "#42aff3" }
+    },
+    noticias: {
+      nome: "@sunonoticias", cor: "#c9c2b4", fonte: "Caladea", claro: true,
+      tipos: { capa: ["Capa", "capa"], texto: ["Só texto", "texto"], imagem: ["Texto + imagem", "imagem"] },
+      fundo: "linear-gradient(154deg,#fff 8%,#f0f0f0 95%)",
+      perfil: { av: 91, nome: "snNome", nomeC: "snNomeC", handle: "snHandle", handleC: "snHandleC",
+        avatar: "snAvatar", badge: "snBadge", nx: 110.59, ny: 12, nw: 213.829, nh: 27.667,
+        hx: 110.45, hy: 48.28, hw: 189.24, hh: 28.253, bx: 336, by: 15, bw: 26.483 },
+      x: 115, w: 892, cab: "tweet", cabCor: "#000", papel: "snTextura", rasgoTopo: "snRasgoTopo",
+      tit: null,
+      txt: { s: 50, lh: 1.28, ls: -1, p: 400, c: "#000" },
+      img: { x: 138, w: 768, h: 394, r: 11 },
+      capa: { x: 108, w: 915, ts: 96, tlh: 1.03, tls: -4.8, tc: "#fff", tp: 700, caps: true,
+              sombra: 456, n: 3, cab: "tweet", rasgo: "snRasgoBase", base: 1120 },
+      enfase: { modo: "peso" }
+    },
+    consultoria: {
+      nome: "@SunoConsultoria", cor: "#d42126", fonte: "Montserrat", claro: true,
+      tipos: { capa: ["Capa", "capa"], texto: ["Só texto", "texto"], imagem: ["Texto + imagem", "imagem"] },
+      fundo: "#f7f7f7", x: 101, w: 844, cab: "numero", logoRed: "coLogoRed", seta: "coSeta",
+      tit: { s: 64, lh: 1.06, ls: -3.84, p: 700, c: "#1e1e1e" },
+      txt: { s: 40, lh: 1.5, ls: -1.2, p: 400, c: "#1e1e1e" },
+      img: { x: 85, w: 705, h: 328, r: 22 },
+      capa: { x: 126, w: 828, ts: 96, tlh: 1.208, tls: -2.88, tc: "#fff", tp: 300, centro: true,
+              ss: 45, slh: 1.133, sls: -1.35, sc: "#fff", sp: 300, sombra: 460, n: 4, brilho: "coBrilho", topo: "coLogoCapa", tw: 445, th: 34, seta: "coSeta" },
+      enfase: { modo: "misto", cor: "#ff1616" }
+    },
+    funds: {
+      nome: "@fundsexplorer", cor: "#00c0f5", fonte: "Afacad", claro: true,
+      tipos: { capa: ["Capa", "capa"], texto: ["Só texto", "texto"], imagem: ["Texto + imagem", "imagem"] },
+      fundo: "linear-gradient(154deg,#fff 8%,#f0f0f0 95%)",
+      perfil: { av: 100.056, nome: "feNome", nomeC: "feNomeC", handle: "feHandle", handleC: "feHandle",
+        elipse: "feElipse", logo: "feLogo", lx: 20.21, ly: 21.32, lw: 61.765, lh: 57.505,
+        badge: "feBadge", nx: 114.96, ny: 21.31, nw: 188.536, nh: 32.931,
+        hx: 114.47, hy: 57.14, hw: 169.727, hh: 25.3, bx: 310.8, by: 21.31, bw: 28.202 },
+      x: 117, w: 845, cab: "tweet", cabCor: "#1f1f1f",
+      tit: null,
+      txt: { s: 50, lh: 1.081, ls: -1, p: 400, c: "#000" },
+      img: { x: 95, w: 831, h: 414, r: 26 },
+      capa: { x: 95, w: 829, ts: 100, tlh: 1.03, tls: -7, tc: "#fff", tp: 400, fonteCapa: "Instrument Sans",
+              ss: 50, slh: 1.04, sls: -1, sc: "#fff", sombra: 616, n: 4, cab: "tweet", setas: ["feSeta1","feSeta2"] },
+      enfase: { modo: "misto", cor: "#00c0f5" }
+    }
+  };
+
+  var CONTEUDO = {
+    capa:   { titulo: "Por que o dólar subiu 4% em uma semana", sub: "E o que isso muda na sua carteira agora." },
+    texto:  { titulo: "O que aconteceu", corpo: "O Fed sinalizou juros altos por mais tempo, e **capital estrangeiro saiu de mercados emergentes**. O real foi junto com pares latino-americanos." },
+    imagem: { titulo: "Onde isso pesa", corpo: "Importadores e empresas endividadas em dólar sentem primeiro. Exportadoras de commodities **tendem a se beneficiar** no curto prazo." },
+    texto2: { titulo: "O que fazer", corpo: "Nada às pressas. **Reveja a exposição cambial** e confira se o percentual em ativos internacionais ainda bate com o que você definiu." }
+  };
+
+  var e = {
+    marca: "suno",
+    foco: 1,
+    sel: "corpo",
+    laminas: []
+  };
+
+  function chaves(marca) { return Object.keys(M[marca].tipos); }
+  function forma(marca, tipo) { var t = M[marca].tipos[tipo]; return t ? t[1] : "texto"; }
+  function rotulo(marca, tipo) { var t = M[marca].tipos[tipo]; return t ? t[0] : tipo; }
+
+  function semear() {
+    var ks = chaves(e.marca);
+    var kCapa = ks[0];
+    var kTexto = ks.filter(function (k) { return forma(e.marca, k) === "texto"; })[0] || ks[1];
+    var kImg = ks.filter(function (k) { return forma(e.marca, k) === "imagem"; })[0] || ks[1];
+    e.laminas = [
+      { tipo: kCapa,  titulo: CONTEUDO.capa.titulo, sub: CONTEUDO.capa.sub, corpo: "", img: true,  zoom: 1, fx: .5, fy: .5, n: "" },
+      { tipo: kTexto, titulo: CONTEUDO.texto.titulo, sub: "", corpo: CONTEUDO.texto.corpo, img: false, zoom: 1, fx: .5, fy: .5, n: "1" },
+      { tipo: kImg,   titulo: CONTEUDO.imagem.titulo, sub: "", corpo: CONTEUDO.imagem.corpo, img: true, zoom: 1.48, fx: .5, fy: .62, n: "2" },
+      { tipo: kTexto, titulo: CONTEUDO.texto2.titulo, sub: "", corpo: CONTEUDO.texto2.corpo + " " + CONTEUDO.texto2.corpo, img: false, zoom: 1, fx: .5, fy: .5, n: "3" }
+    ];
+    if (e.foco >= e.laminas.length) e.foco = e.laminas.length - 1;
+  }
+</script>

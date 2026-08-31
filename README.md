@@ -9,10 +9,14 @@ Seis perfis: **@ProfessorBaroni**, **@suno**, **@tiagogreis**, **@sunonoticias**
 Dê **duplo clique em `gerador-carrossel.html`**. Só isso — não precisa instalar nada,
 não precisa de internet. Todo o app (fontes, logo, avatar) está dentro do arquivo.
 
-1. Escolha o **perfil** no topo.
-2. Cole o texto no campo **Colar texto corrido** e clique em **Gerar lâminas**.
-3. Ajuste lâmina a lâmina: layout, texto, imagem, enquadramento, ordem.
-4. **Baixar todas (.zip)** ou o PNG de uma lâmina só.
+1. Escolha o **perfil** nos chips do topo.
+2. **Colar texto** → cole o carrossel inteiro → **Gerar lâminas**.
+3. **Clique no texto em cima da própria lâmina** para selecionar o campo. O painel da
+   direita passa a editar aquilo, e a arte muda enquanto você digita.
+4. Clique na imagem para abrir zoom e enquadramento, com a prévia do recorte junto.
+5. **Exportar** baixa todas; **Baixar esta lâmina** baixa só a que está em foco.
+
+Setas ← → do teclado passam de lâmina. `Esc` fecha a janela de colar.
 
 ### Como o texto colado é dividido
 
@@ -251,6 +255,19 @@ matéria, não asset de marca.
 
 Se entrar outro perfil com textura, vale repetir isso: cortar o visível e escolher o
 formato pelo uso de alfa. O arquivo hoje tem ~930 KB.
+
+### Como a interface conversa com o motor
+
+A lâmina é um canvas, então não há elementos HTML para clicar. Cada renderizador
+registra a caixa de cada campo por `regiao(campo, x, y, w, h)`; `render()` guarda essas
+caixas em `lamina._regioes` e `campoEm(lamina, x, y)` traduz a coordenada do clique no
+campo correspondente. É o que sustenta a edição em cima da arte.
+
+`render()` também guarda em `lamina._estouro` **qual** campo passou do espaço, e não só
+que passou — é o que permite o aviso dizer "Texto longo demais" em vez de um selo mudo.
+
+A camada de interface não conhece geometria de layout: ela lê `_regioes`. Adicionar um
+perfil novo não exige tocar na interface.
 
 ### Onde ficam as medidas
 

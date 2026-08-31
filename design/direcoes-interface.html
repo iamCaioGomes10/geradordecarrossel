@@ -1,0 +1,522 @@
+<title>Mesa, Redação, Esteira</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Spectral:wght@400;600&family=Public+Sans:wght@400;500;600&family=Familjen+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --ground:#f4f4f2; --surface:#ffffff; --line:#dfdfda; --line-soft:#ebebe6;
+    --ink:#16181a; --ink-dim:#63696e; --accent:#c31b20; --warn:#946200;
+    --shadow:0 1px 2px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0b0c0d; --surface:#121416; --line:#23272b; --line-soft:#1a1d20;
+      --ink:#e7e9ea; --ink-dim:#8d949b; --accent:#ef4b4f; --warn:#f0b429;
+      --shadow:0 1px 2px rgba(0,0,0,.5), 0 18px 44px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0b0c0d; --surface:#121416; --line:#23272b; --line-soft:#1a1d20;
+    --ink:#e7e9ea; --ink-dim:#8d949b; --accent:#ef4b4f; --warn:#f0b429;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 18px 44px rgba(0,0,0,.45);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"Instrument Sans",system-ui,-apple-system,sans-serif;
+    font-size:16px; line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:0 28px}
+
+  header.top{padding:64px 0 40px; border-bottom:1px solid var(--line)}
+  .eyebrow{
+    font-family:"DM Mono",ui-monospace,monospace; font-size:12px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim); margin:0 0 14px;
+  }
+  h1{
+    margin:0; font-size:clamp(30px,4.4vw,46px); line-height:1.08;
+    letter-spacing:-.028em; font-weight:600; text-wrap:balance; max-width:19ch;
+  }
+  .lede{margin:18px 0 0; max-width:62ch; color:var(--ink-dim); font-size:17px}
+  .lede strong{color:var(--ink); font-weight:500}
+
+  .atrito{
+    margin:34px 0 0; padding:20px 22px; background:var(--surface);
+    border:1px solid var(--line); display:grid; gap:11px;
+  }
+  .atrito h3{
+    margin:0 0 3px; font-family:"DM Mono",ui-monospace,monospace; font-size:11.5px;
+    letter-spacing:.13em; text-transform:uppercase; color:var(--ink-dim); font-weight:500;
+  }
+  .atrito ul{margin:0; padding:0; list-style:none; display:grid; gap:9px}
+  .atrito li{display:flex; gap:11px; font-size:14.5px; line-height:1.5}
+  .atrito li::before{
+    content:""; flex:none; width:3px; margin-top:7px; height:14px; background:var(--accent);
+  }
+
+  .dir{padding:72px 0 0}
+  .dir-head{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:34px 48px; align-items:start}
+  @media (max-width:820px){ .dir-head{grid-template-columns:1fr} }
+  .dir-id{display:flex; gap:16px; align-items:baseline; grid-column:1/-1}
+  .dir-letra{
+    font-family:"DM Mono",ui-monospace,monospace; font-size:13px; font-weight:500;
+    color:var(--surface); background:var(--ink); width:26px; height:26px;
+    display:grid; place-items:center; flex:none; transform:translateY(4px);
+  }
+  .dir-id h2{margin:0; font-size:27px; letter-spacing:-.022em; font-weight:600; line-height:1.15}
+  .eixo{
+    margin:2px 0 0; font-family:"DM Mono",ui-monospace,monospace; font-size:12.5px;
+    color:var(--ink-dim); letter-spacing:.02em;
+  }
+  .dir-oque{margin:0; font-size:16.5px; line-height:1.6; max-width:56ch}
+  .tradeoff{margin:0; display:grid; grid-template-columns:auto 1fr; gap:9px 16px; align-content:start}
+  .tradeoff dt{
+    font-family:"DM Mono",ui-monospace,monospace; font-size:11.5px; letter-spacing:.11em;
+    text-transform:uppercase; color:var(--ink-dim); padding-top:3px;
+  }
+  .tradeoff dd{margin:0; font-size:14.5px; line-height:1.5}
+
+  .palco{
+    margin-top:30px; background:var(--surface); border:1px solid var(--line);
+    box-shadow:var(--shadow); overflow:hidden;
+  }
+  .palco-in{width:1440px; height:900px; transform-origin:top left}
+
+  .dir-a{font-family:"IBM Plex Sans",system-ui,sans-serif}
+  .dir-a .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+  .dir-b{font-family:"Public Sans",system-ui,sans-serif}
+  .dir-b .serif{font-family:Spectral,Georgia,serif}
+  .dir-c{font-family:"Familjen Grotesk",system-ui,sans-serif}
+
+  footer.fim{margin:76px 0 0; padding:30px 0 76px; border-top:1px solid var(--line)}
+  .fim p{margin:0; max-width:60ch; color:var(--ink-dim); font-size:15.5px}
+  .fim strong{color:var(--ink); font-weight:500}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Gerador de carrossel · direções de interface</p>
+    <h1>Três jeitos diferentes de montar um carrossel</h1>
+    <p class="lede">Não são três tons da mesma ideia. Cada um organiza o trabalho por um <strong>eixo diferente</strong> — manipular a arte, escrever o texto, ou percorrer a sequência — e por isso resolve um problema e piora outro. Escolha um e eu construo a interface inteira nele, com os controles funcionando.</p>
+
+    <div class="atrito">
+      <h3>O que travou na interface atual</h3>
+      <ul>
+        <li>A prévia tem 288 px: pequena demais para conferir o texto sem baixar o PNG.</li>
+        <li>Você digita numa coluna e a arte aparece na outra; com seis lâminas some a noção de qual cartão é qual.</li>
+        <li>Zoom e enquadramento ficam no fim do cartão, longe da imagem que estão movendo.</li>
+        <li>Seis marcas com identidades muito distintas viraram um menu de texto.</li>
+        <li>O aviso de texto longo não diz qual campo estourou.</li>
+      </ul>
+    </div>
+  </header>
+
+  <section class="dir">
+    <div class="dir-head">
+      <div class="dir-id">
+        <span class="dir-letra">A</span>
+        <div>
+          <h2>Mesa de trabalho</h2>
+          <p class="eixo">eixo: manipulação direta</p>
+        </div>
+      </div>
+      <p class="dir-oque">Você edita em cima da arte, não num formulário ao lado. O painel de enquadramento fica coladinho no controle, com a prévia junto — você vê o recorte enquanto arrasta.</p>
+      <dl class="tradeoff">
+        <dt>Resolve</dt><dd>Prévia pequena demais, editar e ver separados, enquadrar imagem às cegas.</dd>
+        <dt>Custa</dt><dd>Para quem só quer colar um texto e sair, vira mais clique do que hoje.</dd>
+      </dl>
+    </div>
+    <div class="palco">
+      <div class="palco-in dir-a"><div style="width: 1440px; height: 900px; background: #0a0b0d; color: #e8e9ea; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- barra superior -->
+  <div style="height: 56px; flex: none; border-bottom: 1px solid #1c1f23; display: flex; align-items: center; gap: 24px; padding: 0 20px;">
+    <div style="display: flex; align-items: center; gap: 9px;">
+      <div style="width: 9px; height: 9px; background: #d42126;"></div>
+      <span style="font-size: 13px; font-weight: 600; letter-spacing: 0.02em;">Carrossel</span>
+    </div>
+
+    <div style="display: flex; gap: 2px; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 7px; padding: 7px 12px; background: #17191c; border: 1px solid #2b2f34;">
+        <div style="width: 7px; height: 7px; border-radius: 50%; background: #d42126;"></div>
+        <span style="font-size: 12.5px; font-weight: 500;">@suno</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px; padding: 7px 12px; border: 1px solid transparent;">
+        <div style="width: 7px; height: 7px; border-radius: 50%; background: #3fbf68;"></div>
+        <span style="font-size: 12.5px; color: #7e848b;">@ProfessorBaroni</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px; padding: 7px 12px; border: 1px solid transparent;">
+        <div style="width: 7px; height: 7px; border-radius: 50%; background: #42aff3;"></div>
+        <span style="font-size: 12.5px; color: #7e848b;">@tiagogreis</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 7px; padding: 7px 12px; border: 1px solid transparent;">
+        <span style="font-size: 12.5px; color: #7e848b;">+3</span>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1;"></div>
+
+    <span class="mono" style="font-size: 11.5px; color: #6d737a;">4 / 20 lâminas</span>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #d42126; color: #fff; font-size: 13px; font-weight: 600;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Exportar
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0;">
+
+    <!-- trilho de ferramentas -->
+    <div style="width: 56px; flex: none; border-right: 1px solid #1c1f23; display: flex; flex-direction: column; align-items: center; padding-top: 14px; gap: 4px;">
+      <div style="width: 40px; height: 40px; display: grid; place-items: center; background: #1f2226; color: #e8e9ea;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+      </div>
+      <div style="width: 40px; height: 40px; display: grid; place-items: center; color: #6d737a;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </div>
+      <div style="width: 40px; height: 40px; display: grid; place-items: center; color: #6d737a;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      </div>
+      <div style="width: 40px; height: 40px; display: grid; place-items: center; color: #6d737a;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+      </div>
+    </div>
+
+    <!-- palco -->
+    <div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0; background: #0d0e11;">
+      <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 34px; padding: 28px 34px 0;">
+
+        <!-- lâmina fora de foco -->
+        <div style="width: 302px; flex: none; opacity: 0.72;">
+          <div style="width: 302px; height: 377px; background: #0f0f0f; position: relative; overflow: hidden;">
+            <div style="position: absolute; inset: 0; background: linear-gradient(160deg, #1d1f24 0%, #0a0a0a 70%);"></div>
+            <div style="position: absolute; left: 26px; right: 26px; bottom: 74px; font-size: 25px; line-height: 1.05; font-weight: 500; color: #f4f4f4;">Por que o dólar subiu 4% em uma semana</div>
+            <div style="position: absolute; left: 26px; right: 40px; bottom: 40px; font-size: 11.5px; color: #cfcfcf;">E o que isso muda na sua carteira agora.</div>
+          </div>
+          <div class="mono" style="margin-top: 9px; font-size: 10.5px; color: #5a6067;">01 · CAPA</div>
+        </div>
+
+        <!-- lâmina em foco, com edição sobre a arte -->
+        <div style="width: 408px; flex: none;">
+          <div style="width: 408px; height: 510px; background: #fff; position: relative; overflow: hidden; outline: 2px solid #d42126; outline-offset: -1px;">
+            <div style="position: absolute; left: 48px; right: 48px; top: 54px;">
+              <div style="font-size: 24px; line-height: 1.13; font-weight: 600; color: #1a1a1a; letter-spacing: -0.03em;">O que aconteceu</div>
+            </div>
+            <!-- campo em edição direto na arte -->
+            <div style="position: absolute; left: 40px; right: 40px; top: 122px; border: 1.5px solid #d42126; background: rgba(212,33,38,0.05); padding: 8px;">
+              <div style="font-size: 17px; line-height: 1.22; color: #1a1a1a;">O Fed sinalizou juros altos por mais tempo, e <span style="color: #e01a1a;">capital estrangeiro saiu de mercados emergentes</span>. O real foi junto com pares latino-americanos.</div>
+            </div>
+            <div style="position: absolute; left: 40px; top: 106px; background: #d42126; color: #fff; font-size: 9.5px; font-weight: 600; padding: 2px 7px; letter-spacing: 0.04em;">TEXTO</div>
+            <div style="position: absolute; left: 48px; right: 48px; top: 293px; height: 159px; background: #ececec; display: grid; place-items: center;">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#b6b6b6" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+          </div>
+          <div class="mono" style="margin-top: 9px; font-size: 10.5px; color: #d42126;">02 · CORPO + IMAGEM</div>
+        </div>
+
+        <div style="width: 302px; flex: none; opacity: 0.72;">
+          <div style="width: 302px; height: 377px; background: #fff; position: relative; overflow: hidden;">
+            <div style="position: absolute; left: 34px; right: 34px; top: 92px; font-size: 17px; line-height: 1.14; font-weight: 600; color: #1a1a1a;">Onde isso pesa</div>
+            <div style="position: absolute; left: 34px; right: 34px; top: 140px; font-size: 12.5px; line-height: 1.28; color: #444;">Importadores e empresas endividadas em dólar sentem primeiro.</div>
+          </div>
+          <div class="mono" style="margin-top: 9px; font-size: 10.5px; color: #5a6067;">03 · SÓ TEXTO</div>
+        </div>
+      </div>
+
+      <!-- esteira -->
+      <div style="height: 92px; flex: none; border-top: 1px solid #1c1f23; display: flex; align-items: center; gap: 10px; padding: 0 20px;">
+        <div style="width: 44px; height: 56px; background: #17191c; border: 1px solid #2b2f34;"></div>
+        <div style="width: 44px; height: 56px; background: #17191c; border: 1.5px solid #d42126;"></div>
+        <div style="width: 44px; height: 56px; background: #17191c; border: 1px solid #2b2f34;"></div>
+        <div style="width: 44px; height: 56px; background: #17191c; border: 1px solid #2b2f34;"></div>
+        <div style="width: 44px; height: 56px; border: 1px dashed #33383e; display: grid; place-items: center; color: #6d737a;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- painel contextual -->
+    <div style="width: 296px; flex: none; border-left: 1px solid #1c1f23; display: flex; flex-direction: column;">
+      <div style="padding: 16px 18px; border-bottom: 1px solid #1c1f23;">
+        <div class="mono" style="font-size: 10px; color: #6d737a; letter-spacing: 0.1em;">SELECIONADO</div>
+        <div style="margin-top: 6px; font-size: 14px; font-weight: 500;">Imagem</div>
+      </div>
+
+      <div style="padding: 18px; display: flex; flex-direction: column; gap: 18px;">
+        <!-- enquadramento com prévia junto -->
+        <div>
+          <div class="mono" style="font-size: 10px; color: #6d737a; letter-spacing: 0.1em; margin-bottom: 10px;">ENQUADRAMENTO</div>
+          <div style="height: 116px; background: #17191c; border: 1px solid #2b2f34; position: relative; overflow: hidden;">
+            <div style="position: absolute; inset: 0; background: linear-gradient(120deg, #2a3138, #171a1e);"></div>
+            <div style="position: absolute; left: 22px; right: 22px; top: 24px; bottom: 24px; border: 1.5px solid #d42126;"></div>
+            <div style="position: absolute; left: 22px; top: 24px; width: 7px; height: 7px; background: #d42126;"></div>
+            <div style="position: absolute; right: 22px; bottom: 24px; width: 7px; height: 7px; background: #d42126;"></div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 13px;">
+          <div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 7px;">
+              <span style="font-size: 12px; color: #a9afb6;">Zoom</span>
+              <span class="mono" style="font-size: 11.5px; color: #e8e9ea;">148%</span>
+            </div>
+            <div style="height: 3px; background: #24282d; position: relative;">
+              <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 24%; background: #d42126;"></div>
+              <div style="position: absolute; left: 24%; top: -5px; width: 13px; height: 13px; background: #fff; margin-left: -6px;"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 7px;">
+              <span style="font-size: 12px; color: #a9afb6;">Vertical</span>
+              <span class="mono" style="font-size: 11.5px; color: #e8e9ea;">62%</span>
+            </div>
+            <div style="height: 3px; background: #24282d; position: relative;">
+              <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 62%; background: #d42126;"></div>
+              <div style="position: absolute; left: 62%; top: -5px; width: 13px; height: 13px; background: #fff; margin-left: -6px;"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 7px;">
+              <span style="font-size: 12px; color: #565c63;">Horizontal</span>
+              <span class="mono" style="font-size: 11.5px; color: #565c63;">sem folga</span>
+            </div>
+            <div style="height: 3px; background: #1b1e22;"></div>
+          </div>
+        </div>
+
+        <div style="height: 1px; background: #1c1f23;"></div>
+
+        <div style="display: flex; align-items: flex-start; gap: 9px; padding: 11px; background: rgba(240,180,41,0.08); border-left: 2px solid #f0b429;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f0b429" stroke-width="1.8" stroke-linecap="round" style="flex: none; margin-top: 1px;"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div>
+            <div style="font-size: 12px; color: #f0b429; font-weight: 500;">Texto longo na lâmina 04</div>
+            <div style="font-size: 11.5px; color: #8d939a; margin-top: 3px; line-height: 1.4;">O corpo passou 2 linhas do limite. A fonte foi reduzida para 38px.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+    </div>
+  </section>
+
+  <section class="dir">
+    <div class="dir-head">
+      <div class="dir-id">
+        <span class="dir-letra">B</span>
+        <div>
+          <h2>Redação</h2>
+          <p class="eixo">eixo: escrita</p>
+        </div>
+      </div>
+      <p class="dir-oque">O carrossel é um documento. Você escreve corrido, com as lâminas separadas por régua, e a arte aparece na goteira ao lado de cada bloco.</p>
+      <dl class="tradeoff">
+        <dt>Resolve</dt><dd>Escrever sem atrito e enxergar o texto inteiro de uma vez, que é como a copy nasce.</dd>
+        <dt>Custa</dt><dd>A arte fica pequena e secundária; enquadrar imagem vira um desvio do fluxo.</dd>
+      </dl>
+    </div>
+    <div class="palco">
+      <div class="palco-in dir-b"><div style="width: 1440px; height: 900px; background: #f7f4ef; color: #23201c; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- cabeçalho editorial -->
+  <div style="flex: none; padding: 26px 56px 20px; display: flex; align-items: baseline; gap: 26px; border-bottom: 1px solid #ddd6cb;">
+    <span class="serif" style="font-size: 25px; font-weight: 600; letter-spacing: -0.015em;">Carrossel</span>
+    <div style="display: flex; align-items: center; gap: 9px; padding: 5px 12px 5px 9px; background: #efe9e0; border: 1px solid #ddd6cb;">
+      <div style="width: 7px; height: 7px; border-radius: 50%; background: #d42126;"></div>
+      <span style="font-size: 13px; font-weight: 500;">@suno</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8a8175" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <span style="font-size: 12.5px; color: #8a8175;">4 lâminas · 312 palavras</span>
+    <span style="font-size: 13px; font-weight: 600; color: #8a2b21; border-bottom: 1.5px solid #8a2b21; padding-bottom: 2px;">Exportar PNGs</span>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0;">
+
+    <!-- coluna de escrita -->
+    <div style="flex-grow: 1; padding: 40px 0 0 56px; min-width: 0;">
+      <div style="max-width: 660px;">
+
+        <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 13px;">
+          <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; color: #a89e90;">CAPA</span>
+          <div style="flex-grow: 1; height: 1px; background: #e4ded4;"></div>
+        </div>
+        <div class="serif" style="font-size: 30px; line-height: 1.2; font-weight: 600; letter-spacing: -0.015em; margin-bottom: 9px;">Por que o dólar subiu 4% em uma semana</div>
+        <div style="font-size: 16px; line-height: 1.5; color: #55504a; margin-bottom: 34px;">E o que isso muda na sua carteira agora.</div>
+
+        <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 13px;">
+          <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; color: #a89e90;">LÂMINA 2</span>
+          <div style="flex-grow: 1; height: 1px; background: #e4ded4;"></div>
+          <span style="font-size: 11px; color: #a89e90;">só texto</span>
+        </div>
+        <div class="serif" style="font-size: 21px; line-height: 1.25; font-weight: 600; margin-bottom: 9px;">O que aconteceu</div>
+        <div style="font-size: 16.5px; line-height: 1.62; color: #33302c; margin-bottom: 34px;">O Fed sinalizou juros altos por mais tempo, e <span style="background: #f6dcd3; padding: 1px 3px;">capital estrangeiro saiu de mercados emergentes</span>. O real foi junto com pares latino-americanos.</div>
+
+        <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 13px;">
+          <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; color: #a89e90;">LÂMINA 3</span>
+          <div style="flex-grow: 1; height: 1px; background: #e4ded4;"></div>
+          <span style="font-size: 11px; color: #a89e90;">texto + imagem</span>
+        </div>
+        <div class="serif" style="font-size: 21px; line-height: 1.25; font-weight: 600; margin-bottom: 9px;">Onde isso pesa</div>
+        <div style="font-size: 16.5px; line-height: 1.62; color: #33302c; margin-bottom: 14px;">Importadores e empresas endividadas em dólar sentem primeiro. Exportadoras de commodities <span style="background: #f6dcd3; padding: 1px 3px;">tendem a se beneficiar</span> no curto prazo.</div>
+
+        <div style="display: flex; align-items: center; gap: 11px; padding: 11px 13px; border: 1px dashed #cdc4b7; width: fit-content;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8a8175" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span style="font-size: 13px; color: #55504a;">cinema-fila.jpg</span>
+          <span style="font-size: 12px; color: #8a2b21;">enquadrar</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- goteira com a arte -->
+    <div style="width: 340px; flex: none; border-left: 1px solid #ddd6cb; background: #f2eee7; padding: 40px 34px 0; display: flex; flex-direction: column; gap: 26px;">
+      <div>
+        <div style="width: 176px; height: 220px; background: #111; position: relative; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.13);">
+          <div style="position: absolute; inset: 0; background: linear-gradient(160deg, #23262c 0%, #090909 72%);"></div>
+          <div style="position: absolute; left: 15px; right: 15px; bottom: 44px; font-size: 15px; line-height: 1.05; font-weight: 500; color: #f4f4f4;">Por que o dólar subiu 4% em uma semana</div>
+          <div style="position: absolute; left: 15px; right: 22px; bottom: 22px; font-size: 7.5px; color: #cfcfcf;">E o que isso muda na sua carteira.</div>
+        </div>
+      </div>
+      <div>
+        <div style="width: 176px; height: 220px; background: #fff; position: relative; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.13);">
+          <div style="position: absolute; left: 20px; right: 20px; top: 52px; font-size: 12.5px; line-height: 1.14; font-weight: 600; color: #1a1a1a;">O que aconteceu</div>
+          <div style="position: absolute; left: 20px; right: 20px; top: 84px; font-size: 8.5px; line-height: 1.3; color: #333;">O Fed sinalizou juros altos por mais tempo, e <span style="color: #e01a1a;">capital estrangeiro saiu de mercados emergentes</span>.</div>
+        </div>
+      </div>
+      <div style="opacity: 0.78;">
+        <div style="width: 176px; height: 220px; background: #fff; position: relative; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.13);">
+          <div style="position: absolute; left: 20px; right: 20px; top: 40px; font-size: 12.5px; line-height: 1.14; font-weight: 600; color: #1a1a1a;">Onde isso pesa</div>
+          <div style="position: absolute; left: 20px; right: 20px; top: 72px; font-size: 8.5px; line-height: 1.3; color: #333;">Importadores e empresas endividadas em dólar sentem primeiro.</div>
+          <div style="position: absolute; left: 20px; right: 20px; bottom: 26px; height: 68px; background: #ececec;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+    </div>
+  </section>
+
+  <section class="dir">
+    <div class="dir-head">
+      <div class="dir-id">
+        <span class="dir-letra">C</span>
+        <div>
+          <h2>Esteira</h2>
+          <p class="eixo">eixo: sequência</p>
+        </div>
+      </div>
+      <p class="dir-oque">Uma lâmina por vez, na ordem em que o post é lido no Instagram. A interface inteira toma a cor do perfil ativo, então você nunca erra a marca.</p>
+      <dl class="tradeoff">
+        <dt>Resolve</dt><dd>Conferir antes de postar e saber em que perfil você está sem procurar.</dd>
+        <dt>Custa</dt><dd>Não dá para ver o conjunto; num carrossel de dez lâminas é muita navegação.</dd>
+      </dl>
+    </div>
+    <div class="palco">
+      <div class="palco-in dir-c"><div style="width: 1440px; height: 900px; background: #16181b; color: #f2f3f4; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- faixa de identidade da marca ativa -->
+  <div style="flex: none; height: 108px; background: #d42126; display: flex; align-items: center; padding: 0 44px; gap: 30px;">
+    <div>
+      <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.16em; color: rgba(255,255,255,0.72);">PERFIL ATIVO</div>
+      <div style="font-size: 33px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; margin-top: 2px;">@suno</div>
+    </div>
+    <div style="width: 1px; height: 52px; background: rgba(255,255,255,0.26);"></div>
+    <div style="display: flex; gap: 9px;">
+      <div style="padding: 8px 15px; background: rgba(255,255,255,0.16); font-size: 13.5px; font-weight: 600;">Capa</div>
+      <div style="padding: 8px 15px; font-size: 13.5px; color: rgba(255,255,255,0.72);">Só texto</div>
+      <div style="padding: 8px 15px; font-size: 13.5px; color: rgba(255,255,255,0.72);">Texto + imagem</div>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="text-align: right;">
+      <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.16em; color: rgba(255,255,255,0.72);">LENDO</div>
+      <div style="font-size: 33px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin-top: 2px;">02<span style="color: rgba(255,255,255,0.5); font-size: 21px;"> / 04</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 9px; padding: 13px 22px; background: #16181b; font-size: 14px; font-weight: 600;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Exportar
+    </div>
+  </div>
+
+  <!-- lâmina em foco -->
+  <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 40px; min-height: 0; padding: 30px 0;">
+    <div style="width: 52px; height: 52px; display: grid; place-items: center; border: 1px solid #313539; color: #8b9096; flex: none;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+
+    <div style="display: flex; gap: 34px; align-items: flex-start;">
+      <div style="width: 384px; height: 480px; background: #fff; position: relative; overflow: hidden; flex: none;">
+        <div style="position: absolute; left: 45px; right: 45px; top: 143px; font-size: 26px; line-height: 1.13; font-weight: 600; color: #1a1a1a; letter-spacing: -0.03em;">O que aconteceu</div>
+        <div style="position: absolute; left: 45px; right: 45px; top: 213px; font-size: 17px; line-height: 1.24; color: #242424;">O Fed sinalizou juros altos por mais tempo, e <span style="color: #e01a1a;">capital estrangeiro saiu de mercados emergentes</span>. O real foi junto com pares latino-americanos.</div>
+      </div>
+
+      <!-- campos ao lado da lâmina em foco -->
+      <div style="width: 386px; display: flex; flex-direction: column; gap: 17px; flex: none;">
+        <div>
+          <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.13em; color: #7d838a; margin-bottom: 8px;">TÍTULO</div>
+          <div style="padding: 13px 15px; background: #1e2125; border: 1px solid #2f3439; font-size: 15px;">O que aconteceu</div>
+        </div>
+        <div>
+          <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.13em; color: #7d838a; margin-bottom: 8px;">TEXTO</div>
+          <div style="padding: 13px 15px; background: #1e2125; border: 1px solid #ff5a4d; font-size: 15px; line-height: 1.5; min-height: 108px;">O Fed sinalizou juros altos por mais tempo, e <span style="background: rgba(255,90,77,0.2); color: #ff8578;">**capital estrangeiro saiu de mercados emergentes**</span>. O real foi junto com pares latino-americanos.</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 11px; font-size: 12.5px; color: #7d838a;">
+          <span style="padding: 4px 9px; background: #23272b; font-weight: 600; color: #c3c8ce;">**destaque**</span>
+          <span>fica vermelho neste perfil</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="width: 52px; height: 52px; display: grid; place-items: center; background: #ff5a4d; color: #16181b; flex: none;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+
+  <!-- esteira numerada -->
+  <div style="flex: none; height: 132px; border-top: 1px solid #262a2e; display: flex; align-items: center; gap: 14px; padding: 0 44px;">
+    <div style="width: 66px; height: 82px; background: #0f0f0f; position: relative; flex: none;">
+      <div style="position: absolute; inset: 0; background: linear-gradient(160deg, #23262c, #0a0a0a);"></div>
+      <div style="position: absolute; left: -1px; top: -1px; padding: 2px 6px; background: #262a2e; font-size: 10px; font-weight: 700; color: #8b9096;">01</div>
+    </div>
+    <div style="width: 66px; height: 82px; background: #fff; position: relative; flex: none; outline: 2px solid #ff5a4d;">
+      <div style="position: absolute; left: -1px; top: -1px; padding: 2px 6px; background: #ff5a4d; font-size: 10px; font-weight: 700; color: #16181b;">02</div>
+    </div>
+    <div style="width: 66px; height: 82px; background: #fff; position: relative; flex: none;">
+      <div style="position: absolute; left: -1px; top: -1px; padding: 2px 6px; background: #262a2e; font-size: 10px; font-weight: 700; color: #8b9096;">03</div>
+    </div>
+    <div style="width: 66px; height: 82px; background: #fff; position: relative; flex: none;">
+      <div style="position: absolute; left: -1px; top: -1px; padding: 2px 6px; background: #262a2e; font-size: 10px; font-weight: 700; color: #8b9096;">04</div>
+      <div style="position: absolute; right: 4px; bottom: 4px; width: 13px; height: 13px; background: #f0b429; display: grid; place-items: center;">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#16181b" stroke-width="3.4" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="13"/><line x1="12" y1="17.5" x2="12.01" y2="17.5"/></svg>
+      </div>
+    </div>
+    <div style="width: 66px; height: 82px; border: 1px dashed #3a3f45; display: grid; place-items: center; color: #7d838a; flex: none;">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: #f0b429;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Lâmina 04 com texto longo
+    </div>
+  </div>
+</div></div>
+    </div>
+  </section>
+  <footer class="fim">
+    <p>As telas mostram o mesmo momento — um carrossel de quatro lâminas do <strong>@suno</strong>, sendo revisado antes de postar — para que a comparação seja entre as estruturas, não entre conteúdos diferentes. Dá para misturar: a esteira numerada do C cabe dentro da mesa do A, por exemplo.</p>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var palcos = document.querySelectorAll('.palco');
+    function ajusta() {
+      palcos.forEach(function (p) {
+        var alvo = p.firstElementChild;
+        var k = p.clientWidth / 1440;
+        alvo.style.transform = 'scale(' + k + ')';
+        p.style.height = Math.round(900 * k) + 'px';
+      });
+    }
+    ajusta();
+    window.addEventListener('resize', ajusta);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajusta);
+  })();
+</script>

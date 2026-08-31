@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: "Familjen Grotesk", system-ui, sans-serif; }
+    a { color: #ff5a4d; text-decoration: none; }
+    a:hover { color: #ff8578; }
+  </style>
+</helmet>
+
+<div style="width: 1440px; height: 900px; background: #16181b; color: #f2f3f4; display: flex; flex-direction: column; overflow: hidden;">
+
+  <!-- faixa de identidade da marca ativa -->
+  <div style="flex: none; height: 108px; background: #d42126; display: flex; align-items: center; padding: 0 44px; gap: 30px;">
+    <div>
+      <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.16em; color: rgba(255,255,255,0.72);">PERFIL ATIVO</div>
+      <div style="font-size: 33px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; margin-top: 2px;">@suno</div>
+    </div>
+    <div style="width: 1px; height: 52px; background: rgba(255,255,255,0.26);"></div>
+    <div style="display: flex; gap: 9px;">
+      <div style="padding: 8px 15px; background: rgba(255,255,255,0.16); font-size: 13.5px; font-weight: 600;">Capa</div>
+      <div style="padding: 8px 15px; font-size: 13.5px; color: rgba(255,255,255,0.72);">Só texto</div>
+      <div style="padding: 8px 15px; font-size: 13.5px; color: rgba(255,255,255,0.72);">Texto + imagem</div>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="text-align: right;">
+      <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.16em; color: rgba(255,255,255,0.72);">LENDO</div>
+      <div style="font-size: 33px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; margin-top: 2px;">02<span style="color: rgba(255,255,255,0.5); font-size: 21px;"> / 04</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 9px; padding: 13px 22px; background: #16181b; font-size: 14px; font-weight: 600;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Exportar
+    </div>
+  </div>
+
+  <!-- lâmina em foco -->
+  <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 40px; min-height: 0; padding: 30px 0;">
+    <div style="width: 52px; height: 52px; display: grid; place-items: center; border: 1px solid #313539; color: #8b9096; flex: none;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+
+    <div style="display: flex; gap: 34px; align-items: flex-start;">
+      <div style="width: 384px; height: 480px; background: #fff; position: relative; overflow: hidden; flex: none;">
+        <div style="position: absolute; left: 45px; right: 45px; top: 143px; font-size: 26px; line-height: 1.13; font-weight: 600; color: #1a1a1a; letter-spacing: -0.03em;">O que aconteceu</div>
+        <div style="position: absolute; left: 45px; right: 45px; top: 213px; font-size: 17px; line-height: 1.24; color: #242424;">O Fed sinalizou juros altos por mais tempo, e <span style="color: #e01a1a;">capital estrangeiro saiu de mercados emergentes</span>. O real foi junto com pares latino-americanos.</div>
+      </div>
+
+      <!-- campos ao lado da lâmina em foco -->
+      <div style="width: 386px; display: flex; flex-direction: column; gap: 17px; flex: none;">
+        <div>
+          <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.13em; color: #7d838a; margin-bottom: 8px;">TÍTULO</div>
+          <div style="padding: 13px 15px; background: #1e2125; border: 1px solid #2f3439; font-size: 15px;">O que aconteceu</div>
+        </div>
+        <div>
+          <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.13em; color: #7d838a; margin-bottom: 8px;">TEXTO</div>
+          <div style="padding: 13px 15px; background: #1e2125; border: 1px solid #ff5a4d; font-size: 15px; line-height: 1.5; min-height: 108px;">O Fed sinalizou juros altos por mais tempo, e <span style="background: rgba(255,90,77,0.2); color: #ff8578;">**capital estrangeiro saiu de mercados emergentes**</span>. O real foi junto com pares latino-americanos.</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 11px; font-size: 12.5px; color: #7d838a;">
+          <span style="padding: 4px 9px; background: #23272b; font-weight: 600; color: #c3c8ce;">**destaque**</span>
+          <span>fica vermelho neste perfil</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="width: 52px; height: 52px; display: grid; place-items: center; background: #ff5a4d; color: #16181b; flex: none;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+
+  <!-- esteira numerada -->
+  <div style="flex: none; height: 132px; border-top: 1px solid #262a2e; display: flex; align-items: center; gap: 14px; padding: 0 44px;">
+    <div style="width: 66px; height: 82px; background: #0f0f0f; position: relative; flex: none;">
+      <div style="position: absolute; inset: 0; background: linear-gradient(160deg, #23262c, #0a0a0a);"></div>
+      <div style="position: absolute; left: -1px; top: -1px; padding: 2px 6px; background: #262a2e; font-size: 10px; font-weight: 700; color: #8b9096;">01</div>
+    </div>
+    <div style="width: 66px; height: 82px; background: #fff; position: relative; flex: none; outline: 2px solid #ff5a4d;">
+      <div style="position: absolute; left: -1px; top: -1px; padding: 2px 6px; background: #ff5a4d; font-size: 10px; font-weight: 700; color: #16181b;">02</div>
+    </div>
+    <div style="width: 66px; height: 82px; background: #fff; position: relative; flex: none;">
+      <div style="position: absolute; left: -1px; top: -1px; padding: 2px 6px; background: #262a2e; font-size: 10px; font-weight: 700; color: #8b9096;">03</div>
+    </div>
+    <div style="width: 66px; height: 82px; background: #fff; position: relative; flex: none;">
+      <div style="position: absolute; left: -1px; top: -1px; padding: 2px 6px; background: #262a2e; font-size: 10px; font-weight: 700; color: #8b9096;">04</div>
+      <div style="position: absolute; right: 4px; bottom: 4px; width: 13px; height: 13px; background: #f0b429; display: grid; place-items: center;">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#16181b" stroke-width="3.4" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="13"/><line x1="12" y1="17.5" x2="12.01" y2="17.5"/></svg>
+      </div>
+    </div>
+    <div style="width: 66px; height: 82px; border: 1px dashed #3a3f45; display: grid; place-items: center; color: #7d838a; flex: none;">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: #f0b429;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Lâmina 04 com texto longo
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
