@@ -264,7 +264,9 @@
       var bl = top + i * blk.lh + off;
       line.items.forEach(function (it) {
         if (!it.text.trim()) return;
-        var em = it.run.em || it.run.alt;
+        /* sem emGrad a camada de destaque nunca e pintada: o trecho iria para
+           ela e sumiria da arte. Nesse caso ele volta para a camada base. */
+        var em = (it.run.em || it.run.alt) && !!style.emGrad;
         drawRun(em ? hc : bc, blk.spec, it.run, it.text, x + it.x - ox, bl - oy);
         if (em) {
           var lx = x + it.x, ly = top + i * blk.lh;
@@ -488,7 +490,7 @@
     if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     shade(ctx, Math.min(t.shadeTop, logoTop), t.shadeN, 'rgba(0,0,0,0)');
     ctx.drawImage(IMG.sunoLogo, t.x, logoTop, t.logo.w, t.logo.h);
-    paintGrad(ctx, tb, t.x, titleTop, { grad: GRAD_CAPA }, "titulo");
+    paintGrad(ctx, tb, t.x, titleTop, { grad: GRAD_CAPA, emGrad: GRAD_EM }, "titulo");
     paintSolid(ctx, sb, t.x, subTop, "sub");
     return of;
   }
@@ -506,7 +508,7 @@
     if (titleTop < t.minTop) of = true, ESTOUROU = "titulo";
     var bodyTop = t.img.top - t.gapBodyImg - bb.height;
 
-    paintGrad(ctx, tb, t.x, titleTop, { grad: GRAD_TITLE }, "titulo");
+    paintGrad(ctx, tb, t.x, titleTop, { grad: GRAD_TITLE, emGrad: GRAD_EM }, "titulo");
     paintGrad(ctx, bb, t.x, bodyTop, { grad: GRAD_BODY, emGrad: GRAD_EM }, "corpo");
     regiao("imagem", 130, t.img.top, t.img.w, t.img.h);
     ctx.save(); roundRect(ctx, 130, t.img.top, t.img.w, t.img.h, t.img.r); ctx.clip();
@@ -529,7 +531,7 @@
     if (total > H - 160) of = true, ESTOUROU = "corpo";
     var top = (H - total) / 2 + t.bias;
     if (top < 60) top = 60;
-    paintGrad(ctx, tb, t.x, top, { grad: GRAD_TITLE }, "titulo");
+    paintGrad(ctx, tb, t.x, top, { grad: GRAD_TITLE, emGrad: GRAD_EM }, "titulo");
     paintGrad(ctx, bb, t.x, top + tb.height + t.gapTitleBody, { grad: GRAD_BODY, emGrad: GRAD_EM }, "corpo");
     return of;
   }
