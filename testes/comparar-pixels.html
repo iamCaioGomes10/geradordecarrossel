@@ -1,0 +1,59 @@
+<!doctype html><meta charset="utf-8">
+<title>comparar</title>
+<style>body{font:14px monospace;background:#111;color:#ddd;padding:20px}iframe{width:1px;height:1px;opacity:0;position:absolute}</style>
+<div id="saida">carregando os dois builds…</div>
+<iframe id="a" src="antes.html"></iframe>
+<iframe id="b" src="index.html"></iframe>
+<script>
+(async () => {
+  const esperar = ms => new Promise(r => setTimeout(r, ms));
+  const pronto = async (w) => { const t=Date.now(); while(!w.__ready && Date.now()-t<25000) await esperar(150); return !!w.__ready; };
+  const A = document.getElementById('a').contentWindow, B = document.getElementById('b').contentWindow;
+  await esperar(1200);
+  const okA = await pronto(A), okB = await pronto(B);
+  if (!okA || !okB) { saida.textContent = 'um dos builds não carregou: A='+okA+' B='+okB; return; }
+
+  const TIPOS = { baroni:['capa','corpo','corpoImg'], suno:['capa','corpoImg','texto'],
+    tiago:['capa','texto','foto'], noticias:['capa','texto','imagem'],
+    consultoria:['capa','texto','imagem'], funds:['capa','texto','imagem'] };
+  const TXT = { title:'Título de teste com acentuação: ação e coração',
+    sub:'Subtítulo de teste para a capa',
+    body:'Corpo de teste com **destaque** e __sublinhado__ para exercitar o motor de texto.\n\nSegundo parágrafo com mais algumas palavras.' };
+
+  /* cinza chapado: qualquer variacao vertical vem so do degrade */
+  const tmp = document.createElement('canvas'); tmp.width = 1080; tmp.height = 1350;
+  const tc = tmp.getContext('2d'); tc.fillStyle = '#b4b4b4'; tc.fillRect(0, 0, 1080, 1350);
+  const foto = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = tmp.toDataURL('image/png'); });
+
+  const linhas = [];
+  let piores = 0;
+  for (const marca of Object.keys(TIPOS)) {
+    for (const tipo of TIPOS[marca]) {
+      const px = [];
+      for (const w of [A, B]) {
+        w.__setMarca(marca);
+        const S = w.__slides(); S.length = 0;
+        const lam = w.__blank(tipo);
+        lam.title = TXT.title; lam.sub = TXT.sub; lam.body = TXT.body; lam.numero = '2';
+        lam.img = foto;   /* capa sem foto esconde defeito de degrade: sempre com imagem */
+        S.push(lam); w.__redraw();
+        await esperar(260);
+        const cv = w.document.querySelector('.lam[data-foco="1"] canvas') || w.document.querySelector('.frame canvas');
+        px.push(cv.getContext('2d').getImageData(0,0,1080,1350).data);
+      }
+      let dif = 0, max = 0;
+      for (let i = 0; i < px[0].length; i += 4) {
+        const d = Math.abs(px[0][i]-px[1][i]) + Math.abs(px[0][i+1]-px[1][i+1]) + Math.abs(px[0][i+2]-px[1][i+2]);
+        if (d) { dif++; if (d > max) max = d; }
+      }
+      if (dif) piores++;
+      linhas.push(marca+'/'+tipo+': '+(dif ? ('DIFERE em '+dif+' px (máx '+max+')') : 'idêntico'));
+      saida.textContent = linhas.join('\n');
+    }
+  }
+  linhas.push('');
+  linhas.push(piores ? ('>>> '+piores+' layouts mudaram') : '>>> os 18 layouts renderizam pixel a pixel iguais');
+  saida.textContent = linhas.join('\n');
+  document.title = piores ? 'DIFERENCAS' : 'IDENTICOS';
+})();
+</script>

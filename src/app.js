@@ -312,11 +312,24 @@
     ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
     ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
-  function shade(ctx, top, times, from) {
+  /* Sombra do rodape das capas.
+     Quando `from` nao e transparente, comecar o degrade direto nesse valor
+     cria um degrau visivel na linha de inicio — o arquivo do Figma traz
+     rgba(0,0,0,0.06) e o degrau vinha junto. `entrada` estende o degrade para
+     cima com uma rampa de 0 ate `from`, entao a curva abaixo de `top` fica
+     identica e o comeco deixa de ser uma linha reta. */
+  function shade(ctx, top, times, from, entrada) {
+    var ini = top - (entrada || 0), alt = H - ini;
     for (var k = 0; k < times; k++) {
-      var g = ctx.createLinearGradient(0, top, 0, H);
-      g.addColorStop(0, from); g.addColorStop(1, 'rgba(0,0,0,1)');
-      ctx.fillStyle = g; ctx.fillRect(0, top, W, H - top);
+      var g = ctx.createLinearGradient(0, ini, 0, H);
+      if (entrada) {
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(entrada / alt, from);
+      } else {
+        g.addColorStop(0, from);
+      }
+      g.addColorStop(1, 'rgba(0,0,0,1)');
+      ctx.fillStyle = g; ctx.fillRect(0, ini, W, H - ini);
     }
   }
 
@@ -376,7 +389,7 @@
     var subTop = t.subBottom - sb.height, titleTop = subTop - t.gapTitleSub - tb.height;
     regiao("imagem", 0, 0, W, H);
     if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
-    shade(ctx, Math.min(616, headTop), 2, 'rgba(0,0,0,0.06)');
+    shade(ctx, Math.min(616, headTop), 2, 'rgba(0,0,0,0.06)', 170);
     baroniHeader(ctx, t.x, headTop, 'dark');
     paintSolid(ctx, tb, t.x, titleTop, "titulo"); paintSolid(ctx, sb, t.x, subTop, "sub");
     baroniDisc(ctx, t, cfg);
