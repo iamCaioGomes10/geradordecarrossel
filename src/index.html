@@ -3,32 +3,99 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Carrossel Suno</title>
+<title>Suno Design</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <style>/*__CSS__*/</style>
 </head>
 <body>
-<div class="app">
+<div class="plataforma">
 
-  <div class="top">
-    <div class="sigla"><i></i><b>Carrossel</b></div>
-    <div class="perfis" id="perfis" role="group" aria-label="Perfil"></div>
-    <span class="conta mono" id="conta"></span>
-    <button class="btn" id="btn-colar">Colar texto</button>
-    <button class="btn primary" id="dl-all">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      <span id="rot-exportar">Exportar</span>
+  <nav class="lateral" aria-label="Ferramentas">
+    <button class="marca" id="ir-home" aria-label="In&iacute;cio">
+      <img id="img-marca" alt="Suno Design">
     </button>
-  </div>
+    <ul class="menu">
+      <li><button class="item" data-view="ideias"><img class="ic" id="ic-ideias" alt=""><span>Gerador de ideias</span></button></li>
+      <li><button class="item" data-view="carrossel"><img class="ic" id="ic-carrossel" alt=""><span>Gerador de Carrossel</span></button></li>
+      <li><button class="item" data-view="biblioteca"><img class="ic" id="ic-biblioteca" alt=""><span>Biblioteca</span></button></li>
+    </ul>
+  </nav>
 
-  <div class="meio">
-    <div class="centro">
-      <div class="palco" id="palco"></div>
-      <div class="esteira" id="esteira"></div>
-    </div>
-    <aside class="painel" id="painel"></aside>
-  </div>
+  <main class="conteudo">
 
+    <!-- ---------- in&iacute;cio ---------- -->
+    <section class="view" data-view="home">
+      <div class="home">
+        <div class="assinatura">
+          <img id="img-marca-sm" alt=""><img id="img-wordmark" alt="Suno Design">
+        </div>
+        <h1>O que vamos <em>criar</em> hoje?</h1>
+        <form class="prompt" id="form-prompt">
+          <img id="img-ai" alt="" class="faisca">
+          <input id="prompt" autocomplete="off"
+                 placeholder="Crie um carrossel para o Baroni sobre...">
+          <button class="ir" type="submit" aria-label="Come&ccedil;ar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </form>
+        <p class="nota-prompt">Escolhe o perfil e abre o gerador com o assunto no t&iacute;tulo. Quem escreve o texto ainda &eacute; voc&ecirc;.</p>
+
+        <div class="recentes">
+          <p class="rot-recentes">Criados por &uacute;ltimo</p>
+          <hr>
+          <div class="galeria" id="galeria-home"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- gerador de carrossel ---------- -->
+    <section class="view" data-view="carrossel">
+      <div class="app">
+        <div class="top">
+          <div class="perfis" id="perfis" role="group" aria-label="Perfil"></div>
+          <span class="conta mono" id="conta"></span>
+          <button class="btn" id="btn-salvar">Salvar na biblioteca</button>
+          <button class="btn" id="btn-colar">Colar texto</button>
+          <button class="btn primary" id="dl-all">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span id="rot-exportar">Exportar</span>
+          </button>
+        </div>
+        <div class="meio">
+          <div class="centro">
+            <div class="palco" id="palco"></div>
+            <div class="esteira" id="esteira"></div>
+          </div>
+          <aside class="painel" id="painel"></aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- biblioteca ---------- -->
+    <section class="view" data-view="biblioteca">
+      <div class="pagina">
+        <h2>Biblioteca</h2>
+        <p class="sub">O que voc&ecirc; salvou fica neste navegador. Ainda n&atilde;o &eacute; compartilhado com o time.</p>
+        <div class="galeria" id="galeria"></div>
+      </div>
+    </section>
+
+    <!-- ---------- gerador de ideias ---------- -->
+    <section class="view" data-view="ideias">
+      <div class="pagina">
+        <h2>Gerador de ideias</h2>
+        <p class="sub">Ainda n&atilde;o existe.</p>
+        <div class="porvir">
+          <p>Escrever pauta a partir de um tema exige chamar um modelo de linguagem, e isso
+          precisa de um servidor: a chave de API n&atilde;o pode viver numa p&aacute;gina que qualquer
+          um abre. Hoje o app &eacute; um arquivo est&aacute;tico, sem back-end e sem nenhuma chamada de rede.</p>
+          <p>&Eacute; uma decis&atilde;o de infraestrutura, n&atilde;o de interface &mdash; e passa por onde roda,
+          quem paga as chamadas e onde o texto trafega.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
 </div>
 
 <div class="cortina" id="cortina" hidden>

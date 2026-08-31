@@ -54,6 +54,13 @@ assets = {
     "feSeta2":     b64("fe-seta2.svg"),
     "feNomeSvg":   b64("fe-nome-light.svg"),    # fill="#1F1F1F" -> recolorido
     "feHandleSvg": b64("fe-handle-light.svg"),
+    "sdMarca":       b64("sd-marca.png"),
+    "sdMarcaSm":     b64("sd-marca-sm.png"),
+    "sdWordmark":    b64("sd-wordmark.svg"),
+    "sdAi":          b64("sd-ai.png"),
+    "sdIcIdeias":    b64("sd-ic-ideias.png"),
+    "sdIcCarrossel": b64("sd-ic-carrossel.png"),
+    "sdIcBiblioteca":b64("sd-ic-biblioteca.png"),
 }
 js_assets = "window.__ASSETS__={" + ",".join('%s:"%s"' % kv for kv in assets.items()) + "};"
 

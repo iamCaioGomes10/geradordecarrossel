@@ -4,6 +4,22 @@ Você cola o texto das lâminas, o app monta o design e exporta os PNGs em 1080�
 Seis perfis: **@ProfessorBaroni**, **@suno**, **@tiagogreis**, **@sunonoticias**,
 **@SunoConsultoria** e **@fundsexplorer**.
 
+## O que a plataforma faz e o que não faz
+
+| Aba | Estado |
+|---|---|
+| Gerador de Carrossel | funciona, seis perfis, exporta PNG e zip |
+| Biblioteca | funciona, mas **só neste navegador** (IndexedDB) — não é compartilhada |
+| Gerador de ideias | não existe |
+
+O campo de prompt da tela inicial **não chama modelo nenhum**: ele lê o perfil e o
+assunto do que você escreveu, abre o gerador nesse perfil e põe o assunto no título da
+capa. Quem escreve o texto ainda é você.
+
+Escrever pauta de verdade exige chamar um modelo de linguagem, e a chave de API não pode
+viver numa página estática que qualquer um abre — isso pede um back-end. É decisão de
+infraestrutura, não de interface.
+
 ## Como usar
 
 Dê **duplo clique em `gerador-carrossel.html`**. Só isso — não precisa instalar nada,

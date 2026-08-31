@@ -1,3 +1,116 @@
+/* ============================================================
+   SUNO DESIGN — casca da plataforma
+   Medidas do Figma (node 2413:15), desenhado a 1920px. Aqui elas viram
+   proporções que se sustentam em telas reais: a barra lateral cai de 357px
+   para 258px (mesma leitura a 1440) e a manchete usa clamp.
+   ============================================================ */
+:root{
+  --sd-fundo:linear-gradient(135.8deg,#000 18.6%,#2a2a2a 88.3%);
+  --sd-lateral:#101010; --sd-borda:#676767;
+  --sd-txt:#dadada; --sd-txt-2:#757575; --sd-txt-3:#8f8f8f;
+  --sd-vermelho:#ff0000; --sd-vermelho-2:#ab0101;
+  --sd-campo-a:#131313; --sd-campo-b:#3e3e3e; --sd-campo-borda:#757575;
+  --sd-cartao-borda:#989898;
+}
+body{background:#000}
+.plataforma{display:flex;height:100vh;background:var(--sd-fundo)}
+
+/* ---------- barra lateral ---------- */
+.lateral{
+  width:272px;flex:none;background:var(--sd-lateral);
+  border-right:1px solid var(--sd-borda);display:flex;flex-direction:column;padding:26px 0;
+}
+.marca{padding:0 0 0 28px;margin-bottom:34px;align-self:flex-start;background:none;border:0}
+.marca img{width:47px;height:46px;display:block}
+.menu{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.item{
+  width:100%;display:flex;align-items:center;gap:14px;padding:11px 28px;min-height:48px;
+  color:var(--sd-txt-2);font-size:15.5px;text-align:left;background:none;border:0;
+  white-space:nowrap;
+  border-left:2px solid transparent;
+}
+.item .ic{width:30px;height:30px;flex:none;object-fit:contain;opacity:.82}
+.item:hover{color:#c8c8c8}
+.item:hover .ic{opacity:1}
+.item[aria-current="page"]{color:#f0f0f0;border-left-color:var(--sd-vermelho);background:rgba(255,255,255,.035)}
+.item[aria-current="page"] .ic{opacity:1}
+
+/* ---------- área de conteúdo ---------- */
+.conteudo{flex:1;min-width:0;position:relative;overflow:hidden}
+.view{position:absolute;inset:0;overflow-y:auto;display:none}
+.view[data-ativa="1"]{display:block}
+
+/* ---------- início ---------- */
+.home{max-width:1180px;margin:0 auto;padding:52px 40px 70px;display:flex;flex-direction:column;align-items:center}
+.assinatura{display:flex;align-items:center;gap:9px;margin-bottom:38px}
+.assinatura img:first-child{width:26px;height:26px}
+.assinatura img:last-child{height:17px;width:auto}
+.home h1{
+  margin:0;font-size:clamp(34px,3.6vw,52px);line-height:1.12;letter-spacing:-.03em;
+  font-weight:400;color:var(--sd-txt);text-align:center;text-wrap:balance;
+}
+.home h1 em{
+  font-style:normal;
+  background:linear-gradient(180deg,var(--sd-vermelho),var(--sd-vermelho-2));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.prompt{
+  margin-top:30px;width:min(680px,100%);display:flex;align-items:center;gap:14px;
+  padding:0 12px 0 20px;height:62px;border:1px solid var(--sd-campo-borda);border-radius:13px;
+  background:linear-gradient(90deg,var(--sd-campo-a),var(--sd-campo-b));
+}
+.prompt:focus-within{border-color:#a9a9a9}
+.faisca{width:26px;height:26px;flex:none;opacity:.9}
+.prompt input{
+  flex:1;min-width:0;background:none;border:0;outline:none;color:#ebebeb;
+  font-size:19px;letter-spacing:-.02em;
+}
+.prompt input::placeholder{color:#8d8d8d}
+.prompt .ir{
+  width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:9px;
+  background:rgba(255,255,255,.08);color:#dcdcdc;
+}
+.prompt .ir:hover{background:var(--sd-vermelho);color:#fff}
+.nota-prompt{margin:12px 0 0;font-size:12.5px;color:#6d6d6d;text-align:center;max-width:56ch}
+
+.recentes{width:100%;margin-top:62px}
+.rot-recentes{
+  margin:0 0 14px;font-size:13px;text-align:center;
+  background:linear-gradient(90deg,#888,#ebebeb);-webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.recentes hr{border:0;border-top:1px solid #3a3a3a;margin:0 0 26px}
+
+/* ---------- galeria ---------- */
+.galeria{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:22px}
+.peca{
+  position:relative;border:1px solid var(--sd-cartao-borda);border-radius:8px;overflow:hidden;
+  background:#141414;aspect-ratio:1080/1350;padding:0;display:block;
+}
+.peca img{width:100%;height:100%;object-fit:cover;display:block}
+.peca .meta{
+  position:absolute;left:0;right:0;bottom:0;padding:9px 10px;font-size:11px;color:#d8d8d8;
+  background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.82));text-align:left;
+}
+.peca .meta b{display:block;font-weight:500}
+.peca .meta span{color:#a0a0a0}
+.peca .apagar{
+  position:absolute;top:7px;right:7px;width:26px;height:26px;display:grid;place-items:center;
+  background:rgba(0,0,0,.55);border-radius:6px;color:#ddd;opacity:0;
+}
+.peca:hover .apagar{opacity:1}
+.peca .apagar:hover{background:var(--sd-vermelho);color:#fff}
+.galeria-vazia{grid-column:1/-1;color:#6d6d6d;font-size:13.5px;line-height:1.6;text-align:center;padding:30px 0}
+
+/* ---------- páginas simples ---------- */
+.pagina{max-width:1180px;margin:0 auto;padding:52px 40px 70px}
+.pagina h2{margin:0;font-size:30px;font-weight:500;letter-spacing:-.02em;color:var(--sd-txt)}
+.pagina .sub{margin:8px 0 30px;color:var(--sd-txt-2);font-size:14.5px}
+.porvir{max-width:64ch;border-left:2px solid #3a3a3a;padding-left:18px;display:grid;gap:12px}
+.porvir p{margin:0;color:#8f8f8f;font-size:14.5px;line-height:1.65}
+
+/* o gerador ocupa a área de conteúdo, não a janela inteira */
+.view[data-view="carrossel"]{overflow:hidden}
+.view[data-view="carrossel"] .app{height:100%}
 /* Ferramenta de arte: escuro por escolha. Chrome claro em volta de lâminas
    escuras falseia a leitura da própria arte que se está julgando. */
 :root{

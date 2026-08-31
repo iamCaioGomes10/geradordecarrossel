@@ -31,6 +31,7 @@
     for (const tipo of TIPOS[marca]) {
       const px = [];
       for (const w of [A, B]) {
+        if (w.__abrir) w.__abrir('carrossel');
         w.__setMarca(marca);
         const S = w.__slides(); S.length = 0;
         const lam = w.__blank(tipo);

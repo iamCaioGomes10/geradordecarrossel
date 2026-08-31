@@ -1572,10 +1572,10 @@
     opts.disc = '⚠️ Este conteúdo não é uma recomendação de investimento.';
     $('dica-colar').innerHTML = 'A primeira linha vira o título da capa. Parágrafos separados por linha em branco viram as lâminas seguintes.';
     if (!HAS_LS) { $('fontstat').hidden = false; $('fontstat').textContent = 'aviso: navegador sem letter-spacing em canvas'; }
+    vestirIdentidade();
     comecoLimpo();
-    pinta();
-    /* a proxima acao e escrever o titulo da capa: deixa o cursor la */
-    var ta = $('txt'); if (ta) ta.focus();
+    abrir('home');
+    var pr = $('prompt'); if (pr) pr.focus();
     window.__render = render; window.__slides = function () { return slides; };
     window.__blank = blank; window.__campoEm = campoEm; window.__tipos = tipos;
     window.__setMarca = function (m) { marca = m; aplicaMarca(); };
@@ -1586,5 +1586,209 @@
   }).catch(function (e) {
     document.body.innerHTML = '<p style="padding:40px;font:16px sans-serif;color:#e5484d">Falha ao carregar fontes/assets: ' + e + '</p>';
   });
+
+
+  /* =========================================================
+     13. SUNO DESIGN — casca da plataforma
+     O gerador de carrossel passa a ser uma ferramenta entre outras.
+     ========================================================= */
+  var VIEWS = ['home', 'carrossel', 'biblioteca', 'ideias'];
+  var viewAtual = 'home';
+
+  function vestirIdentidade() {
+    var A = window.__ASSETS__;
+    $('img-marca').src = 'data:image/png;base64,' + A.sdMarca;
+    $('img-marca-sm').src = 'data:image/png;base64,' + A.sdMarcaSm;
+    $('img-wordmark').src = svgUri(atob(A.sdWordmark));
+    $('img-ai').src = 'data:image/png;base64,' + A.sdAi;
+    $('ic-ideias').src = 'data:image/png;base64,' + A.sdIcIdeias;
+    $('ic-carrossel').src = 'data:image/png;base64,' + A.sdIcCarrossel;
+    $('ic-biblioteca').src = 'data:image/png;base64,' + A.sdIcBiblioteca;
+  }
+
+  function abrir(v) {
+    if (VIEWS.indexOf(v) < 0) v = 'home';
+    viewAtual = v;
+    document.querySelectorAll('.view').forEach(function (el) {
+      el.dataset.ativa = (el.dataset.view === v) ? '1' : '0';
+    });
+    document.querySelectorAll('.item').forEach(function (b) {
+      if (b.dataset.view === v) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    /* o palco mede a altura disponivel: so da para calcular depois de visivel */
+    if (v === 'carrossel') pinta();
+    if (v === 'biblioteca' || v === 'home') pintaGaleria(v === 'home' ? 'galeria-home' : 'galeria');
+  }
+
+  /* ---------- biblioteca: guarda no proprio navegador ---------- */
+  var BD = null;
+  function banco() {
+    if (BD) return BD;
+    BD = new Promise(function (res, rej) {
+      var r = indexedDB.open('suno-design', 1);
+      r.onupgradeneeded = function () {
+        if (!r.result.objectStoreNames.contains('pecas'))
+          r.result.createObjectStore('pecas', { keyPath: 'id' });
+      };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    }).catch(function () { return null; });
+    return BD;
+  }
+  function comLoja(modo, fn) {
+    return banco().then(function (db) {
+      if (!db) return null;
+      return new Promise(function (res, rej) {
+        var t = db.transaction('pecas', modo), st = t.objectStore('pecas'), pedido = fn(st);
+        t.oncomplete = function () { res(pedido && pedido.result); };
+        t.onerror = function () { rej(t.error); };
+      }).catch(function () { return null; });
+    });
+  }
+
+  function salvarPeca() {
+    if (!slides.length) { toast('Nada para salvar.'); return; }
+    var cv = document.createElement('canvas');
+    render(cv, marca, slides[0], cfg());
+    var mini = document.createElement('canvas');
+    mini.width = 324; mini.height = 405;
+    mini.getContext('2d').drawImage(cv, 0, 0, 324, 405);
+    mini.toBlob(function (capa) {
+      var peca = {
+        id: 'p' + Date.now(),
+        marca: marca,
+        quando: new Date().toISOString(),
+        titulo: (slides[0].title || slides[0].body || '').replace(/\*\*|__/g, '').slice(0, 70) || 'Sem título',
+        n: slides.length,
+        capa: capa,
+        laminas: slides.map(function (l) {
+          return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
+                   zoom: l.zoom, fx: l.fx, fy: l.fy, img: l.img ? l.img.src : null, imgName: l.imgName };
+        })
+      };
+      comLoja('readwrite', function (st) { return st.put(peca); }).then(function () {
+        toast('Salvo na biblioteca.');
+        if (viewAtual === 'home' || viewAtual === 'biblioteca') pintaGaleria();
+      });
+    }, 'image/jpeg', 0.82);
+  }
+
+  function listarPecas() {
+    return comLoja('readonly', function (st) { return st.getAll(); }).then(function (r) {
+      var lista = r || [];
+      lista.sort(function (a, b) { return b.quando.localeCompare(a.quando); });
+      return lista;
+    });
+  }
+
+  function pintaGaleria(qual) {
+    var alvos = qual ? [qual] : ['galeria', 'galeria-home'];
+    listarPecas().then(function (lista) {
+      alvos.forEach(function (idAlvo) {
+        var el = $(idAlvo); if (!el) return;
+        var itens = (idAlvo === 'galeria-home') ? lista.slice(0, 8) : lista;
+        if (!itens.length) {
+          el.innerHTML = '<p class="galeria-vazia">Nada salvo ainda.<br>' +
+            'No gerador, use <strong>Salvar na biblioteca</strong> para guardar um carrossel e voltar nele depois.</p>';
+          return;
+        }
+        el.innerHTML = '';
+        itens.forEach(function (p) {
+          var b = document.createElement('button');
+          b.className = 'peca'; b.dataset.id = p.id;
+          b.title = 'Abrir “' + p.titulo + '”';
+          var im = document.createElement('img');
+          im.src = URL.createObjectURL(p.capa); im.alt = p.titulo;
+          im.onload = function () { setTimeout(function () { URL.revokeObjectURL(im.src); }, 2000); };
+          b.appendChild(im);
+          var m = document.createElement('div'); m.className = 'meta';
+          var d = new Date(p.quando);
+          m.innerHTML = '<b></b><span></span>';
+          m.querySelector('b').textContent = p.titulo;
+          m.querySelector('span').textContent =
+            txtDe((MARCAS[p.marca] || {}).arroba || p.marca) + ' · ' + p.n +
+            (p.n === 1 ? ' lâmina · ' : ' lâminas · ') +
+            d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+          b.appendChild(m);
+          var x = document.createElement('span');
+          x.className = 'apagar'; x.dataset.apagar = p.id; x.setAttribute('role', 'button');
+          x.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+          b.appendChild(x);
+          el.appendChild(b);
+        });
+      });
+    });
+  }
+
+  function abrirPeca(id) {
+    listarPecas().then(function (lista) {
+      var p = lista.filter(function (x) { return x.id === id; })[0];
+      if (!p) return;
+      marca = MARCAS[p.marca] ? p.marca : marca;
+      var imgs = p.laminas.map(function (l) { return l.img ? loadImage(l.img) : Promise.resolve(null); });
+      Promise.all(imgs).then(function (carregadas) {
+        slides = p.laminas.map(function (l, i) {
+          return { type: l.type, title: l.title || '', sub: l.sub || '', body: l.body || '',
+                   numero: l.numero || '', zoom: l.zoom || 1, fx: l.fx == null ? .5 : l.fx,
+                   fy: l.fy == null ? .5 : l.fy, img: carregadas[i], imgName: l.imgName || '' };
+        });
+        foco = 0; sel = null;
+        abrir('carrossel');
+        toast('Aberto: ' + p.titulo);
+      });
+    });
+  }
+
+  /* ---------- o prompt escolhe o perfil e leva o assunto ---------- */
+  var APELIDOS = {
+    baroni: ['baroni', 'professor baroni', 'professorbaroni'],
+    suno: ['suno'], tiago: ['tiago', 'tiago reis', 'tiagogreis', 'tiagoreis'],
+    noticias: ['noticias', 'notícias', 'suno noticias', 'suno notícias', 'sunonoticias'],
+    consultoria: ['consultoria', 'suno consultoria', 'sunoconsultoria'],
+    funds: ['funds', 'funds explorer', 'fundsexplorer']
+  };
+  function lerPrompt(txt) {
+    var baixo = txt.toLowerCase();
+    var achado = null, tamanho = 0;
+    Object.keys(APELIDOS).forEach(function (k) {
+      APELIDOS[k].forEach(function (a) {
+        if (baixo.indexOf(a) >= 0 && a.length > tamanho) { achado = k; tamanho = a.length; }
+      });
+    });
+    var m = txt.match(/\bsobre\s+(.+)$/i);
+    return { marca: achado, assunto: m ? m[1].trim().replace(/[.\s]+$/, '') : '' };
+  }
+
+  document.addEventListener('click', function (ev) {
+    var it = ev.target.closest('.item');
+    if (it) { abrir(it.dataset.view); return; }
+    if (ev.target.closest('#ir-home')) { abrir('home'); return; }
+    if (ev.target.closest('#btn-salvar')) { salvarPeca(); return; }
+    var x = ev.target.closest('[data-apagar]');
+    if (x) {
+      ev.preventDefault(); ev.stopPropagation();
+      comLoja('readwrite', function (st) { return st.delete(x.dataset.apagar); })
+        .then(function () { pintaGaleria(); toast('Removido da biblioteca.'); });
+      return;
+    }
+    var pc = ev.target.closest('.peca');
+    if (pc) { abrirPeca(pc.dataset.id); return; }
+  });
+
+  document.addEventListener('submit', function (ev) {
+    if (ev.target.id !== 'form-prompt') return;
+    ev.preventDefault();
+    var lido = lerPrompt($('prompt').value.trim());
+    if (lido.marca) marca = lido.marca;
+    comecoLimpo();
+    if (lido.assunto) slides[0].title = lido.assunto.charAt(0).toUpperCase() + lido.assunto.slice(1);
+    abrir('carrossel');
+    var ta = $('txt'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    toast(lido.marca ? 'Perfil: ' + txtDe(MARCAS[marca].arroba) : 'Escolha o perfil na barra de cima.');
+  });
+
+  window.__abrir = abrir; window.__lerPrompt = lerPrompt;
+  window.__salvarPeca = salvarPeca; window.__listarPecas = listarPecas;
 
 })();
