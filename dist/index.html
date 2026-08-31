@@ -598,7 +598,16 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     return out.length ? out : [{ text: '', em: false, alt: false }];
   }
 
-  function layout(ctx, text, spec) {
+  /* Guias de campo vazio. So aparecem na tela: o PNG exportado nunca leva
+     "insira o titulo" impresso. Ver GUIAS, ligado por render(). */
+  var GUIA = { titulo: 'insira o título', sub: 'insira o subtítulo', corpo: 'insira o texto' };
+  var GUIAS = true;
+
+  function layout(ctx, text, spec, campo) {
+    var guia = false;
+    if (GUIAS && campo && GUIA[campo] && !String(text || '').trim()) {
+      text = GUIA[campo]; guia = true;
+    }
     var runs = parseRuns(spec.caps ? text.toUpperCase() : text);
     var lines = [], cur = [], curW = 0;
     function flush() { lines.push({ items: cur, w: curW }); cur = []; curW = 0; }
@@ -622,7 +631,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       while (l.items.length && !l.items[l.items.length - 1].text.trim()) { l.w -= l.items.pop().w; }
     });
     var lh = spec.size * spec.lh;
-    return { lines: lines, lh: lh, height: lines.length * lh, spec: spec };
+    return { lines: lines, lh: lh, height: lines.length * lh, spec: spec, guia: guia };
   }
 
   /* distancia do topo da caixa de linha ate o topo das maiusculas.
@@ -654,6 +663,8 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   /* --- pintura com cor solida (Baroni) --- */
   function paintSolid(ctx, blk, x, top, campo) {
     regiao(campo, x, top, blk.spec.w, blk.height);
+    var alfa = ctx.globalAlpha;
+    if (blk.guia) ctx.globalAlpha = alfa * 0.38;
     var off = baselineOffset(ctx, blk.spec);
     ctx.textBaseline = 'alphabetic';
     var centro = blk.spec.align === 'center';
@@ -684,6 +695,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
         risca();
       }
     });
+    ctx.globalAlpha = alfa;
   }
 
   /* --- gradiente linear no modelo do CSS (angulo em graus, paradas em fracao) --- */
@@ -734,6 +746,9 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       });
     });
 
+    var alfa = ctx.globalAlpha;
+    if (blk.guia) ctx.globalAlpha = alfa * 0.38;
+
     bc.globalCompositeOperation = 'source-in';
     bc.fillStyle = cssGrad(bc, style.grad.angle, x - ox, top - oy, blk.spec.w, blk.height, style.grad.stops);
     bc.fillRect(0, 0, lw, lh);
@@ -745,6 +760,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       hc.fillRect(0, 0, lw, lh);
       ctx.drawImage(hi, ox, oy);
     }
+    ctx.globalAlpha = alfa;
   }
 
   /* =========================================================
@@ -838,7 +854,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, W, H);
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
     for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts); sb = layout(ctx, s.sub || '', ss);
+      tb = layout(ctx, s.title || '', ts, 'titulo'); sb = layout(ctx, s.sub || '', ss, 'sub');
       headTop = (t.subBottom - sb.height) - t.gapTitleSub - tb.height - t.gapHeadTitle - HEAD.av;
       if (headTop >= t.minTop || !cfg.autofit) break;
       ts.size = Math.round(ts.size * 0.94);
@@ -860,7 +876,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
     var spec = Object.assign({}, t.body), avail = t.regionBottom - t.regionTop, blk;
     for (var p = 0; p < 14; p++) {
-      blk = layout(ctx, s.body || '', spec);
+      blk = layout(ctx, s.body || '', spec, 'corpo');
       if (blk.height <= avail || !cfg.autofit || spec.size < 22) break;
       spec.size = Math.round(spec.size * 0.94);
     }
@@ -877,7 +893,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, W, H);
     var spec = Object.assign({}, t.body), blk, headTop, textTop, imgTop = t.img.bottom - t.img.h;
     for (var p = 0; p < 14; p++) {
-      blk = layout(ctx, s.body || '', spec);
+      blk = layout(ctx, s.body || '', spec, 'corpo');
       textTop = imgTop - t.gapTextImg - blk.height;
       headTop = textTop - t.gapHeadText - HEAD.av;
       if (headTop >= t.minTop || !cfg.autofit || spec.size < 22) break;
@@ -934,7 +950,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
 
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, logoTop;
     for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts); sb = layout(ctx, s.sub || '', ss);
+      tb = layout(ctx, s.title || '', ts, 'titulo'); sb = layout(ctx, s.sub || '', ss, 'sub');
       logoTop = (t.subBottom - sb.height) - t.gapTitleSub - tb.height - t.gapLogoTitle - t.logo.h;
       if (logoTop >= t.minTop || !cfg.autofit) break;
       ts.size = Math.round(ts.size * 0.94);
@@ -957,7 +973,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
     var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, titleTop;
     for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts); bb = layout(ctx, s.body || '', bs);
+      tb = layout(ctx, s.title || '', ts, 'titulo'); bb = layout(ctx, s.body || '', bs, 'corpo');
       titleTop = (t.img.top - t.gapBodyImg - bb.height) - t.gapTitleBody - tb.height;
       if (titleTop >= t.minTop || !cfg.autofit || bs.size < 24) break;
       bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
@@ -980,7 +996,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
     var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
     for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts); bb = layout(ctx, s.body || '', bs);
+      tb = layout(ctx, s.title || '', ts, 'titulo'); bb = layout(ctx, s.body || '', bs, 'corpo');
       total = tb.height + t.gapTitleBody + bb.height;
       if (total <= H - 160 || !cfg.autofit || bs.size < 24) break;
       bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
@@ -1034,7 +1050,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     trFundo(ctx);
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
     for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts); sb = layout(ctx, s.sub || '', ss);
+      tb = layout(ctx, s.title || '', ts, 'titulo'); sb = layout(ctx, s.sub || '', ss, 'sub');
       headTop = (t.subBottom - sb.height) - t.gapTitleSub - tb.height - t.gapHeadTitle - TR_HEAD.av;
       if (headTop >= t.minTop || !cfg.autofit) break;
       ts.size = Math.round(ts.size * 0.94);
@@ -1058,7 +1074,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
     var extra = comFoto ? (t.gapBodyImg + t.img.h) : 0;
     for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts); bb = layout(ctx, s.body || '', bs);
+      tb = layout(ctx, s.title || '', ts, 'titulo'); bb = layout(ctx, s.body || '', bs, 'corpo');
       total = TR_HEAD.av + t.gapHeadTitle + tb.height + t.gapTitleBody + bb.height + extra;
       if (total <= H - 120 || !cfg.autofit || bs.size < 24) break;
       bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
@@ -1128,7 +1144,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     ctx.fillStyle = '#141414'; ctx.fillRect(0, 0, W, H);
     var ts = Object.assign({}, t.title), tb, headTop;
     for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts);
+      tb = layout(ctx, s.title || '', ts, 'titulo');
       headTop = t.titleBottom - tb.height - t.gapHeadTitle - SN_HEAD.av;
       if (headTop >= t.minTop || !cfg.autofit || ts.size < 46) break;
       ts.size = Math.round(ts.size * 0.94);
@@ -1157,7 +1173,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     snPapel(ctx);
     var bs = Object.assign({}, t.body), blk, headTop;
     for (var p = 0; p < 14; p++) {
-      blk = layout(ctx, s.body || '', bs);
+      blk = layout(ctx, s.body || '', bs, 'corpo');
       headTop = (t.textCenter - blk.height / 2) - t.gapHeadText - SN_HEAD.av;
       if (headTop >= 60 || !cfg.autofit || bs.size < 26) break;
       bs.size = Math.round(bs.size * 0.94);
@@ -1175,7 +1191,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     snPapel(ctx);
     var bs = Object.assign({}, t.body), blk, total;
     for (var p = 0; p < 14; p++) {
-      blk = layout(ctx, s.body || '', bs);
+      blk = layout(ctx, s.body || '', bs, 'corpo');
       total = SN_HEAD.av + t.gapHeadText + blk.height + t.gapTextImg + t.img.h;
       if (total <= H - 120 || !cfg.autofit || bs.size < 26) break;
       bs.size = Math.round(bs.size * 0.94);
@@ -1244,7 +1260,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, titleTop;
     for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts); sb = layout(ctx, s.sub || '', ss);
+      tb = layout(ctx, s.title || '', ts, 'titulo'); sb = layout(ctx, s.sub || '', ss, 'sub');
       titleTop = (t.subBottom - sb.height) - t.gapTitleSub - tb.height;
       if (titleTop >= t.minTop + 120 || !cfg.autofit || ts.size < 52) break;
       ts.size = Math.round(ts.size * 0.94); ss.size = Math.round(ss.size * 0.96);
@@ -1279,7 +1295,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, fim;
     var extra = comImagem ? (t.gapTitleImg + t.img.h + t.gapImgBody) : t.gapTitleBody;
     for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts); bb = layout(ctx, s.body || '', bs);
+      tb = layout(ctx, s.title || '', ts, 'titulo'); bb = layout(ctx, s.body || '', bs, 'corpo');
       fim = t.titleCapTop + tb.height + extra + bb.height;
       if (fim <= H - 60 || !cfg.autofit || bs.size < 24) break;
       bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
@@ -1361,7 +1377,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     ctx.fillStyle = '#0b0b0b'; ctx.fillRect(0, 0, W, H);
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
     for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts); sb = layout(ctx, s.sub || '', ss);
+      tb = layout(ctx, s.title || '', ts, 'titulo'); sb = layout(ctx, s.sub || '', ss, 'sub');
       headTop = (t.subBottom - sb.height) - t.gapTitleSub - tb.height - t.gapHeadTitle - FE_HEAD.av * t.k;
       if (headTop >= t.minTop || !cfg.autofit || ts.size < 54) break;
       ts.size = Math.round(ts.size * 0.94);
@@ -1392,7 +1408,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     feFundo(ctx);
     var bs = Object.assign({}, t.body), blk, top, headTop;
     for (var p = 0; p < 14; p++) {
-      blk = layout(ctx, s.body || '', bs);
+      blk = layout(ctx, s.body || '', bs, 'corpo');
       top = t.textCenter - blk.height / 2;
       headTop = Math.min(t.headY, top - t.gapHeadText - FE_HEAD.av * t.k);
       if (headTop >= 50 || !cfg.autofit || bs.size < 26) break;
@@ -1411,7 +1427,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     var bs = Object.assign({}, t.body), blk, total;
     var avh = FE_HEAD.av * t.k;
     for (var p = 0; p < 14; p++) {
-      blk = layout(ctx, s.body || '', bs);
+      blk = layout(ctx, s.body || '', bs, 'corpo');
       total = avh + t.gap + blk.height + t.gap + t.img.h;
       if (total <= H - 100 || !cfg.autofit || bs.size < 26) break;
       bs.size = Math.round(bs.size * 0.94);
@@ -1464,6 +1480,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     var ctx = canvas.getContext('2d');
     canvas.width = W; canvas.height = H;
     ctx.clearRect(0, 0, W, H); ctx.textAlign = 'left';
+    GUIAS = cfg.guias !== false;
     REGIOES = []; ESTOUROU = null;
     var M = MARCAS[marca];
     var fn = M.render[s.type] || M.render[Object.keys(M.render)[0]];
@@ -1562,8 +1579,10 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   var slides = [], foco = 0, sel = null, marca = 'baroni';
   var opts = { disc: '', discOn: true, autofit: true, topAlign: false };
 
-  function cfg() {
-    return { disc: opts.disc, discOn: opts.discOn, autofit: opts.autofit, topAlign: opts.topAlign };
+  /* semGuias e usado so na exportacao: o PNG final nao leva as guias */
+  function cfg(semGuias) {
+    return { disc: opts.disc, discOn: opts.discOn, autofit: opts.autofit,
+             topAlign: opts.topAlign, guias: !semGuias };
   }
   function tipos() { return MARCAS[marca].tipos; }
   function tipoPadrao() {
@@ -1857,7 +1876,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   /* ---------- exportar ---------- */
   function pngDe(i) {
     var cv = document.createElement('canvas');
-    render(cv, marca, slides[i], cfg());
+    render(cv, marca, slides[i], cfg(true));
     return new Promise(function (res) { cv.toBlob(res, 'image/png'); });
   }
   function baixarUma(i) {
