@@ -1624,7 +1624,9 @@
   /* ---------- barra lateral: largura ajustavel e recolhimento ----------
      A largura vive numa variavel de CSS e fica guardada no navegador, entao
      cada pessoa reabre a plataforma do jeito que deixou. */
-  var LAT_MIN = 208, LAT_MAX = 420, LAT_PADRAO = 272;
+  /* 256 e o menor valor em que "Gerador de Carrossel" ainda cabe inteiro;
+     abaixo disso o caminho e recolher a barra, nao espremer o rotulo */
+  var LAT_MIN = 256, LAT_MAX = 420, LAT_PADRAO = 272;
   var lateral = $('lateral'), puxador = $('puxador'), btnLateral = $('btn-lateral');
   var largura = LAT_PADRAO, colapsada = false, tempoPalco = 0;
 

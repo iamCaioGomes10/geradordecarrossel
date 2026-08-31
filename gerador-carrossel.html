@@ -48,16 +48,21 @@ body{background:#000}
 .recolher:hover{color:#e8e8e8;background:rgba(255,255,255,.07)}
 .menu{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .item{
-  width:100%;display:flex;align-items:center;gap:14px;padding:9px 20px 9px 28px;min-height:48px;
+  width:100%;display:flex;align-items:center;gap:14px;padding:11px 28px;min-height:48px;
   color:var(--sd-txt-2);font-size:15.5px;text-align:left;background:none;border:0;
   border-left:2px solid transparent;cursor:pointer;
 }
 .item .ic{width:30px;height:30px;flex:none;object-fit:contain;opacity:.82}
-.item .rot{min-width:0;display:flex;flex-direction:column;line-height:1.2}
-.item .nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.item .breve{font-size:10px;letter-spacing:.05em;color:#5c5c5c;margin-top:2px}
-.item:has(.breve){color:#5f5f5f}
-.item:has(.breve) .ic{opacity:.5}
+/* nomes com prefixo sd- porque `.rot` ja existe no gerador (rotulo de campo,
+   10px) e estava rebaixando a fonte do menu de 15,5px para 10px */
+.item .sd-rot{
+  min-width:0;display:flex;flex-direction:column;
+  font-size:15.5px;letter-spacing:normal;line-height:1.15;margin:0;
+}
+.item .sd-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .sd-breve{font-size:10px;letter-spacing:.05em;color:#5c5c5c;margin-top:1px;line-height:1.1}
+.item:has(.sd-breve){color:#5f5f5f}
+.item:has(.sd-breve) .ic{opacity:.5}
 .item:hover{color:#c8c8c8}
 .item:hover .ic{opacity:1}
 .item[aria-current="page"]{color:#f0f0f0;border-left-color:var(--sd-vermelho);background:rgba(255,255,255,.035)}
@@ -79,7 +84,7 @@ body{background:#000}
   flex-direction:column;justify-content:center;padding:0;margin-bottom:26px;gap:16px;
 }
 .lateral[data-colapsada="1"] .item{justify-content:center;padding:11px 0;gap:0}
-.lateral[data-colapsada="1"] .rot{display:none}
+.lateral[data-colapsada="1"] .sd-rot{display:none}
 .lateral[data-colapsada="1"] .puxador{display:none}
 
 /* ---------- área de conteúdo ---------- */
@@ -342,12 +347,12 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       </button>
     </div>
     <ul class="menu">
-      <li><button class="item" data-view="ideias" title="Gerador de ideias (em breve)"><img class="ic" id="ic-ideias" alt=""><span class="rot"><span class="nome">Gerador de ideias</span><span class="breve">em breve</span></span></button></li>
-      <li><button class="item" data-view="carrossel" title="Gerador de Carrossel"><img class="ic" id="ic-carrossel" alt=""><span class="rot"><span class="nome">Gerador de Carrossel</span></span></button></li>
-      <li><button class="item" data-view="biblioteca" title="Biblioteca"><img class="ic" id="ic-biblioteca" alt=""><span class="rot"><span class="nome">Biblioteca</span></span></button></li>
+      <li><button class="item" data-view="ideias" title="Gerador de ideias (em breve)"><img class="ic" id="ic-ideias" alt=""><span class="sd-rot"><span class="sd-nome">Gerador de ideias</span><span class="sd-breve">em breve</span></span></button></li>
+      <li><button class="item" data-view="carrossel" title="Gerador de Carrossel"><img class="ic" id="ic-carrossel" alt=""><span class="sd-rot"><span class="sd-nome">Gerador de Carrossel</span></span></button></li>
+      <li><button class="item" data-view="biblioteca" title="Biblioteca"><img class="ic" id="ic-biblioteca" alt=""><span class="sd-rot"><span class="sd-nome">Biblioteca</span></span></button></li>
     </ul>
     <div class="puxador" id="puxador" role="separator" aria-orientation="vertical" tabindex="0"
-         aria-label="Largura da barra lateral" aria-valuemin="208" aria-valuemax="420" aria-valuenow="272"
+         aria-label="Largura da barra lateral" aria-valuemin="256" aria-valuemax="420" aria-valuenow="272"
          title="Arraste para mudar a largura &middot; dois cliques volta ao padr&atilde;o"></div>
   </nav>
 
@@ -2069,7 +2074,9 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   /* ---------- barra lateral: largura ajustavel e recolhimento ----------
      A largura vive numa variavel de CSS e fica guardada no navegador, entao
      cada pessoa reabre a plataforma do jeito que deixou. */
-  var LAT_MIN = 208, LAT_MAX = 420, LAT_PADRAO = 272;
+  /* 256 e o menor valor em que "Gerador de Carrossel" ainda cabe inteiro;
+     abaixo disso o caminho e recolher a barra, nao espremer o rotulo */
+  var LAT_MIN = 256, LAT_MAX = 420, LAT_PADRAO = 272;
   var lateral = $('lateral'), puxador = $('puxador'), btnLateral = $('btn-lateral');
   var largura = LAT_PADRAO, colapsada = false, tempoPalco = 0;
 
