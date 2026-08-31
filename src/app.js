@@ -1738,32 +1738,96 @@
     });
   }
 
-  function salvarPeca() {
-    if (!slides.length) { toast('Nada para salvar.'); return; }
+  /* ---------- guarda automatica ----------
+     Ninguem devia perder um carrossel por fechar a aba sem querer. A peca em
+     edicao e gravada sozinha a cada pausa, sempre no MESMO registro, para a
+     biblioteca nao virar uma pilha de copias da mesma coisa. */
+  var pecaAtual = null;        /* id do registro que esta em edicao */
+  var pecaExplicita = false;   /* ja passou pelo botao Salvar? */
+  var assinaturaSalva = null;  /* estado gravado por ultimo */
+  var assinaturaVista = null;  /* estado do tique anterior: e assim que a pausa aparece */
+  var gravando = false;
+
+  /* Resumo leve do documento. Entra tudo que muda a arte, menos os bytes das
+     fotos — o nome do arquivo e o enquadramento ja denunciam a troca. */
+  function assinatura() {
+    return JSON.stringify([marca, opts.disc, opts.discOn, opts.autofit, opts.topAlign,
+      slides.map(function (l) {
+        return [l.type, l.title, l.sub, l.body, l.numero, l.imgName,
+                l.zoom, l.fx, l.fy, l.img ? 1 : 0].join('\u0001');
+      })]);
+  }
+  function documentoVazio() {
+    return !slides.some(function (l) {
+      return ((l.title || '') + (l.sub || '') + (l.body || '') + (l.numero || '')).trim() || l.img;
+    });
+  }
+
+  function gravaPeca(explicita) {
+    if (!slides.length) return Promise.resolve(false);
+    if (explicita) pecaExplicita = true;
+    var assin = assinatura();
     var cv = document.createElement('canvas');
     render(cv, marca, slides[0], cfg());
     var mini = document.createElement('canvas');
     mini.width = 324; mini.height = 405;
     mini.getContext('2d').drawImage(cv, 0, 0, 324, 405);
-    mini.toBlob(function (capa) {
-      var peca = {
-        id: 'p' + Date.now(),
-        marca: marca,
-        quando: new Date().toISOString(),
-        titulo: (slides[0].title || slides[0].body || '').replace(/\*\*|__/g, '').slice(0, 70) || 'Sem título',
-        n: slides.length,
-        capa: capa,
-        laminas: slides.map(function (l) {
-          return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
-                   zoom: l.zoom, fx: l.fx, fy: l.fy, img: l.img ? l.img.src : null, imgName: l.imgName };
-        })
-      };
-      comLoja('readwrite', function (st) { return st.put(peca); }).then(function () {
-        toast('Salvo na biblioteca.');
-        if (viewAtual === 'home' || viewAtual === 'biblioteca') pintaGaleria();
-      });
-    }, 'image/jpeg', 0.82);
+    return new Promise(function (res) {
+      mini.toBlob(function (capa) {
+        if (!pecaAtual) pecaAtual = 'p' + Date.now();
+        var peca = {
+          id: pecaAtual,
+          marca: marca,
+          quando: new Date().toISOString(),
+          auto: !pecaExplicita,
+          opts: { disc: opts.disc, discOn: opts.discOn, autofit: opts.autofit, topAlign: opts.topAlign },
+          titulo: (slides[0].title || slides[0].body || '').replace(/\*\*|__/g, '').slice(0, 70) || 'Sem título',
+          n: slides.length,
+          capa: capa,
+          laminas: slides.map(function (l) {
+            return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
+                     zoom: l.zoom, fx: l.fx, fy: l.fy, img: l.img ? l.img.src : null, imgName: l.imgName };
+          })
+        };
+        comLoja('readwrite', function (st) { return st.put(peca); }).then(function (chave) {
+          /* comLoja devolve null quando a transacao falha — cota estourada,
+             navegador em modo restrito. Melhor dizer do que fingir que salvou. */
+          if (!chave) {
+            assinaturaSalva = assin;   /* nao insiste a cada pausa */
+            toast('Não consegui salvar: o armazenamento do navegador está cheio.');
+            return res(false);
+          }
+          assinaturaSalva = assin;
+          if (viewAtual === 'home' || viewAtual === 'biblioteca') pintaGaleria();
+          res(true);
+        });
+      }, 'image/jpeg', 0.82);
+    });
   }
+
+  function salvarPeca() {
+    if (!slides.length) { toast('Nada para salvar.'); return; }
+    gravaPeca(true).then(function (ok) { if (ok) toast('Salvo na biblioteca.'); });
+  }
+
+  /* Grava na pausa, nao na tecla: so quando o documento passa um tique inteiro
+     sem mudar. Enquanto a pessoa digita nada e escrito no disco. */
+  setInterval(function () {
+    if (gravando || !slides.length) return;
+    var a = assinatura();
+    if (a === assinaturaSalva) { assinaturaVista = a; return; }
+    if (a !== assinaturaVista) { assinaturaVista = a; return; }
+    if (documentoVazio()) { assinaturaSalva = a; return; }
+    gravando = true;
+    gravaPeca(false).then(function () { gravando = false; },
+                          function () { gravando = false; });
+  }, 1200);
+
+  /* fechou a aba no meio da frase: ultima tentativa, sem promessa de sucesso */
+  window.addEventListener('pagehide', function () {
+    if (!slides.length || documentoVazio() || assinatura() === assinaturaSalva) return;
+    gravaPeca(false);
+  });
 
   function listarPecas() {
     return comLoja('readonly', function (st) { return st.getAll(); }).then(function (r) {
@@ -1781,7 +1845,7 @@
         var itens = (idAlvo === 'galeria-home') ? lista.slice(0, 8) : lista;
         if (!itens.length) {
           el.innerHTML = '<p class="galeria-vazia">Nada salvo ainda.<br>' +
-            'No gerador, use <strong>Salvar na biblioteca</strong> para guardar um carrossel e voltar nele depois.</p>';
+            'Comece um carrossel no gerador: ele aparece aqui sozinho, sem você precisar salvar.</p>';
           return;
         }
         el.innerHTML = '';
@@ -1801,6 +1865,12 @@
             txtDe((MARCAS[p.marca] || {}).arroba || p.marca) + ' · ' + p.n +
             (p.n === 1 ? ' lâmina · ' : ' lâminas · ') +
             d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+          if (p.auto) {
+            var r = document.createElement('span');
+            r.className = 'sd-rascunho'; r.textContent = 'rascunho';
+            r.title = 'Guardado sozinho enquanto você editava';
+            b.appendChild(r);
+          }
           b.appendChild(m);
           var x = document.createElement('span');
           x.className = 'apagar'; x.dataset.apagar = p.id; x.setAttribute('role', 'button');
@@ -1824,8 +1894,15 @@
                    numero: l.numero || '', zoom: l.zoom || 1, fx: l.fx == null ? .5 : l.fx,
                    fy: l.fy == null ? .5 : l.fy, img: carregadas[i], imgName: l.imgName || '' };
         });
+        if (p.opts) {
+          opts.disc = p.opts.disc; opts.discOn = p.opts.discOn;
+          opts.autofit = p.opts.autofit; opts.topAlign = p.opts.topAlign;
+        }
+        /* a partir daqui a edicao continua NESTE registro, sem criar copia */
+        pecaAtual = p.id; pecaExplicita = !p.auto;
         foco = 0; sel = null;
         abrir('carrossel');
+        assinaturaSalva = assinaturaVista = assinatura();
         toast('Aberto: ' + p.titulo);
       });
     });
@@ -1840,6 +1917,12 @@
     var x = ev.target.closest('[data-apagar]');
     if (x) {
       ev.preventDefault(); ev.stopPropagation();
+      if (x.dataset.apagar === pecaAtual) {
+        /* apagou a peca aberta: solta o vinculo e considera o estado atual ja
+           gravado, senao a guarda automatica a ressuscita em 1,2s */
+        pecaAtual = null; pecaExplicita = false;
+        assinaturaSalva = assinaturaVista = assinatura();
+      }
       comLoja('readwrite', function (st) { return st.delete(x.dataset.apagar); })
         .then(function () { pintaGaleria(); toast('Removido da biblioteca.'); });
       return;
