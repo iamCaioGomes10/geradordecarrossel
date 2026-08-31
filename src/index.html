@@ -10,15 +10,23 @@
 <body>
 <div class="plataforma">
 
-  <nav class="lateral" aria-label="Ferramentas">
-    <button class="marca" id="ir-home" aria-label="In&iacute;cio">
-      <img id="img-marca" alt="Suno Design">
-    </button>
+  <nav class="lateral" id="lateral" aria-label="Ferramentas">
+    <div class="topo-lateral">
+      <button class="marca" id="ir-home" aria-label="In&iacute;cio" title="In&iacute;cio">
+        <img id="img-marca" alt="Suno Design">
+      </button>
+      <button class="recolher" id="btn-lateral" aria-expanded="true" aria-controls="lateral" aria-label="Recolher barra lateral">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9.5" y1="4" x2="9.5" y2="20"/></svg>
+      </button>
+    </div>
     <ul class="menu">
-      <li><button class="item" data-view="ideias"><img class="ic" id="ic-ideias" alt=""><span>Gerador de ideias</span><span class="tag-breve">em breve</span></button></li>
-      <li><button class="item" data-view="carrossel"><img class="ic" id="ic-carrossel" alt=""><span>Gerador de Carrossel</span></button></li>
-      <li><button class="item" data-view="biblioteca"><img class="ic" id="ic-biblioteca" alt=""><span>Biblioteca</span></button></li>
+      <li><button class="item" data-view="ideias" title="Gerador de ideias (em breve)"><img class="ic" id="ic-ideias" alt=""><span class="rot"><span class="nome">Gerador de ideias</span><span class="breve">em breve</span></span></button></li>
+      <li><button class="item" data-view="carrossel" title="Gerador de Carrossel"><img class="ic" id="ic-carrossel" alt=""><span class="rot"><span class="nome">Gerador de Carrossel</span></span></button></li>
+      <li><button class="item" data-view="biblioteca" title="Biblioteca"><img class="ic" id="ic-biblioteca" alt=""><span class="rot"><span class="nome">Biblioteca</span></span></button></li>
     </ul>
+    <div class="puxador" id="puxador" role="separator" aria-orientation="vertical" tabindex="0"
+         aria-label="Largura da barra lateral" aria-valuemin="208" aria-valuemax="420" aria-valuenow="272"
+         title="Arraste para mudar a largura &middot; dois cliques volta ao padr&atilde;o"></div>
   </nav>
 
   <main class="conteudo">

@@ -1621,6 +1621,93 @@
     if (v === 'biblioteca' || v === 'home') pintaGaleria(v === 'home' ? 'galeria-home' : 'galeria');
   }
 
+  /* ---------- barra lateral: largura ajustavel e recolhimento ----------
+     A largura vive numa variavel de CSS e fica guardada no navegador, entao
+     cada pessoa reabre a plataforma do jeito que deixou. */
+  var LAT_MIN = 208, LAT_MAX = 420, LAT_PADRAO = 272;
+  var lateral = $('lateral'), puxador = $('puxador'), btnLateral = $('btn-lateral');
+  var largura = LAT_PADRAO, colapsada = false, tempoPalco = 0;
+
+  /* Em tela estreita a barra nao pode comer o palco: o teto cai para 34% da
+     janela. So que esse teto e circunstancial — a preferencia de quem usa fica
+     guardada inteira em `largura` e volta sozinha quando a janela cresce. */
+  function tetoLargura() {
+    var w = window.innerWidth || 0;
+    if (w < 700) return LAT_MAX;   /* janela minuscula, ou ainda sem medida */
+    var t = Math.min(LAT_MAX, Math.round(w * 0.34));
+    return t < LAT_MIN ? LAT_MIN : t;
+  }
+  function limiteLargura(v) {
+    v = +v; if (!isFinite(v)) v = LAT_PADRAO;
+    var teto = tetoLargura();
+    return v < LAT_MIN ? LAT_MIN : (v > teto ? teto : Math.round(v));
+  }
+  function aplicaLateral() {
+    var aplicada = limiteLargura(largura);
+    document.documentElement.style.setProperty('--larg-lateral', aplicada + 'px');
+    lateral.dataset.colapsada = colapsada ? '1' : '0';
+    puxador.setAttribute('aria-valuenow', aplicada);
+    puxador.setAttribute('aria-valuemax', tetoLargura());
+    btnLateral.setAttribute('aria-expanded', colapsada ? 'false' : 'true');
+    btnLateral.setAttribute('aria-label', colapsada ? 'Abrir barra lateral' : 'Recolher barra lateral');
+    btnLateral.title = colapsada ? 'Abrir a barra' : 'Recolher a barra (só os ícones)';
+  }
+  function guardaLateral() {
+    try { localStorage.setItem('sd-lateral', JSON.stringify({ w: largura, c: colapsada })); }
+    catch (e) {}
+  }
+  /* o palco mede a largura livre: refaz o enquadramento sem travar o arrasto */
+  function refazPalco() {
+    if (viewAtual !== 'carrossel') return;
+    clearTimeout(tempoPalco);
+    tempoPalco = setTimeout(pintaPalco, 60);
+  }
+
+  (function () {
+    var g = null;
+    try { g = JSON.parse(localStorage.getItem('sd-lateral') || 'null'); } catch (e) {}
+    if (g) { largura = limiteLargura(g.w); colapsada = !!g.c; }
+    aplicaLateral();
+    /* so depois do primeiro desenho a largura passa a animar */
+    setTimeout(function () { lateral.dataset.pronta = '1'; }, 0);
+  })();
+
+  puxador.addEventListener('pointerdown', function (ev) {
+    if (colapsada || ev.button) return;
+    ev.preventDefault();
+    var x0 = ev.clientX, w0 = largura;
+    lateral.dataset.arrastando = '1';
+    puxador.setPointerCapture(ev.pointerId);
+    var move = function (e) { largura = limiteLargura(w0 + e.clientX - x0); aplicaLateral(); refazPalco(); };
+    var fim = function () {
+      lateral.removeAttribute('data-arrastando');
+      puxador.removeEventListener('pointermove', move);
+      puxador.removeEventListener('pointerup', fim);
+      puxador.removeEventListener('pointercancel', fim);
+      guardaLateral(); refazPalco();
+    };
+    puxador.addEventListener('pointermove', move);
+    puxador.addEventListener('pointerup', fim);
+    puxador.addEventListener('pointercancel', fim);
+  });
+  puxador.addEventListener('dblclick', function () {
+    largura = LAT_PADRAO; aplicaLateral(); guardaLateral(); refazPalco();
+  });
+  puxador.addEventListener('keydown', function (ev) {
+    var passo = ev.key === 'ArrowLeft' ? -16 : (ev.key === 'ArrowRight' ? 16 : 0);
+    if (!passo) return;
+    ev.preventDefault();
+    largura = limiteLargura(largura + passo); aplicaLateral(); guardaLateral(); refazPalco();
+  });
+
+  /* redimensionar a janela reaplica o teto, mas nao reescreve a preferencia */
+  window.addEventListener('resize', aplicaLateral);
+
+  btnLateral.addEventListener('click', function () {
+    colapsada = !colapsada; aplicaLateral(); guardaLateral();
+    setTimeout(refazPalco, 200);   /* depois da transicao de largura */
+  });
+
   /* ---------- biblioteca: guarda no proprio navegador ---------- */
   var BD = null;
   function banco() {

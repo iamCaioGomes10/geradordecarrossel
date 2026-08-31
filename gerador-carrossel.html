@@ -22,27 +22,65 @@
 body{background:#000}
 .plataforma{display:flex;height:100vh;background:var(--sd-fundo)}
 
-/* ---------- barra lateral ---------- */
+/* ---------- barra lateral ----------
+   Largura ajustavel pelo puxador da borda (--larg-lateral, guardada no
+   navegador) e um estado recolhido de 76px que deixa so os icones. */
+:root{--larg-lateral:272px}
 .lateral{
-  width:272px;flex:none;background:var(--sd-lateral);
+  width:var(--larg-lateral);flex:none;background:var(--sd-lateral);position:relative;
   border-right:1px solid var(--sd-borda);display:flex;flex-direction:column;padding:26px 0;
+  transition:width .18s ease;
 }
-.marca{padding:0 0 0 28px;margin-bottom:34px;align-self:flex-start;background:none;border:0}
+/* nem no primeiro desenho nem durante o arrasto: a transicao e so do botao */
+.lateral:not([data-pronta="1"]),
+.lateral[data-arrastando="1"]{transition:none}
+.lateral[data-arrastando="1"]{user-select:none}
+.topo-lateral{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:0 18px 0 28px;margin-bottom:34px;
+}
+.marca{padding:0;background:none;border:0;flex:none;cursor:pointer}
 .marca img{width:47px;height:46px;display:block}
+.recolher{
+  width:32px;height:32px;flex:none;display:grid;place-items:center;border:0;border-radius:8px;
+  background:none;color:#6a6a6a;cursor:pointer;transition:color .15s,background .15s;
+}
+.recolher:hover{color:#e8e8e8;background:rgba(255,255,255,.07)}
 .menu{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .item{
-  width:100%;display:flex;align-items:center;gap:14px;padding:11px 28px;min-height:48px;
+  width:100%;display:flex;align-items:center;gap:14px;padding:9px 20px 9px 28px;min-height:48px;
   color:var(--sd-txt-2);font-size:15.5px;text-align:left;background:none;border:0;
-  white-space:nowrap;
-  border-left:2px solid transparent;
+  border-left:2px solid transparent;cursor:pointer;
 }
 .item .ic{width:30px;height:30px;flex:none;object-fit:contain;opacity:.82}
-.item:has(.tag-breve){color:#5f5f5f}
-.item:has(.tag-breve) .ic{opacity:.5}
+.item .rot{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.item .nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .breve{font-size:10px;letter-spacing:.05em;color:#5c5c5c;margin-top:2px}
+.item:has(.breve){color:#5f5f5f}
+.item:has(.breve) .ic{opacity:.5}
 .item:hover{color:#c8c8c8}
 .item:hover .ic{opacity:1}
 .item[aria-current="page"]{color:#f0f0f0;border-left-color:var(--sd-vermelho);background:rgba(255,255,255,.035)}
 .item[aria-current="page"] .ic{opacity:1}
+
+/* puxador: faixa invisivel sobre a borda, que acende ao tocar */
+.puxador{position:absolute;top:0;right:-4px;width:9px;height:100%;cursor:col-resize;z-index:6}
+.puxador::after{
+  content:'';position:absolute;left:4px;top:0;width:1px;height:100%;
+  background:transparent;transition:background .15s;
+}
+.puxador:hover::after,.puxador:focus-visible::after,
+.lateral[data-arrastando="1"] .puxador::after{background:var(--sd-vermelho)}
+.puxador:focus-visible{outline:none}
+
+/* recolhida: so os icones */
+.lateral[data-colapsada="1"]{width:76px}
+.lateral[data-colapsada="1"] .topo-lateral{
+  flex-direction:column;justify-content:center;padding:0;margin-bottom:26px;gap:16px;
+}
+.lateral[data-colapsada="1"] .item{justify-content:center;padding:11px 0;gap:0}
+.lateral[data-colapsada="1"] .rot{display:none}
+.lateral[data-colapsada="1"] .puxador{display:none}
 
 /* ---------- área de conteúdo ---------- */
 .conteudo{flex:1;min-width:0;position:relative;overflow:hidden}
@@ -95,7 +133,6 @@ body{background:#000}
   font-size:10.5px;letter-spacing:.06em;text-transform:lowercase;color:#8a8a8a;
   border:1px solid #4a4a4a;border-radius:999px;padding:2px 8px;white-space:nowrap;flex:none;
 }
-.item .tag-breve{margin-left:auto;font-size:9.5px;padding:1px 6px}
 .pagina h2 .tag-breve{vertical-align:middle;margin-left:10px;font-size:11px}
 
 .recentes{width:100%;margin-top:62px}
@@ -165,7 +202,12 @@ a{color:var(--accent)} a:hover{color:#f0575c}
 .sigla{display:flex;align-items:center;gap:9px;flex:none}
 .sigla i{width:9px;height:9px;background:var(--accent);display:block}
 .sigla b{font-size:13px;font-weight:600;letter-spacing:.02em}
-.perfis{display:flex;gap:2px;align-items:center;overflow-x:auto;scrollbar-width:none;min-width:0}
+.perfis{
+  display:flex;gap:2px;align-items:center;overflow-x:auto;scrollbar-width:none;min-width:0;
+  /* com a barra lateral larga a fila pode nao caber: a borda esmaece para avisar */
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 20px),transparent);
+  mask-image:linear-gradient(90deg,#000 calc(100% - 20px),transparent);
+}
 .perfis::-webkit-scrollbar{display:none}
 .perfil{
   display:flex;align-items:center;gap:7px;padding:8px 11px;white-space:nowrap;min-height:38px;
@@ -290,15 +332,23 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
 <body>
 <div class="plataforma">
 
-  <nav class="lateral" aria-label="Ferramentas">
-    <button class="marca" id="ir-home" aria-label="In&iacute;cio">
-      <img id="img-marca" alt="Suno Design">
-    </button>
+  <nav class="lateral" id="lateral" aria-label="Ferramentas">
+    <div class="topo-lateral">
+      <button class="marca" id="ir-home" aria-label="In&iacute;cio" title="In&iacute;cio">
+        <img id="img-marca" alt="Suno Design">
+      </button>
+      <button class="recolher" id="btn-lateral" aria-expanded="true" aria-controls="lateral" aria-label="Recolher barra lateral">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9.5" y1="4" x2="9.5" y2="20"/></svg>
+      </button>
+    </div>
     <ul class="menu">
-      <li><button class="item" data-view="ideias"><img class="ic" id="ic-ideias" alt=""><span>Gerador de ideias</span><span class="tag-breve">em breve</span></button></li>
-      <li><button class="item" data-view="carrossel"><img class="ic" id="ic-carrossel" alt=""><span>Gerador de Carrossel</span></button></li>
-      <li><button class="item" data-view="biblioteca"><img class="ic" id="ic-biblioteca" alt=""><span>Biblioteca</span></button></li>
+      <li><button class="item" data-view="ideias" title="Gerador de ideias (em breve)"><img class="ic" id="ic-ideias" alt=""><span class="rot"><span class="nome">Gerador de ideias</span><span class="breve">em breve</span></span></button></li>
+      <li><button class="item" data-view="carrossel" title="Gerador de Carrossel"><img class="ic" id="ic-carrossel" alt=""><span class="rot"><span class="nome">Gerador de Carrossel</span></span></button></li>
+      <li><button class="item" data-view="biblioteca" title="Biblioteca"><img class="ic" id="ic-biblioteca" alt=""><span class="rot"><span class="nome">Biblioteca</span></span></button></li>
     </ul>
+    <div class="puxador" id="puxador" role="separator" aria-orientation="vertical" tabindex="0"
+         aria-label="Largura da barra lateral" aria-valuemin="208" aria-valuemax="420" aria-valuenow="272"
+         title="Arraste para mudar a largura &middot; dois cliques volta ao padr&atilde;o"></div>
   </nav>
 
   <main class="conteudo">
@@ -2015,6 +2065,93 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     if (v === 'carrossel') pinta();
     if (v === 'biblioteca' || v === 'home') pintaGaleria(v === 'home' ? 'galeria-home' : 'galeria');
   }
+
+  /* ---------- barra lateral: largura ajustavel e recolhimento ----------
+     A largura vive numa variavel de CSS e fica guardada no navegador, entao
+     cada pessoa reabre a plataforma do jeito que deixou. */
+  var LAT_MIN = 208, LAT_MAX = 420, LAT_PADRAO = 272;
+  var lateral = $('lateral'), puxador = $('puxador'), btnLateral = $('btn-lateral');
+  var largura = LAT_PADRAO, colapsada = false, tempoPalco = 0;
+
+  /* Em tela estreita a barra nao pode comer o palco: o teto cai para 34% da
+     janela. So que esse teto e circunstancial — a preferencia de quem usa fica
+     guardada inteira em `largura` e volta sozinha quando a janela cresce. */
+  function tetoLargura() {
+    var w = window.innerWidth || 0;
+    if (w < 700) return LAT_MAX;   /* janela minuscula, ou ainda sem medida */
+    var t = Math.min(LAT_MAX, Math.round(w * 0.34));
+    return t < LAT_MIN ? LAT_MIN : t;
+  }
+  function limiteLargura(v) {
+    v = +v; if (!isFinite(v)) v = LAT_PADRAO;
+    var teto = tetoLargura();
+    return v < LAT_MIN ? LAT_MIN : (v > teto ? teto : Math.round(v));
+  }
+  function aplicaLateral() {
+    var aplicada = limiteLargura(largura);
+    document.documentElement.style.setProperty('--larg-lateral', aplicada + 'px');
+    lateral.dataset.colapsada = colapsada ? '1' : '0';
+    puxador.setAttribute('aria-valuenow', aplicada);
+    puxador.setAttribute('aria-valuemax', tetoLargura());
+    btnLateral.setAttribute('aria-expanded', colapsada ? 'false' : 'true');
+    btnLateral.setAttribute('aria-label', colapsada ? 'Abrir barra lateral' : 'Recolher barra lateral');
+    btnLateral.title = colapsada ? 'Abrir a barra' : 'Recolher a barra (só os ícones)';
+  }
+  function guardaLateral() {
+    try { localStorage.setItem('sd-lateral', JSON.stringify({ w: largura, c: colapsada })); }
+    catch (e) {}
+  }
+  /* o palco mede a largura livre: refaz o enquadramento sem travar o arrasto */
+  function refazPalco() {
+    if (viewAtual !== 'carrossel') return;
+    clearTimeout(tempoPalco);
+    tempoPalco = setTimeout(pintaPalco, 60);
+  }
+
+  (function () {
+    var g = null;
+    try { g = JSON.parse(localStorage.getItem('sd-lateral') || 'null'); } catch (e) {}
+    if (g) { largura = limiteLargura(g.w); colapsada = !!g.c; }
+    aplicaLateral();
+    /* so depois do primeiro desenho a largura passa a animar */
+    setTimeout(function () { lateral.dataset.pronta = '1'; }, 0);
+  })();
+
+  puxador.addEventListener('pointerdown', function (ev) {
+    if (colapsada || ev.button) return;
+    ev.preventDefault();
+    var x0 = ev.clientX, w0 = largura;
+    lateral.dataset.arrastando = '1';
+    puxador.setPointerCapture(ev.pointerId);
+    var move = function (e) { largura = limiteLargura(w0 + e.clientX - x0); aplicaLateral(); refazPalco(); };
+    var fim = function () {
+      lateral.removeAttribute('data-arrastando');
+      puxador.removeEventListener('pointermove', move);
+      puxador.removeEventListener('pointerup', fim);
+      puxador.removeEventListener('pointercancel', fim);
+      guardaLateral(); refazPalco();
+    };
+    puxador.addEventListener('pointermove', move);
+    puxador.addEventListener('pointerup', fim);
+    puxador.addEventListener('pointercancel', fim);
+  });
+  puxador.addEventListener('dblclick', function () {
+    largura = LAT_PADRAO; aplicaLateral(); guardaLateral(); refazPalco();
+  });
+  puxador.addEventListener('keydown', function (ev) {
+    var passo = ev.key === 'ArrowLeft' ? -16 : (ev.key === 'ArrowRight' ? 16 : 0);
+    if (!passo) return;
+    ev.preventDefault();
+    largura = limiteLargura(largura + passo); aplicaLateral(); guardaLateral(); refazPalco();
+  });
+
+  /* redimensionar a janela reaplica o teto, mas nao reescreve a preferencia */
+  window.addEventListener('resize', aplicaLateral);
+
+  btnLateral.addEventListener('click', function () {
+    colapsada = !colapsada; aplicaLateral(); guardaLateral();
+    setTimeout(refazPalco, 200);   /* depois da transicao de largura */
+  });
 
   /* ---------- biblioteca: guarda no proprio navegador ---------- */
   var BD = null;
