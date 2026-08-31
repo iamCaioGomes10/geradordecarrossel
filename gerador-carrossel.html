@@ -1619,7 +1619,15 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   }
 
   /* ---------- eventos ---------- */
+  /* o app nunca fica sem lamina: a capa do perfil ativo e o ponto de partida */
+  function comecoLimpo() {
+    var kCapa = Object.keys(tipos())[0];
+    slides = [blank(kCapa)];
+    foco = 0; sel = 'titulo';
+  }
+
   function aplicaMarca() {
+    if (!slides.length) { comecoLimpo(); pinta(); return; }
     var validos = Object.keys(tipos());
     slides.forEach(function (s) { if (validos.indexOf(s.type) < 0) s.type = tipoPadrao(); });
     sel = null; pinta();
@@ -1658,7 +1666,10 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       slides.splice(foco + 1, 0, c); foco++; pinta(); return;
     }
     if (ev.target.closest('#del')) {
-      slides.splice(foco, 1); if (foco >= slides.length) foco = slides.length - 1; pinta(); return;
+      slides.splice(foco, 1);
+      if (!slides.length) comecoLimpo();
+      else if (foco >= slides.length) foco = slides.length - 1;
+      pinta(); return;
     }
     if (ev.target.closest('#esq') && foco > 0) {
       slides.splice(foco - 1, 0, slides.splice(foco, 1)[0]); foco--; pinta(); return;
@@ -1686,7 +1697,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
         bt.textContent = 'Confirmar?'; return;
       }
       clearTimeout(bt._armado); bt._armado = null; bt.textContent = 'Limpar tudo';
-      $('bulk').value = ''; slides = []; foco = 0; sel = null; $('cortina').hidden = true; pinta(); return;
+      $('bulk').value = ''; comecoLimpo(); $('cortina').hidden = true; pinta(); return;
     }
   });
 
@@ -1747,7 +1758,10 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     opts.disc = '⚠️ Este conteúdo não é uma recomendação de investimento.';
     $('dica-colar').innerHTML = 'A primeira linha vira o título da capa. Parágrafos separados por linha em branco viram as lâminas seguintes.';
     if (!HAS_LS) { $('fontstat').hidden = false; $('fontstat').textContent = 'aviso: navegador sem letter-spacing em canvas'; }
+    comecoLimpo();
     pinta();
+    /* a proxima acao e escrever o titulo da capa: deixa o cursor la */
+    var ta = $('txt'); if (ta) ta.focus();
     window.__render = render; window.__slides = function () { return slides; };
     window.__blank = blank; window.__campoEm = campoEm; window.__tipos = tipos;
     window.__setMarca = function (m) { marca = m; aplicaMarca(); };

@@ -9,8 +9,12 @@ Seis perfis: **@ProfessorBaroni**, **@suno**, **@tiagogreis**, **@sunonoticias**
 Dê **duplo clique em `gerador-carrossel.html`**. Só isso — não precisa instalar nada,
 não precisa de internet. Todo o app (fontes, logo, avatar) está dentro do arquivo.
 
+O app abre já com a **capa** do perfil ativo e o cursor no título — dá para começar a
+escrever sem clicar em nada. Nunca fica sem lâmina: excluir a última ou limpar tudo
+devolve uma capa em branco.
+
 1. Escolha o **perfil** nos chips do topo.
-2. **Colar texto** → cole o carrossel inteiro → **Gerar lâminas**.
+2. Escreva direto na capa, ou use **Colar texto** para gerar o carrossel inteiro de uma vez.
 3. **Clique no texto em cima da própria lâmina** para selecionar o campo. O painel da
    direita passa a editar aquilo, e a arte muda enquanto você digita.
 4. Clique na imagem para abrir zoom e enquadramento, com a prévia do recorte junto.
