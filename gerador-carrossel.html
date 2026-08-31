@@ -2222,6 +2222,8 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   var assinaturaSalva = null;  /* estado gravado por ultimo */
   var assinaturaVista = null;  /* estado do tique anterior: e assim que a pausa aparece */
   var gravando = false;
+  var miniBlob = null;         /* ultima miniatura gerada, reaproveitada entre gravacoes */
+  var miniAssin = null;        /* estado da capa quando a miniatura foi feita */
 
   /* Resumo leve do documento. Entra tudo que muda a arte, menos os bytes das
      fotos — o nome do arquivo e o enquadramento ja denunciam a troca. */
@@ -2232,16 +2234,25 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
                 l.zoom, l.fx, l.fy, l.img ? 1 : 0].join('\u0001');
       })]);
   }
+  /* so o que muda a miniatura da biblioteca: a primeira lamina */
+  function assinaturaCapa() {
+    var l = slides[0];
+    if (!l) return '';
+    return JSON.stringify([marca, opts.disc, opts.discOn, opts.autofit, opts.topAlign,
+      l.type, l.title, l.sub, l.body, l.numero, l.imgName, l.zoom, l.fx, l.fy, l.img ? 1 : 0]);
+  }
   function documentoVazio() {
     return !slides.some(function (l) {
       return ((l.title || '') + (l.sub || '') + (l.body || '') + (l.numero || '')).trim() || l.img;
     });
   }
 
-  function gravaPeca(explicita) {
-    if (!slides.length) return Promise.resolve(false);
-    if (explicita) pecaExplicita = true;
-    var assin = assinatura();
+  /* A miniatura e a parte cara da gravacao: obriga a redesenhar a lamina
+     inteira em 1080x1350 e comprimir. O registro em si custa 1 a 3 ms. Por
+     isso o texto e gravado a todo momento e a miniatura so e refeita quando
+     vale a pena. */
+  function fazMini() {
+    var assinCapa = assinaturaCapa();
     var cv = document.createElement('canvas');
     render(cv, marca, slides[0], cfg());
     var mini = document.createElement('canvas');
@@ -2249,6 +2260,19 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     mini.getContext('2d').drawImage(cv, 0, 0, 324, 405);
     return new Promise(function (res) {
       mini.toBlob(function (capa) {
+        miniBlob = capa; miniAssin = assinCapa;
+        res(capa);
+      }, 'image/jpeg', 0.82);
+    });
+  }
+
+  function gravaPeca(explicita, comMini) {
+    if (!slides.length) return Promise.resolve(false);
+    if (explicita) pecaExplicita = true;
+    var assin = assinatura();
+    if (explicita || !miniBlob) comMini = true;
+    return (comMini ? fazMini() : Promise.resolve(miniBlob)).then(function (capa) {
+      return new Promise(function (res) {
         if (!pecaAtual) pecaAtual = 'p' + Date.now();
         var peca = {
           id: pecaAtual,
@@ -2268,7 +2292,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
           /* comLoja devolve null quando a transacao falha — cota estourada,
              navegador em modo restrito. Melhor dizer do que fingir que salvou. */
           if (!chave) {
-            assinaturaSalva = assin;   /* nao insiste a cada pausa */
+            assinaturaSalva = assin;   /* nao insiste a cada tique */
             toast('Não consegui salvar: o armazenamento do navegador está cheio.');
             return res(false);
           }
@@ -2276,7 +2300,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
           if (viewAtual === 'home' || viewAtual === 'biblioteca') pintaGaleria();
           res(true);
         });
-      }, 'image/jpeg', 0.82);
+      });
     });
   }
 
@@ -2285,23 +2309,38 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     gravaPeca(true).then(function (ok) { if (ok) toast('Salvo na biblioteca.'); });
   }
 
-  /* Grava na pausa, nao na tecla: so quando o documento passa um tique inteiro
-     sem mudar. Enquanto a pessoa digita nada e escrito no disco. */
+  /* Grava a cada 250 ms enquanto houver mudanca — nao espera a pessoa parar de
+     digitar. O que fica para a pausa e so a miniatura, que exige redesenhar a
+     lamina inteira; o texto, que e o trabalho de verdade, vai na hora.
+     Janela maxima de perda: um quarto de segundo. */
+  var PASSO = 250;
   setInterval(function () {
     if (gravando || !slides.length) return;
     var a = assinatura();
-    if (a === assinaturaSalva) { assinaturaVista = a; return; }
-    if (a !== assinaturaVista) { assinaturaVista = a; return; }
-    if (documentoVazio()) { assinaturaSalva = a; return; }
+    var fim = function () { gravando = false; };
+
+    if (a === assinaturaSalva) {
+      assinaturaVista = a;
+      /* texto ja gravado, mas a capa mudou depois da ultima miniatura: e aqui,
+         com a mao parada, que a miniatura da biblioteca se acerta */
+      if (pecaAtual && miniBlob && assinaturaCapa() !== miniAssin) {
+        gravando = true;
+        gravaPeca(false, true).then(fim, fim);
+      }
+      return;
+    }
+    if (documentoVazio()) { assinaturaSalva = assinaturaVista = a; return; }
+
+    var parou = (a === assinaturaVista);   /* passou um tique inteiro igual */
+    assinaturaVista = a;
     gravando = true;
-    gravaPeca(false).then(function () { gravando = false; },
-                          function () { gravando = false; });
-  }, 1200);
+    gravaPeca(false, parou).then(fim, fim);   /* miniatura so quando a mao para */
+  }, PASSO);
 
   /* fechou a aba no meio da frase: ultima tentativa, sem promessa de sucesso */
   window.addEventListener('pagehide', function () {
     if (!slides.length || documentoVazio() || assinatura() === assinaturaSalva) return;
-    gravaPeca(false);
+    gravaPeca(false, false);
   });
 
   function listarPecas() {
@@ -2378,6 +2417,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
         foco = 0; sel = null;
         abrir('carrossel');
         assinaturaSalva = assinaturaVista = assinatura();
+        miniBlob = p.capa; miniAssin = assinaturaCapa();
         toast('Aberto: ' + p.titulo);
       });
     });
@@ -2397,6 +2437,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
            gravado, senao a guarda automatica a ressuscita em 1,2s */
         pecaAtual = null; pecaExplicita = false;
         assinaturaSalva = assinaturaVista = assinatura();
+        miniBlob = null; miniAssin = null;
       }
       comLoja('readwrite', function (st) { return st.delete(x.dataset.apagar); })
         .then(function () { pintaGaleria(); toast('Removido da biblioteca.'); });
