@@ -1740,28 +1740,9 @@
     });
   }
 
-  /* ---------- o prompt escolhe o perfil e leva o assunto ---------- */
-  var APELIDOS = {
-    baroni: ['baroni', 'professor baroni', 'professorbaroni'],
-    suno: ['suno'], tiago: ['tiago', 'tiago reis', 'tiagogreis', 'tiagoreis'],
-    noticias: ['noticias', 'notícias', 'suno noticias', 'suno notícias', 'sunonoticias'],
-    consultoria: ['consultoria', 'suno consultoria', 'sunoconsultoria'],
-    funds: ['funds', 'funds explorer', 'fundsexplorer']
-  };
-  function lerPrompt(txt) {
-    var baixo = txt.toLowerCase();
-    var achado = null, tamanho = 0;
-    Object.keys(APELIDOS).forEach(function (k) {
-      APELIDOS[k].forEach(function (a) {
-        if (baixo.indexOf(a) >= 0 && a.length > tamanho) { achado = k; tamanho = a.length; }
-      });
-    });
-    var m = txt.match(/\bsobre\s+(.+)$/i);
-    return { marca: achado, assunto: m ? m[1].trim().replace(/[.\s]+$/, '') : '' };
-  }
 
   document.addEventListener('click', function (ev) {
-    var it = ev.target.closest('.item');
+    var it = ev.target.closest('.item, .atalho');
     if (it) { abrir(it.dataset.view); return; }
     if (ev.target.closest('#ir-home')) { abrir('home'); return; }
     if (ev.target.closest('#btn-salvar')) { salvarPeca(); return; }
@@ -1776,19 +1757,7 @@
     if (pc) { abrirPeca(pc.dataset.id); return; }
   });
 
-  document.addEventListener('submit', function (ev) {
-    if (ev.target.id !== 'form-prompt') return;
-    ev.preventDefault();
-    var lido = lerPrompt($('prompt').value.trim());
-    if (lido.marca) marca = lido.marca;
-    comecoLimpo();
-    if (lido.assunto) slides[0].title = lido.assunto.charAt(0).toUpperCase() + lido.assunto.slice(1);
-    abrir('carrossel');
-    var ta = $('txt'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
-    toast(lido.marca ? 'Perfil: ' + txtDe(MARCAS[marca].arroba) : 'Escolha o perfil na barra de cima.');
-  });
-
-  window.__abrir = abrir; window.__lerPrompt = lerPrompt;
+  window.__abrir = abrir;
   window.__salvarPeca = salvarPeca; window.__listarPecas = listarPecas;
 
 })();

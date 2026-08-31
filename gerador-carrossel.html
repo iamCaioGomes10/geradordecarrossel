@@ -37,6 +37,8 @@ body{background:#000}
   border-left:2px solid transparent;
 }
 .item .ic{width:30px;height:30px;flex:none;object-fit:contain;opacity:.82}
+.item:has(.tag-breve){color:#5f5f5f}
+.item:has(.tag-breve) .ic{opacity:.5}
 .item:hover{color:#c8c8c8}
 .item:hover .ic{opacity:1}
 .item[aria-current="page"]{color:#f0f0f0;border-left-color:var(--sd-vermelho);background:rgba(255,255,255,.035)}
@@ -67,6 +69,9 @@ body{background:#000}
   background:linear-gradient(90deg,var(--sd-campo-a),var(--sd-campo-b));
 }
 .prompt:focus-within{border-color:#a9a9a9}
+.prompt[data-breve="1"]{opacity:.62;cursor:default}
+.prompt[data-breve="1"] input{cursor:default}
+.prompt[data-breve="1"] .faisca{opacity:.5}
 .faisca{width:26px;height:26px;flex:none;opacity:.9}
 .prompt input{
   flex:1;min-width:0;background:none;border:0;outline:none;color:#ebebeb;
@@ -79,6 +84,19 @@ body{background:#000}
 }
 .prompt .ir:hover{background:var(--sd-vermelho);color:#fff}
 .nota-prompt{margin:12px 0 0;font-size:12.5px;color:#6d6d6d;text-align:center;max-width:56ch}
+.atalho{
+  background:none;border:0;padding:0;font:inherit;color:#b6b6b6;
+  border-bottom:1px solid #4a4a4a;cursor:pointer;
+}
+.atalho:hover{color:#fff;border-bottom-color:var(--sd-vermelho)}
+
+/* marcador do que ainda nao existe */
+.tag-breve{
+  font-size:10.5px;letter-spacing:.06em;text-transform:lowercase;color:#8a8a8a;
+  border:1px solid #4a4a4a;border-radius:999px;padding:2px 8px;white-space:nowrap;flex:none;
+}
+.item .tag-breve{margin-left:auto;font-size:9.5px;padding:1px 6px}
+.pagina h2 .tag-breve{vertical-align:middle;margin-left:10px;font-size:11px}
 
 .recentes{width:100%;margin-top:62px}
 .rot-recentes{
@@ -277,7 +295,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       <img id="img-marca" alt="Suno Design">
     </button>
     <ul class="menu">
-      <li><button class="item" data-view="ideias"><img class="ic" id="ic-ideias" alt=""><span>Gerador de ideias</span></button></li>
+      <li><button class="item" data-view="ideias"><img class="ic" id="ic-ideias" alt=""><span>Gerador de ideias</span><span class="tag-breve">em breve</span></button></li>
       <li><button class="item" data-view="carrossel"><img class="ic" id="ic-carrossel" alt=""><span>Gerador de Carrossel</span></button></li>
       <li><button class="item" data-view="biblioteca"><img class="ic" id="ic-biblioteca" alt=""><span>Biblioteca</span></button></li>
     </ul>
@@ -292,15 +310,13 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
           <img id="img-marca-sm" alt=""><img id="img-wordmark" alt="Suno Design">
         </div>
         <h1>O que vamos <em>criar</em> hoje?</h1>
-        <form class="prompt" id="form-prompt">
+        <div class="prompt" data-breve="1" aria-disabled="true">
           <img id="img-ai" alt="" class="faisca">
-          <input id="prompt" autocomplete="off"
+          <input id="prompt" autocomplete="off" disabled tabindex="-1"
                  placeholder="Crie um carrossel para o Baroni sobre...">
-          <button class="ir" type="submit" aria-label="Come&ccedil;ar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
-        </form>
-        <p class="nota-prompt">Escolhe o perfil e abre o gerador com o assunto no t&iacute;tulo. Quem escreve o texto ainda &eacute; voc&ecirc;.</p>
+          <span class="tag-breve">em breve</span>
+        </div>
+        <p class="nota-prompt">Enquanto isso, o <button class="atalho" data-view="carrossel">gerador de carrossel</button> j&aacute; funciona.</p>
 
         <div class="recentes">
           <p class="rot-recentes">Criados por &uacute;ltimo</p>
@@ -345,7 +361,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     <!-- ---------- gerador de ideias ---------- -->
     <section class="view" data-view="ideias">
       <div class="pagina">
-        <h2>Gerador de ideias</h2>
+        <h2>Gerador de ideias <span class="tag-breve">em breve</span></h2>
         <p class="sub">Ainda n&atilde;o existe.</p>
         <div class="porvir">
           <p>Escrever pauta a partir de um tema exige chamar um modelo de linguagem, e isso
@@ -2119,28 +2135,9 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     });
   }
 
-  /* ---------- o prompt escolhe o perfil e leva o assunto ---------- */
-  var APELIDOS = {
-    baroni: ['baroni', 'professor baroni', 'professorbaroni'],
-    suno: ['suno'], tiago: ['tiago', 'tiago reis', 'tiagogreis', 'tiagoreis'],
-    noticias: ['noticias', 'notícias', 'suno noticias', 'suno notícias', 'sunonoticias'],
-    consultoria: ['consultoria', 'suno consultoria', 'sunoconsultoria'],
-    funds: ['funds', 'funds explorer', 'fundsexplorer']
-  };
-  function lerPrompt(txt) {
-    var baixo = txt.toLowerCase();
-    var achado = null, tamanho = 0;
-    Object.keys(APELIDOS).forEach(function (k) {
-      APELIDOS[k].forEach(function (a) {
-        if (baixo.indexOf(a) >= 0 && a.length > tamanho) { achado = k; tamanho = a.length; }
-      });
-    });
-    var m = txt.match(/\bsobre\s+(.+)$/i);
-    return { marca: achado, assunto: m ? m[1].trim().replace(/[.\s]+$/, '') : '' };
-  }
 
   document.addEventListener('click', function (ev) {
-    var it = ev.target.closest('.item');
+    var it = ev.target.closest('.item, .atalho');
     if (it) { abrir(it.dataset.view); return; }
     if (ev.target.closest('#ir-home')) { abrir('home'); return; }
     if (ev.target.closest('#btn-salvar')) { salvarPeca(); return; }
@@ -2155,19 +2152,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     if (pc) { abrirPeca(pc.dataset.id); return; }
   });
 
-  document.addEventListener('submit', function (ev) {
-    if (ev.target.id !== 'form-prompt') return;
-    ev.preventDefault();
-    var lido = lerPrompt($('prompt').value.trim());
-    if (lido.marca) marca = lido.marca;
-    comecoLimpo();
-    if (lido.assunto) slides[0].title = lido.assunto.charAt(0).toUpperCase() + lido.assunto.slice(1);
-    abrir('carrossel');
-    var ta = $('txt'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
-    toast(lido.marca ? 'Perfil: ' + txtDe(MARCAS[marca].arroba) : 'Escolha o perfil na barra de cima.');
-  });
-
-  window.__abrir = abrir; window.__lerPrompt = lerPrompt;
+  window.__abrir = abrir;
   window.__salvarPeca = salvarPeca; window.__listarPecas = listarPecas;
 
 })();

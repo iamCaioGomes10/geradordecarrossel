@@ -10,15 +10,15 @@ Seis perfis: **@ProfessorBaroni**, **@suno**, **@tiagogreis**, **@sunonoticias**
 |---|---|
 | Gerador de Carrossel | funciona, seis perfis, exporta PNG e zip |
 | Biblioteca | funciona, mas **só neste navegador** (IndexedDB) — não é compartilhada |
-| Gerador de ideias | não existe |
+| Gerador de ideias | **em breve** — desativado e sinalizado |
+| Campo de prompt da home | **em breve** — desativado e sinalizado |
 
-O campo de prompt da tela inicial **não chama modelo nenhum**: ele lê o perfil e o
-assunto do que você escreveu, abre o gerador nesse perfil e põe o assunto no título da
-capa. Quem escreve o texto ainda é você.
+Os dois dependem da mesma coisa: escrever pauta exige chamar um modelo de linguagem, e a
+chave de API não pode viver numa página estática que qualquer um abre — isso pede um
+back-end. É decisão de infraestrutura, não de interface.
 
-Escrever pauta de verdade exige chamar um modelo de linguagem, e a chave de API não pode
-viver numa página estática que qualquer um abre — isso pede um back-end. É decisão de
-infraestrutura, não de interface.
+Enquanto não existirem, aparecem desativados com a etiqueta `em breve`, em vez de
+prometerem algo que não fazem.
 
 ## Como usar
 

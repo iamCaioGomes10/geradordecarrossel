@@ -15,7 +15,7 @@
       <img id="img-marca" alt="Suno Design">
     </button>
     <ul class="menu">
-      <li><button class="item" data-view="ideias"><img class="ic" id="ic-ideias" alt=""><span>Gerador de ideias</span></button></li>
+      <li><button class="item" data-view="ideias"><img class="ic" id="ic-ideias" alt=""><span>Gerador de ideias</span><span class="tag-breve">em breve</span></button></li>
       <li><button class="item" data-view="carrossel"><img class="ic" id="ic-carrossel" alt=""><span>Gerador de Carrossel</span></button></li>
       <li><button class="item" data-view="biblioteca"><img class="ic" id="ic-biblioteca" alt=""><span>Biblioteca</span></button></li>
     </ul>
@@ -30,15 +30,13 @@
           <img id="img-marca-sm" alt=""><img id="img-wordmark" alt="Suno Design">
         </div>
         <h1>O que vamos <em>criar</em> hoje?</h1>
-        <form class="prompt" id="form-prompt">
+        <div class="prompt" data-breve="1" aria-disabled="true">
           <img id="img-ai" alt="" class="faisca">
-          <input id="prompt" autocomplete="off"
+          <input id="prompt" autocomplete="off" disabled tabindex="-1"
                  placeholder="Crie um carrossel para o Baroni sobre...">
-          <button class="ir" type="submit" aria-label="Come&ccedil;ar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
-        </form>
-        <p class="nota-prompt">Escolhe o perfil e abre o gerador com o assunto no t&iacute;tulo. Quem escreve o texto ainda &eacute; voc&ecirc;.</p>
+          <span class="tag-breve">em breve</span>
+        </div>
+        <p class="nota-prompt">Enquanto isso, o <button class="atalho" data-view="carrossel">gerador de carrossel</button> j&aacute; funciona.</p>
 
         <div class="recentes">
           <p class="rot-recentes">Criados por &uacute;ltimo</p>
@@ -83,7 +81,7 @@
     <!-- ---------- gerador de ideias ---------- -->
     <section class="view" data-view="ideias">
       <div class="pagina">
-        <h2>Gerador de ideias</h2>
+        <h2>Gerador de ideias <span class="tag-breve">em breve</span></h2>
         <p class="sub">Ainda n&atilde;o existe.</p>
         <div class="porvir">
           <p>Escrever pauta a partir de um tema exige chamar um modelo de linguagem, e isso
