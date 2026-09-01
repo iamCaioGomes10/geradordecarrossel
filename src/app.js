@@ -146,7 +146,24 @@
   var GUIA = { titulo: 'insira o título', sub: 'insira o subtítulo', corpo: 'insira o texto' };
   var GUIAS = true;
 
+  /* ajustes manuais da lamina que esta sendo desenhada (definidos por render):
+     fonte e largura por campo, como fracao do que o layout projetou */
+  var AJUSTES = null;
+  function comAjuste(spec, campo) {
+    if (!AJUSTES || !campo) return spec;
+    var f = (AJUSTES.fonte || {})[campo], w = (AJUSTES.larg || {})[campo];
+    if (!f && !w) return spec;
+    var novo = Object.assign({}, spec);
+    if (f && f !== 1) {
+      novo.size = spec.size * f;
+      novo.ls = spec.ls * f;      /* o espacamento do Figma e em px: acompanha */
+    }
+    if (w && w !== 1) novo.w = spec.w * w;
+    return novo;
+  }
+
   function layout(ctx, text, spec, campo) {
+    spec = comAjuste(spec, campo);
     var guia = false;
     if (GUIAS && campo && GUIA[campo] && !String(text || '').trim()) {
       text = GUIA[campo]; guia = true;
@@ -1024,6 +1041,7 @@
     canvas.width = W; canvas.height = H;
     ctx.clearRect(0, 0, W, H); ctx.textAlign = 'left';
     GUIAS = cfg.guias !== false;
+    AJUSTES = s;
     REGIOES = []; ESTOUROU = null;
     var M = MARCAS[marca];
     var fn = M.render[s.type] || M.render[Object.keys(M.render)[0]];
@@ -1134,7 +1152,16 @@
   }
   function blank(type) {
     return { type: type || tipoPadrao(), title: '', sub: '', body: '', numero: '',
-             img: null, imgName: '', zoom: 1, fx: 0.5, fy: 0.5 };
+             img: null, imgName: '', zoom: 1, fx: 0.5, fy: 0.5,
+             fonte: {}, larg: {} };
+  }
+  /* copia de lamina que nao compartilha os mapas de ajuste com a original */
+  function clonaLamina(l) {
+    var c = Object.assign({}, l);
+    delete c._regioes; delete c._estouro;
+    c.fonte = Object.assign({}, l.fonte || {});
+    c.larg = Object.assign({}, l.larg || {});
+    return c;
   }
   function txtDe(html) { var d = document.createElement('div'); d.innerHTML = html; return d.textContent; }
   function labelDe(t) { return txtDe((tipos()[t] || {}).label || t); }
@@ -1187,6 +1214,12 @@
         var m = document.createElement('div'); m.className = 'marcador';
         m.style.left = (r.x * k) + 'px'; m.style.top = (r.y * k) + 'px';
         m.style.width = (r.w * k) + 'px'; m.style.height = (r.h * k) + 'px';
+        if (sel !== 'imagem') {
+          var pg = document.createElement('span');
+          pg.className = 'pega';
+          pg.title = 'Arraste para limitar até onde o texto vai';
+          m.appendChild(pg);
+        }
         env.appendChild(m);
       });
       var s2 = document.createElement('div'); s2.className = 'selo';
@@ -1301,6 +1334,12 @@
         '<textarea class="campo" id="txt" rows="' + (sel === 'corpo' ? 8 : 3) + '">' +
         txtDe(lam[CHAVE[sel]] || '').replace(/[&<>]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]; }) +
         '</textarea><p class="ajuda">' + M.dica + '</p></div>');
+      var pf = Math.round(((lam.fonte || {})[sel] || 1) * 100);
+      var pl = Math.round(((lam.larg || {})[sel] || 1) * 100);
+      h.push(ctrl('fonte', 'Tamanho da fonte', pf, 60, 150, pf + '%', false));
+      h.push(ctrl('largura', 'Largura do texto', pl, 35, 100, pl + '%', false));
+      if (pf !== 100 || pl !== 100)
+        h.push('<div class="acoes"><button class="btn2" id="reset-ajuste">Voltar ao padrão do layout</button></div>');
     }
 
     h.push('<div id="aviso-slot"></div>');
@@ -1362,6 +1401,24 @@
     $('rot-exportar').textContent = slides.length > 1 ? 'Exportar' : 'Exportar';
     pintaPerfis(); pintaPalco(); pintaEsteira(); pintaPainel();
   }
+  /* durante o arrasto o palco nao pode ser reconstruido: o elemento que esta
+     sendo arrastado sumiria no meio do gesto. Aqui so a arte e redesenhada e
+     os marcadores sao reposicionados. */
+  function redesenhaFoco() {
+    var d = $('palco').querySelector('.lam[data-foco="1"]');
+    if (!d) return;
+    var cv = d.querySelector('canvas'); if (!cv) return;
+    var k = parseFloat(cv.style.width) / W;
+    render(cv, marca, slides[foco], cfg());
+    var regs = (slides[foco]._regioes || []).filter(function (r) { return r.campo === sel; });
+    d.querySelectorAll('.marcador').forEach(function (m, i) {
+      var r = regs[i]; if (!r) return;
+      m.style.left = (r.x * k) + 'px'; m.style.top = (r.y * k) + 'px';
+      m.style.width = (r.w * k) + 'px'; m.style.height = (r.h * k) + 'px';
+    });
+    marcaEstouro();
+  }
+
   /* so o palco e o quadro em foco, para digitar sem engasgo */
   function pintaLeve() {
     pintaPalco();
@@ -1498,8 +1555,7 @@
       slides.push(blank()); foco = slides.length - 1; sel = null; pinta(); return;
     }
     if (ev.target.closest('#dup')) {
-      var c = Object.assign({}, slides[foco]); delete c._regioes; delete c._estouro;
-      slides.splice(foco + 1, 0, c); foco++; pinta(); return;
+      slides.splice(foco + 1, 0, clonaLamina(slides[foco])); foco++; pinta(); return;
     }
     if (ev.target.closest('#del')) {
       marcaVersao('antes de apagar lâmina');
@@ -1513,6 +1569,12 @@
     }
     if (ev.target.closest('#dir') && foco < slides.length - 1) {
       slides.splice(foco + 1, 0, slides.splice(foco, 1)[0]); foco++; pinta(); return;
+    }
+    if (ev.target.closest('#reset-ajuste')) {
+      var lm = slides[foco];
+      if (lm.fonte) delete lm.fonte[sel];
+      if (lm.larg) delete lm.larg[sel];
+      pinta(); return;
     }
     if (ev.target.closest('#semimg')) { slides[foco].img = null; slides[foco].imgName = ''; pinta(); return; }
     if (ev.target.closest('#dl-one')) { baixarUma(foco); return; }
@@ -1547,6 +1609,16 @@
     var lam = slides[foco];
     if (id === 'txt') { lam[CHAVE[sel]] = ev.target.value; pintaLeve(); return; }
     if (id === 'num') { lam.numero = ev.target.value; pintaLeve(); return; }
+    if (id === 'fonte' || id === 'largura') {
+      if (!sel) return;
+      var mapa = (id === 'fonte') ? 'fonte' : 'larg';
+      if (!lam[mapa]) lam[mapa] = {};
+      lam[mapa][sel] = ev.target.value / 100;
+      var rotulo = ev.target.closest('.ctrl').querySelector('.lin span:last-child');
+      if (rotulo) rotulo.textContent = ev.target.value + '%';
+      pintaLeve();
+      return;
+    }
     if (id === 'zoom' || id === 'fx' || id === 'fy') {
       if (id === 'zoom') lam.zoom = ev.target.value / 100; else lam[id] = ev.target.value / 100;
       pintaLeve(); pintaRecorte();
@@ -1586,6 +1658,50 @@
     if (ev.key === 'ArrowLeft' && foco > 0) { foco--; pinta(); }
     if (ev.key === 'ArrowRight' && foco < slides.length - 1) { foco++; pinta(); }
   });
+
+  /* ---------- arrastar a borda do texto ---------- */
+  $('palco').addEventListener('pointerdown', function (ev) {
+    var pega = ev.target.closest('.pega');
+    if (!pega || !sel || !slides[foco]) return;
+    var lam = slides[foco];
+    var reg = (lam._regioes || []).filter(function (r) { return r.campo === sel; })[0];
+    var cv = $('palco').querySelector('.lam[data-foco="1"] canvas');
+    if (!reg || !cv) return;
+    ev.preventDefault();
+    marcaVersaoLeve('antes de mudar a largura do texto');
+    var k = parseFloat(cv.style.width) / W;      /* palco -> coordenadas da arte */
+    var x0 = ev.clientX, base = reg.w, fator0 = (lam.larg || {})[sel] || 1;
+    pega.setPointerCapture(ev.pointerId);
+    document.body.dataset.arrastandoTexto = '1';
+    var move = function (e) {
+      var nova = base + (e.clientX - x0) / k;
+      var f = fator0 * (nova / base);
+      f = Math.max(0.35, Math.min(1, f));
+      if (!lam.larg) lam.larg = {};
+      lam.larg[sel] = f;
+      var r = $('largura');
+      if (r) {
+        r.value = Math.round(f * 100);
+        var rot = r.closest('.ctrl').querySelector('.lin span:last-child');
+        if (rot) rot.textContent = Math.round(f * 100) + '%';
+      }
+      redesenhaFoco();
+    };
+    var fim = function () {
+      pega.removeEventListener('pointermove', move);
+      pega.removeEventListener('pointerup', fim);
+      pega.removeEventListener('pointercancel', fim);
+      document.body.removeAttribute('data-arrastando-texto');
+      pinta();
+    };
+    pega.addEventListener('pointermove', move);
+    pega.addEventListener('pointerup', fim);
+    pega.addEventListener('pointercancel', fim);
+  });
+  /* o clique que fecha o arrasto nao pode virar selecao de campo */
+  $('palco').addEventListener('click', function (ev) {
+    if (ev.target.closest('.pega')) { ev.stopPropagation(); ev.preventDefault(); }
+  }, true);
 
   var reTempo;
   window.addEventListener('resize', function () {
@@ -1665,6 +1781,14 @@
     return h.toString(36) + '-' + t.length.toString(36);
   }
 
+  /* Para gestos que a pessoa repete — arrastar a borda do texto, por exemplo —
+     marcar um ponto por gesto entupiria o historico e empurraria para fora os
+     pontos que interessam. Aqui um ponto so nasce se o anterior ja tem idade. */
+  function marcaVersaoLeve(motivo) {
+    if (Date.now() - ultimaVersao < 30000) return Promise.resolve(false);
+    return marcaVersao(motivo);
+  }
+
   function marcaVersao(motivo) {
     if (!slides.length || documentoVazio()) return Promise.resolve(false);
     if (!pecaAtual) pecaAtual = 'p' + Date.now();
@@ -1676,7 +1800,8 @@
         fotos.push({ id: ref, dados: l.img.src });
       }
       return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
-               zoom: l.zoom, fx: l.fx, fy: l.fy, imgRef: ref, imgName: l.imgName };
+               zoom: l.zoom, fx: l.fx, fy: l.fy, imgRef: ref, imgName: l.imgName,
+               fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
     });
     var v = {
       id: idPeca + ':' + Date.now(),
@@ -1765,7 +1890,8 @@
           return { type: l.type, title: l.title || '', sub: l.sub || '', body: l.body || '',
                    numero: l.numero || '', zoom: l.zoom || 1,
                    fx: l.fx == null ? .5 : l.fx, fy: l.fy == null ? .5 : l.fy,
-                   img: imgs[i], imgName: l.imgName || '' };
+                   img: imgs[i], imgName: l.imgName || '',
+                   fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
         });
         foco = 0; sel = null;
         miniBlob = null; miniAssin = null;   /* a capa mudou */
@@ -1970,11 +2096,20 @@
 
   /* Resumo leve do documento. Entra tudo que muda a arte, menos os bytes das
      fotos — o nome do arquivo e o enquadramento ja denunciam a troca. */
+  /* ordem fixa: JSON.stringify de um objeto depende da ordem de insercao,
+     e ai duas laminas iguais dariam assinaturas diferentes */
+  function ajusteStr(l) {
+    var f = l.fonte || {}, w = l.larg || {};
+    return ['titulo', 'sub', 'corpo'].map(function (c) {
+      return (f[c] || 1) + '/' + (w[c] || 1);
+    }).join(',');
+  }
+
   function assinatura() {
     return JSON.stringify([marca, opts.disc, opts.discOn, opts.autofit, opts.topAlign,
       slides.map(function (l) {
         return [l.type, l.title, l.sub, l.body, l.numero, l.imgName,
-                l.zoom, l.fx, l.fy, l.img ? 1 : 0].join('\u0001');
+                l.zoom, l.fx, l.fy, l.img ? 1 : 0, ajusteStr(l)].join('\u0001');
       })]);
   }
   /* so o que muda a miniatura da biblioteca: a primeira lamina */
@@ -1982,7 +2117,8 @@
     var l = slides[0];
     if (!l) return '';
     return JSON.stringify([marca, opts.disc, opts.discOn, opts.autofit, opts.topAlign,
-      l.type, l.title, l.sub, l.body, l.numero, l.imgName, l.zoom, l.fx, l.fy, l.img ? 1 : 0]);
+      l.type, l.title, l.sub, l.body, l.numero, l.imgName, l.zoom, l.fx, l.fy,
+      l.img ? 1 : 0, ajusteStr(l)]);
   }
   function documentoVazio() {
     return !slides.some(function (l) {
@@ -2028,7 +2164,9 @@
           capa: capa,
           laminas: slides.map(function (l) {
             return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
-                     zoom: l.zoom, fx: l.fx, fy: l.fy, img: l.img ? l.img.src : null, imgName: l.imgName };
+                     zoom: l.zoom, fx: l.fx, fy: l.fy, img: l.img ? l.img.src : null,
+                     imgName: l.imgName,
+                     fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
           })
         };
         comLoja('readwrite', function (st) { return st.put(peca); }).then(function (chave) {
@@ -2172,7 +2310,8 @@
         slides = p.laminas.map(function (l, i) {
           return { type: l.type, title: l.title || '', sub: l.sub || '', body: l.body || '',
                    numero: l.numero || '', zoom: l.zoom || 1, fx: l.fx == null ? .5 : l.fx,
-                   fy: l.fy == null ? .5 : l.fy, img: carregadas[i], imgName: l.imgName || '' };
+                   fy: l.fy == null ? .5 : l.fy, img: carregadas[i], imgName: l.imgName || '',
+                   fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
         });
         if (p.opts) {
           opts.disc = p.opts.disc; opts.discOn = p.opts.discOn;
