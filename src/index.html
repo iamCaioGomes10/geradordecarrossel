@@ -62,6 +62,7 @@
         <div class="top">
           <div class="perfis" id="perfis" role="group" aria-label="Perfil"></div>
           <span class="conta mono" id="conta"></span>
+          <button class="btn" id="btn-versoes">Vers&otilde;es</button>
           <button class="btn" id="btn-salvar">Salvar na biblioteca</button>
           <button class="btn" id="btn-colar">Colar texto</button>
           <button class="btn primary" id="dl-all">
@@ -104,6 +105,18 @@
     </section>
 
   </main>
+</div>
+
+<div class="cortina" id="cortina-versoes" hidden>
+  <div class="folha" role="dialog" aria-modal="true" aria-labelledby="tit-versoes">
+    <h2 id="tit-versoes">Vers&otilde;es deste carrossel</h2>
+    <p class="dica">Guardadas neste navegador. Um ponto &eacute; criado antes de cada a&ccedil;&atilde;o que reescreve o carrossel, e de tempos em tempos enquanto voc&ecirc; edita. Restaurar tamb&eacute;m vira ponto, ent&atilde;o d&aacute; para voltar atr&aacute;s.</p>
+    <div class="versoes" id="lista-versoes"></div>
+    <div class="folha-pe">
+      <span style="flex:1"></span>
+      <button class="btn ghost" id="fechar-versoes">Fechar</button>
+    </div>
+  </div>
 </div>
 
 <div class="cortina" id="cortina" hidden>

@@ -1476,6 +1476,7 @@
   document.addEventListener('click', function (ev) {
     var b;
     if ((b = ev.target.closest('[data-marca]'))) {
+      marcaVersao('antes de trocar de perfil');
       marca = b.dataset.marca; aplicaMarca();
       toast('Perfil: ' + txtDe(MARCAS[marca].arroba || MARCAS[marca].nome)); return;
     }
@@ -1501,6 +1502,7 @@
       slides.splice(foco + 1, 0, c); foco++; pinta(); return;
     }
     if (ev.target.closest('#del')) {
+      marcaVersao('antes de apagar lâmina');
       slides.splice(foco, 1);
       if (!slides.length) comecoLimpo();
       else if (foco >= slides.length) foco = slides.length - 1;
@@ -1521,6 +1523,7 @@
     if (ev.target.closest('#bulk-go')) {
       var raw = $('bulk').value.trim();
       if (!raw) { toast('Cole algum texto primeiro.'); return; }
+      marcaVersao('antes de colar texto');
       slides = autoSplit(raw); foco = 0; sel = null;
       $('cortina').hidden = true; pinta();
       toast(slides.length + ' lâminas geradas.'); return;
@@ -1532,6 +1535,7 @@
         bt.textContent = 'Confirmar?'; return;
       }
       clearTimeout(bt._armado); bt._armado = null; bt.textContent = 'Limpar tudo';
+      marcaVersao('antes de limpar tudo');
       $('bulk').value = ''; comecoLimpo(); $('cortina').hidden = true; pinta(); return;
     }
   });
@@ -1642,6 +1646,192 @@
     if (v === 'biblioteca' || v === 'home') pintaGaleria(v === 'home' ? 'galeria-home' : 'galeria');
   }
 
+  /* ---------- historico de versoes ----------
+     A guarda automatica grava por cima do mesmo registro a cada 250 ms. Isso
+     protege contra fechar a aba, mas nao protege contra uma acao que reescreve
+     o carrossel inteiro: quando isso acontece, a versao boa ja foi sobrescrita.
+     Aqui ficam os pontos de retorno.
+
+     As fotos nao entram na versao: elas vao para uma loja a parte, com id
+     derivado do conteudo, e a versao guarda so a referencia. Assim dez versoes
+     do mesmo carrossel com a mesma foto guardam a foto uma vez. */
+  var VERSOES_MAX = 15;
+  var PAUSA_VERSAO = 90000;    /* de tempos em tempos, enquanto a pessoa edita */
+  var ultimaVersao = 0, assinaturaVersao = null, versionando = false;
+
+  function hashTexto(t) {
+    var h = 5381;
+    for (var i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
+    return h.toString(36) + '-' + t.length.toString(36);
+  }
+
+  function marcaVersao(motivo) {
+    if (!slides.length || documentoVazio()) return Promise.resolve(false);
+    if (!pecaAtual) pecaAtual = 'p' + Date.now();
+    var idPeca = pecaAtual, fotos = [];
+    var laminas = slides.map(function (l) {
+      var ref = null;
+      if (l.img && l.img.src) {
+        ref = idPeca + ':' + hashTexto(l.img.src);
+        fotos.push({ id: ref, dados: l.img.src });
+      }
+      return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
+               zoom: l.zoom, fx: l.fx, fy: l.fy, imgRef: ref, imgName: l.imgName };
+    });
+    var v = {
+      id: idPeca + ':' + Date.now(),
+      peca: idPeca,
+      quando: new Date().toISOString(),
+      motivo: motivo || 'edição',
+      marca: marca,
+      n: slides.length,
+      titulo: (slides[0].title || slides[0].body || '').replace(/\*\*|__/g, '').slice(0, 70) || 'Sem título',
+      opts: { disc: opts.disc, discOn: opts.discOn, autofit: opts.autofit, topAlign: opts.topAlign },
+      laminas: laminas
+    };
+    ultimaVersao = Date.now();
+    assinaturaVersao = assinatura();
+    return comLojas(['versoes', 'fotos'], 'readwrite', function (lj) {
+      lj.versoes.put(v);
+      fotos.forEach(function (f) { lj.fotos.put(f); });
+    }).then(function () { return podaVersoes(idPeca); }).then(function () { return true; },
+            function () { return false; });
+  }
+
+  /* mantem as ultimas N e joga fora foto que nenhuma delas usa mais */
+  function podaVersoes(idPeca) {
+    return listaVersoes(idPeca).then(function (lista) {
+      var vivas = lista.slice(0, VERSOES_MAX), mortas = lista.slice(VERSOES_MAX);
+      var usadas = {};
+      vivas.forEach(function (v) {
+        v.laminas.forEach(function (l) { if (l.imgRef) usadas[l.imgRef] = 1; });
+      });
+      slides.forEach(function (l) {
+        if (l.img && l.img.src) usadas[idPeca + ':' + hashTexto(l.img.src)] = 1;
+      });
+      return comLojas(['versoes', 'fotos'], 'readwrite', function (lj) {
+        mortas.forEach(function (v) { lj.versoes.delete(v.id); });
+        var cur = lj.fotos.openCursor();
+        cur.onsuccess = function () {
+          var c = cur.result; if (!c) return;
+          var id = String(c.key);
+          if (id.indexOf(idPeca + ':') === 0 && !usadas[id]) c.delete();
+          c.continue();
+        };
+      });
+    });
+  }
+
+  function listaVersoes(idPeca) {
+    return comLojas(['versoes'], 'readonly', function (lj, saida) {
+      var p = lj.versoes.index('peca').getAll(idPeca);
+      p.onsuccess = function () { saida.lista = p.result || []; };
+    }).then(function (r) {
+      var lista = (r && r.lista) || [];
+      lista.sort(function (a, b) { return b.quando.localeCompare(a.quando); });
+      return lista;
+    });
+  }
+
+  function restauraVersao(id) {
+    return marcaVersao('antes de restaurar').then(function () {
+      return comLojas(['versoes', 'fotos'], 'readonly', function (lj, saida) {
+        var p = lj.versoes.get(id);
+        p.onsuccess = function () {
+          saida.v = p.result;
+          if (!saida.v) return;
+          saida.fotos = {};
+          saida.v.laminas.forEach(function (l) {
+            if (!l.imgRef) return;
+            var q = lj.fotos.get(l.imgRef);
+            q.onsuccess = function () { if (q.result) saida.fotos[l.imgRef] = q.result.dados; };
+          });
+        };
+      });
+    }).then(function (r) {
+      var v = r && r.v;
+      if (!v) { toast('Não encontrei essa versão.'); return false; }
+      var srcs = v.laminas.map(function (l) {
+        var d = l.imgRef ? r.fotos[l.imgRef] : null;
+        return d ? loadImage(d) : Promise.resolve(null);
+      });
+      return Promise.all(srcs).then(function (imgs) {
+        if (MARCAS[v.marca]) marca = v.marca;
+        if (v.opts) {
+          opts.disc = v.opts.disc; opts.discOn = v.opts.discOn;
+          opts.autofit = v.opts.autofit; opts.topAlign = v.opts.topAlign;
+        }
+        slides = v.laminas.map(function (l, i) {
+          return { type: l.type, title: l.title || '', sub: l.sub || '', body: l.body || '',
+                   numero: l.numero || '', zoom: l.zoom || 1,
+                   fx: l.fx == null ? .5 : l.fx, fy: l.fy == null ? .5 : l.fy,
+                   img: imgs[i], imgName: l.imgName || '' };
+        });
+        foco = 0; sel = null;
+        miniBlob = null; miniAssin = null;   /* a capa mudou */
+        pinta();
+        assinaturaVersao = assinatura();
+        return true;
+      });
+    });
+  }
+
+  function apagaHistorico(idPeca) {
+    return listaVersoes(idPeca).then(function (lista) {
+      return comLojas(['versoes', 'fotos'], 'readwrite', function (lj) {
+        lista.forEach(function (v) { lj.versoes.delete(v.id); });
+        var cur = lj.fotos.openCursor();
+        cur.onsuccess = function () {
+          var c = cur.result; if (!c) return;
+          if (String(c.key).indexOf(idPeca + ':') === 0) c.delete();
+          c.continue();
+        };
+      });
+    });
+  }
+
+  /* ---------- painel de versoes ---------- */
+  function quandoRelativo(iso) {
+    var d = new Date(iso), min = Math.round((Date.now() - d.getTime()) / 60000);
+    if (min < 1) return 'agora';
+    if (min < 60) return 'há ' + min + ' min';
+    var h = Math.round(min / 60);
+    if (h < 24) return 'há ' + h + (h === 1 ? ' hora' : ' horas');
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) + ' · ' +
+           d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function pintaVersoes() {
+    var el = $('lista-versoes'); if (!el) return;
+    if (!pecaAtual) {
+      el.innerHTML = '<p class="galeria-vazia">Este carrossel ainda não tem pontos de retorno. ' +
+        'Eles aparecem sozinhos conforme você trabalha.</p>';
+      return;
+    }
+    listaVersoes(pecaAtual).then(function (lista) {
+      if (!lista.length) {
+        el.innerHTML = '<p class="galeria-vazia">Nenhum ponto ainda. ' +
+          'O primeiro é criado antes da próxima ação que reescreve o carrossel.</p>';
+        return;
+      }
+      el.innerHTML = '';
+      lista.forEach(function (v) {
+        var li = document.createElement('div'); li.className = 'versao';
+        var txt = document.createElement('div'); txt.className = 'v-txt';
+        var b = document.createElement('b'); b.textContent = v.motivo;
+        var sp = document.createElement('span');
+        sp.textContent = quandoRelativo(v.quando) + ' · ' + v.n +
+          (v.n === 1 ? ' lâmina' : ' lâminas') + ' · ' +
+          txtDe((MARCAS[v.marca] || {}).arroba || v.marca);
+        txt.appendChild(b); txt.appendChild(sp);
+        var bt = document.createElement('button');
+        bt.className = 'btn2'; bt.dataset.restaura = v.id; bt.textContent = 'Restaurar';
+        li.appendChild(txt); li.appendChild(bt);
+        el.appendChild(li);
+      });
+    });
+  }
+
   /* ---------- barra lateral: largura ajustavel e recolhimento ----------
      A largura vive numa variavel de CSS e fica guardada no navegador, entao
      cada pessoa reabre a plataforma do jeito que deixou. */
@@ -1736,10 +1926,19 @@
   function banco() {
     if (BD) return BD;
     BD = new Promise(function (res, rej) {
-      var r = indexedDB.open('suno-design', 1);
+      var r = indexedDB.open('suno-design', 2);
       r.onupgradeneeded = function () {
-        if (!r.result.objectStoreNames.contains('pecas'))
-          r.result.createObjectStore('pecas', { keyPath: 'id' });
+        var db = r.result;
+        if (!db.objectStoreNames.contains('pecas'))
+          db.createObjectStore('pecas', { keyPath: 'id' });
+        /* historico: uma versao por ponto marcado, e as fotos a parte para o
+           mesmo arquivo nao ser guardado de novo a cada versao */
+        if (!db.objectStoreNames.contains('versoes')) {
+          var sv = db.createObjectStore('versoes', { keyPath: 'id' });
+          sv.createIndex('peca', 'peca', { unique: false });
+        }
+        if (!db.objectStoreNames.contains('fotos'))
+          db.createObjectStore('fotos', { keyPath: 'id' });
       };
       r.onsuccess = function () { res(r.result); };
       r.onerror = function () { rej(r.error); };
@@ -1848,6 +2047,20 @@
     });
   }
 
+  /* transacao cobrindo mais de uma loja; fn escreve o que precisar em `saida` */
+  function comLojas(nomes, modo, fn) {
+    return banco().then(function (db) {
+      if (!db) return null;
+      return new Promise(function (res, rej) {
+        var t = db.transaction(nomes, modo), lojas = {}, saida = {};
+        nomes.forEach(function (n) { lojas[n] = t.objectStore(n); });
+        fn(lojas, saida);
+        t.oncomplete = function () { res(saida); };
+        t.onerror = function () { rej(t.error); };
+      }).catch(function () { return null; });
+    });
+  }
+
   function salvarPeca() {
     if (!slides.length) { toast('Nada para salvar.'); return; }
     gravaPeca(true).then(function (ok) { if (ok) toast('Salvo na biblioteca.'); });
@@ -1879,6 +2092,15 @@
     assinaturaVista = a;
     gravando = true;
     gravaPeca(false, parou).then(fim, fim);   /* miniatura so quando a mao para */
+
+    /* de tempos em tempos vira ponto de retorno, senao uma sessao longa de
+       edicao ficaria sem nenhum lugar para onde voltar */
+    if (!versionando && pecaAtual && a !== assinaturaVersao &&
+        Date.now() - ultimaVersao > PAUSA_VERSAO) {
+      versionando = true;
+      marcaVersao('edição').then(function () { versionando = false; },
+                                function () { versionando = false; });
+    }
   }, PASSO);
 
   /* fechou a aba no meio da frase: ultima tentativa, sem promessa de sucesso */
@@ -1973,6 +2195,20 @@
     if (it) { abrir(it.dataset.view); return; }
     if (ev.target.closest('#ir-home')) { abrir('home'); return; }
     if (ev.target.closest('#btn-salvar')) { salvarPeca(); return; }
+    if (ev.target.closest('#btn-versoes')) {
+      $('cortina-versoes').hidden = false; pintaVersoes(); return;
+    }
+    if (ev.target.closest('#fechar-versoes') || ev.target.id === 'cortina-versoes') {
+      $('cortina-versoes').hidden = true; return;
+    }
+    var rv = ev.target.closest('[data-restaura]');
+    if (rv) {
+      $('cortina-versoes').hidden = true;
+      restauraVersao(rv.dataset.restaura).then(function (ok) {
+        if (ok) toast('Versão restaurada. O estado anterior virou um ponto novo.');
+      });
+      return;
+    }
     var x = ev.target.closest('[data-apagar]');
     if (x) {
       ev.preventDefault(); ev.stopPropagation();
@@ -1983,6 +2219,7 @@
         assinaturaSalva = assinaturaVista = assinatura();
         miniBlob = null; miniAssin = null;
       }
+      apagaHistorico(x.dataset.apagar);
       comLoja('readwrite', function (st) { return st.delete(x.dataset.apagar); })
         .then(function () { pintaGaleria(); toast('Removido da biblioteca.'); });
       return;
@@ -2164,6 +2401,7 @@
   }
 
   function aplicaGeracao(m, laminas) {
+    marcaVersao('antes de gerar outro carrossel');
     marca = m;
     slides = laminas.slice(0, 20).map(function (l, i) { return paraLamina(m, l, i); });
     if (!slides.length) return false;
