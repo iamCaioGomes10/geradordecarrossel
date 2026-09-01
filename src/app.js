@@ -149,6 +149,20 @@
   /* ajustes manuais da lamina que esta sendo desenhada (definidos por render):
      fonte e largura por campo, como fracao do que o layout projetou */
   var AJUSTES = null;
+  /* Ate onde a barra de largura pode ir naquele campo.
+     O teto nao e a largura que o Figma desenhou: e o que sobra na lamina
+     mantendo, do lado direito, a mesma margem que o layout usa do lado
+     esquerdo. Assim cada layout ganha a folga que ele mesmo tem. */
+  function tetoLarg(lam, campo) {
+    var r = (lam && lam._regioes || []).filter(function (x) { return x.campo === campo; })[0];
+    if (!r || !r.w) return 100;
+    var atual = (lam.larg || {})[campo] || 1;
+    var projeto = r.w / atual;                 /* largura original do layout */
+    var disponivel = W - r.x - Math.max(24, r.x);
+    if (disponivel < projeto) return 100;      /* ja ocupa tudo o que da */
+    return Math.min(300, Math.floor(disponivel / projeto * 100));
+  }
+
   function comAjuste(spec, campo) {
     if (!AJUSTES || !campo) return spec;
     var f = (AJUSTES.fonte || {})[campo], w = (AJUSTES.larg || {})[campo];
@@ -1339,7 +1353,7 @@
       var pf = Math.round(((lam.fonte || {})[sel] || 1) * 100);
       var pl = Math.round(((lam.larg || {})[sel] || 1) * 100);
       h.push(ctrl('fonte', 'Tamanho da fonte', pf, 60, 150, pf + '%', false));
-      h.push(ctrl('largura', 'Largura do texto', pl, 35, 100, pl + '%', false));
+      h.push(ctrl('largura', 'Largura do texto', pl, 35, tetoLarg(lam, sel), pl + '%', false));
       if (pf !== 100 || pl !== 100)
         h.push('<div class="acoes"><button class="btn2" id="reset-ajuste">Voltar ao padrão do layout</button></div>');
     }
@@ -1677,12 +1691,13 @@
     marcaVersaoLeve('antes de mudar a largura do texto');
     var k = parseFloat(cv.style.width) / W;      /* palco -> coordenadas da arte */
     var x0 = ev.clientX, base = reg.w, fator0 = (lam.larg || {})[sel] || 1;
+    var teto = tetoLarg(lam, sel) / 100;
     pega.setPointerCapture(ev.pointerId);
     document.body.dataset.arrastandoTexto = '1';
     var move = function (e) {
       var nova = base + (e.clientX - x0) / k;
       var f = fator0 * (nova / base);
-      f = Math.max(0.35, Math.min(1, f));
+      f = Math.max(0.35, Math.min(teto, f));
       if (!lam.larg) lam.larg = {};
       lam.larg[sel] = f;
       var r = $('largura');
