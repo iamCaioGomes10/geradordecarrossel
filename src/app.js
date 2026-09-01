@@ -1045,7 +1045,9 @@
     REGIOES = []; ESTOUROU = null;
     var M = MARCAS[marca];
     var fn = M.render[s.type] || M.render[Object.keys(M.render)[0]];
-    var of = fn(ctx, s, cfg);
+    /* o disclaimer e por lamina: tirar de uma nao tira das outras */
+    var cfgL = (s && s.semDisc) ? Object.assign({}, cfg, { discOn: false }) : cfg;
+    var of = fn(ctx, s, cfgL);
     /* guarda o resultado na propria lamina: a interface le dali */
     s._regioes = REGIOES.slice();
     s._estouro = of ? (ESTOUROU || 'corpo') : null;
@@ -1153,7 +1155,7 @@
   function blank(type) {
     return { type: type || tipoPadrao(), title: '', sub: '', body: '', numero: '',
              img: null, imgName: '', zoom: 1, fx: 0.5, fy: 0.5,
-             fonte: {}, larg: {} };
+             fonte: {}, larg: {}, semDisc: false };
   }
   /* copia de lamina que nao compartilha os mapas de ajuste com a original */
   function clonaLamina(l) {
@@ -1342,6 +1344,10 @@
         h.push('<div class="acoes"><button class="btn2" id="reset-ajuste">Voltar ao padrão do layout</button></div>');
     }
 
+    if (M.disclaimer)
+      h.push('<label class="check"><input type="checkbox" id="disc-on"' +
+        (lam.semDisc ? '' : ' checked') + '> Mostrar disclaimer nesta lâmina</label>');
+
     h.push('<div id="aviso-slot"></div>');
 
     h.push('<div class="acoes">' +
@@ -1355,10 +1361,10 @@
     /* ajustes gerais no fim, porque mudam pouco */
     h.push('<div class="pbloco">');
     h.push('<div class="rot mono">AJUSTES</div>');
-    if (M.disclaimer) {
-      h.push('<label class="check"><input type="checkbox" id="disc-on"' + (opts.discOn ? ' checked' : '') + '> Mostrar disclaimer</label>');
-      h.push('<input class="campo" id="disc" value="' + txtDe(opts.disc).replace(/"/g, '&quot;') + '">');
-    }
+    if (M.disclaimer)
+      h.push('<div><div class="rot mono">TEXTO DO DISCLAIMER</div>' +
+        '<input class="campo" id="disc" value="' + txtDe(opts.disc).replace(/"/g, '&quot;') + '">' +
+        '<p class="ajuda">Vale para todas as lâminas que mostram o aviso.</p></div>');
     h.push('<label class="check"><input type="checkbox" id="autofit"' + (opts.autofit ? ' checked' : '') + '> Reduzir a fonte quando o texto estourar</label>');
     if (M.topAlign)
       h.push('<label class="check"><input type="checkbox" id="topalign"' + (opts.topAlign ? ' checked' : '') + '> Alinhar corpo no topo</label>');
@@ -1637,7 +1643,7 @@
   document.addEventListener('change', function (ev) {
     var id = ev.target.id;
     if (id === 'tipo') { slides[foco].type = ev.target.value; sel = null; pinta(); return; }
-    if (id === 'disc-on') { opts.discOn = ev.target.checked; pinta(); return; }
+    if (id === 'disc-on') { slides[foco].semDisc = !ev.target.checked; pinta(); return; }
     if (id === 'autofit') { opts.autofit = ev.target.checked; pinta(); return; }
     if (id === 'topalign') { opts.topAlign = ev.target.checked; pinta(); return; }
     if (id === 'arq') {
@@ -1801,6 +1807,7 @@
       }
       return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
                zoom: l.zoom, fx: l.fx, fy: l.fy, imgRef: ref, imgName: l.imgName,
+               semDisc: !!l.semDisc,
                fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
     });
     var v = {
@@ -1882,15 +1889,17 @@
       });
       return Promise.all(srcs).then(function (imgs) {
         if (MARCAS[v.marca]) marca = v.marca;
+        var velhoSemDisc = !!(v.opts && v.opts.discOn === false);
         if (v.opts) {
-          opts.disc = v.opts.disc; opts.discOn = v.opts.discOn;
-          opts.autofit = v.opts.autofit; opts.topAlign = v.opts.topAlign;
+          opts.disc = v.opts.disc; opts.autofit = v.opts.autofit; opts.topAlign = v.opts.topAlign;
         }
+        opts.discOn = true;
         slides = v.laminas.map(function (l, i) {
           return { type: l.type, title: l.title || '', sub: l.sub || '', body: l.body || '',
                    numero: l.numero || '', zoom: l.zoom || 1,
                    fx: l.fx == null ? .5 : l.fx, fy: l.fy == null ? .5 : l.fy,
                    img: imgs[i], imgName: l.imgName || '',
+                   semDisc: !!l.semDisc || velhoSemDisc,
                    fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
         });
         foco = 0; sel = null;
@@ -2109,7 +2118,7 @@
     return JSON.stringify([marca, opts.disc, opts.discOn, opts.autofit, opts.topAlign,
       slides.map(function (l) {
         return [l.type, l.title, l.sub, l.body, l.numero, l.imgName,
-                l.zoom, l.fx, l.fy, l.img ? 1 : 0, ajusteStr(l)].join('\u0001');
+                l.zoom, l.fx, l.fy, l.img ? 1 : 0, ajusteStr(l), l.semDisc ? 1 : 0].join('\u0001');
       })]);
   }
   /* so o que muda a miniatura da biblioteca: a primeira lamina */
@@ -2118,7 +2127,7 @@
     if (!l) return '';
     return JSON.stringify([marca, opts.disc, opts.discOn, opts.autofit, opts.topAlign,
       l.type, l.title, l.sub, l.body, l.numero, l.imgName, l.zoom, l.fx, l.fy,
-      l.img ? 1 : 0, ajusteStr(l)]);
+      l.img ? 1 : 0, ajusteStr(l), l.semDisc ? 1 : 0]);
   }
   function documentoVazio() {
     return !slides.some(function (l) {
@@ -2165,7 +2174,7 @@
           laminas: slides.map(function (l) {
             return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
                      zoom: l.zoom, fx: l.fx, fy: l.fy, img: l.img ? l.img.src : null,
-                     imgName: l.imgName,
+                     imgName: l.imgName, semDisc: !!l.semDisc,
                      fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
           })
         };
@@ -2307,16 +2316,20 @@
       marca = MARCAS[p.marca] ? p.marca : marca;
       var imgs = p.laminas.map(function (l) { return l.img ? loadImage(l.img) : Promise.resolve(null); });
       Promise.all(imgs).then(function (carregadas) {
+        /* registros antigos tinham um interruptor unico para todas as laminas;
+           quando ele estava desligado, isso vira "sem disclaimer" em cada uma */
+        var velhoSemDisc = !!(p.opts && p.opts.discOn === false);
+        if (p.opts) {
+          opts.disc = p.opts.disc; opts.autofit = p.opts.autofit; opts.topAlign = p.opts.topAlign;
+        }
+        opts.discOn = true;
         slides = p.laminas.map(function (l, i) {
           return { type: l.type, title: l.title || '', sub: l.sub || '', body: l.body || '',
                    numero: l.numero || '', zoom: l.zoom || 1, fx: l.fx == null ? .5 : l.fx,
                    fy: l.fy == null ? .5 : l.fy, img: carregadas[i], imgName: l.imgName || '',
+                   semDisc: !!l.semDisc || velhoSemDisc,
                    fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
         });
-        if (p.opts) {
-          opts.disc = p.opts.disc; opts.discOn = p.opts.discOn;
-          opts.autofit = p.opts.autofit; opts.topAlign = p.opts.topAlign;
-        }
         /* a partir daqui a edicao continua NESTE registro, sem criar copia */
         pecaAtual = p.id; pecaExplicita = !p.auto;
         foco = 0; sel = null;
