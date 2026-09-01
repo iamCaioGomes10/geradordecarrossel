@@ -112,9 +112,15 @@ body{background:#000}
   background:linear-gradient(90deg,var(--sd-campo-a),var(--sd-campo-b));
 }
 .prompt:focus-within{border-color:#a9a9a9}
-.prompt[data-breve="1"]{opacity:.62;cursor:default}
-.prompt[data-breve="1"] input{cursor:default}
-.prompt[data-breve="1"] .faisca{opacity:.5}
+/* enquanto o modelo escreve: barra travada e faisca pulsando */
+.prompt[data-estado="indo"]{border-color:#8a8a8a}
+.prompt[data-estado="indo"] input{color:#9a9a9a}
+.prompt[data-estado="indo"] .ir{opacity:.35;pointer-events:none}
+.prompt[data-estado="indo"] .faisca{animation:faisca 1.1s ease-in-out infinite}
+@keyframes faisca{0%,100%{opacity:.35;transform:scale(.94)}50%{opacity:1;transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){
+  .prompt[data-estado="indo"] .faisca{animation:none;opacity:.7}
+}
 .faisca{width:26px;height:26px;flex:none;opacity:.9}
 .prompt input{
   flex:1;min-width:0;background:none;border:0;outline:none;color:#ebebeb;
@@ -126,7 +132,22 @@ body{background:#000}
   background:rgba(255,255,255,.08);color:#dcdcdc;
 }
 .prompt .ir:hover{background:var(--sd-vermelho);color:#fff}
-.nota-prompt{margin:12px 0 0;font-size:12.5px;color:#6d6d6d;text-align:center;max-width:56ch}
+.nota-prompt{
+  margin:12px 0 0;font-size:12.5px;color:#6d6d6d;text-align:center;max-width:60ch;
+  line-height:1.55;min-height:2.6em;
+}
+.nota-prompt[data-erro="1"]{color:#e08585}
+.nota-prompt .senha{display:inline-flex;gap:6px;align-items:center;margin-top:6px}
+.nota-prompt .senha input{
+  width:150px;background:#131313;border:1px solid #4a4a4a;border-radius:5px;
+  padding:5px 9px;font:inherit;font-size:12.5px;color:#ebebeb;
+}
+.nota-prompt .senha input:focus{outline:none;border-color:#8a8a8a}
+.nota-prompt .senha button{
+  background:rgba(255,255,255,.09);border:0;border-radius:5px;padding:5px 11px;
+  font:inherit;font-size:12.5px;color:#e4e4e4;cursor:pointer;
+}
+.nota-prompt .senha button:hover{background:var(--sd-vermelho);color:#fff}
 .atalho{
   background:none;border:0;padding:0;font:inherit;color:#b6b6b6;
   border-bottom:1px solid #4a4a4a;cursor:pointer;
@@ -371,13 +392,15 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
           <img id="img-marca-sm" alt=""><img id="img-wordmark" alt="Suno Design">
         </div>
         <h1>O que vamos <em>criar</em> hoje?</h1>
-        <div class="prompt" data-breve="1" aria-disabled="true">
+        <form class="prompt" id="forma-prompt" autocomplete="off">
           <img id="img-ai" alt="" class="faisca">
-          <input id="prompt" autocomplete="off" disabled tabindex="-1"
-                 placeholder="Crie um carrossel para o Baroni sobre...">
-          <span class="tag-breve">em breve</span>
-        </div>
-        <p class="nota-prompt">Enquanto isso, o <button class="atalho" data-view="carrossel">gerador de carrossel</button> j&aacute; funciona.</p>
+          <input id="prompt" name="prompt" autocomplete="off"
+                 placeholder="Quero um carrossel para o Baroni sobre...">
+          <button class="ir" id="ir-prompt" type="submit" aria-label="Gerar carrossel" title="Gerar carrossel">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </form>
+        <p class="nota-prompt" id="nota-prompt">Diga o perfil e o assunto. A copy e as l&acirc;minas s&atilde;o montadas no <button class="atalho" data-view="carrossel">gerador</button>, prontas para editar.</p>
 
         <div class="recentes">
           <p class="rot-recentes">Criados por &uacute;ltimo</p>
@@ -2445,6 +2468,268 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     }
     var pc = ev.target.closest('.peca');
     if (pc) { abrirPeca(pc.dataset.id); return; }
+  });
+
+  /* =========================================================
+     14. GERACAO POR PROMPT
+     Uma frase em portugues vira laminas montadas. O servidor guarda a chave e
+     a voz das marcas; aqui ficam duas coisas que so o navegador sabe fazer:
+     dizer quanto texto cabe em cada campo, e conferir o que voltou.
+     ========================================================= */
+  var ENDPOINT = '/api/gerar';
+
+  /* ---------- de que perfil a pessoa esta falando ----------
+     So nomes de perfil entram aqui. "FIIs" e assunto, nao perfil: se virasse
+     apelido, "um carrossel do @suno sobre FIIs" cairia no Funds Explorer. */
+  var APELIDOS = {
+    baroni:      ['professor baroni', 'professorbaroni', 'baroni'],
+    suno:        ['suno investimentos', 'suno'],
+    tiago:       ['tiago greis', 'tiagogreis', 'tiago reis', 'tiago'],
+    noticias:    ['suno noticias', 'sunonoticias', 'noticias'],
+    consultoria: ['suno consultoria', 'sunoconsultoria', 'consultoria'],
+    funds:       ['funds explorer', 'fundsexplorer', 'funds']
+  };
+  function semAcento(t) {
+    return String(t).normalize ? String(t).normalize('NFD').replace(/[̀-ͯ]/g, '') : String(t);
+  }
+  function marcaDaFrase(frase) {
+    var f = semAcento(frase).toLowerCase(), achada = null, tam = 0;
+    Object.keys(APELIDOS).forEach(function (m) {
+      APELIDOS[m].forEach(function (a) {
+        if (a.length <= tam) return;
+        var re = new RegExp('(^|[^a-z0-9])' + a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z0-9])');
+        if (re.test(f)) { achada = m; tam = a.length; }
+      });
+    });
+    return achada;
+  }
+
+  /* ---------- quanto texto cabe em cada campo ----------
+     O modelo nao tem como saber que o titulo da capa do Baroni e Staatliches
+     96px numa caixa de 736px. Este numero sai do proprio motor que desenha:
+     cresce o texto por busca binaria ate a lamina acusar estouro, com a
+     reducao de fonte desligada — ou seja, quanto cabe no tamanho projetado. */
+  var ORC = {};
+  var ENCHE = 'texto de exemplo para ocupar o espaco da lamina em tamanho medio ';
+  function repete(n) {
+    var t = '';
+    while (t.length < n) t += ENCHE;
+    return t.slice(0, n).replace(/\s+$/, '');
+  }
+  function camposDoTipo(m, tipo) {
+    return (MARCAS[m].tipos[tipo].campos || []).filter(function (c) {
+      return c !== 'img' && c !== 'numero';   /* foto e numero nao sao copy */
+    });
+  }
+  function orcamentoDe(m) {
+    if (ORC[m]) return ORC[m];
+    var tipos = MARCAS[m].tipos, res = {}, cv = document.createElement('canvas');
+    var base = { disc: opts.disc, discOn: !!MARCAS[m].disclaimer, autofit: false,
+                 topAlign: !!MARCAS[m].topAlign, guias: false };
+    Object.keys(tipos).forEach(function (tipo) {
+      var campos = camposDoTipo(m, tipo), temNumero = (tipos[tipo].campos || []).indexOf('numero') >= 0;
+      res[tipo] = {};
+      campos.forEach(function (campo) {
+        var lo = 4, hi = 700;
+        while (lo < hi) {
+          var mid = Math.ceil((lo + hi) / 2);
+          var s = blank(tipo); s.type = tipo;
+          if (temNumero) s.numero = '01';
+          /* os vizinhos entram com enchimento: medir um campo com o resto da
+             lamina vazio da um numero que na pratica nao se sustenta */
+          campos.forEach(function (c) {
+            s[c] = (c === campo) ? repete(mid) : repete(c === 'title' ? 60 : 150);
+          });
+          if (render(cv, m, s, base)) hi = mid - 1; else lo = mid;
+        }
+        res[tipo][campo] = lo;
+      });
+    });
+    ORC[m] = res;
+    return res;
+  }
+
+  /* ---------- o que o perfil aceita ----------
+     Vai do navegador, nao do servidor: as tabelas de layout vivem aqui, e
+     duplicar isso do outro lado criaria duas verdades que divergem. */
+  function contratoDe(m) {
+    var tipos = MARCAS[m].tipos, orc = orcamentoDe(m);
+    var out = { marca: m, nome: txtDe(MARCAS[m].nome), arroba: txtDe(MARCAS[m].arroba),
+                destaque: txtDe(MARCAS[m].dica), laminas: {} };
+    Object.keys(tipos).forEach(function (tipo) {
+      out.laminas[tipo] = {
+        rotulo: txtDe(tipos[tipo].label),
+        campos: orc[tipo],
+        aceitaFoto: (tipos[tipo].campos || []).indexOf('img') >= 0
+      };
+    });
+    return out;
+  }
+
+  /* ---------- traduz o que voltou em lamina do app ---------- */
+  function paraLamina(m, l, i) {
+    var tipos = MARCAS[m].tipos;
+    var tipo = (l && tipos[l.type]) ? l.type : Object.keys(tipos)[0];
+    var s = blank(tipo); s.type = tipo;
+    ['title', 'sub', 'body'].forEach(function (c) {
+      if (l && l[c] != null && camposDoTipo(m, tipo).indexOf(c) >= 0) s[c] = String(l[c]);
+    });
+    if ((tipos[tipo].campos || []).indexOf('numero') >= 0) s.numero = String(i + 1);
+    return s;
+  }
+
+  /* ---------- conferencia: o que veio cabe mesmo? ---------- */
+  function confere(m, laminas) {
+    var cv = document.createElement('canvas'), orc = orcamentoDe(m), fora = [];
+    var base = { disc: opts.disc, discOn: !!MARCAS[m].disclaimer, autofit: false,
+                 topAlign: !!MARCAS[m].topAlign, guias: false };
+    laminas.forEach(function (l, i) {
+      var s = paraLamina(m, l, i);
+      if (render(cv, m, s, base)) {
+        var campo = s._estouro || 'corpo';
+        var chave = { titulo: 'title', sub: 'sub', corpo: 'body' }[campo] || campo;
+        fora.push({ i: i, type: s.type, campo: chave,
+                    cabe: (orc[s.type] || {})[chave] || null,
+                    tem: String(s[chave] || '').length });
+      }
+    });
+    return fora;
+  }
+
+  /* ---------- conversa com o servidor ----------
+     O endereco e publico, entao o endpoint tambem seria. A senha combinada
+     fica guardada neste navegador e vai em cada pedido; quem nao tem, o
+     servidor recusa antes de gastar chamada. */
+  function senhaGuardada() {
+    try { return localStorage.getItem('sd-senha') || ''; } catch (e) { return ''; }
+  }
+  function guardaSenha(v) {
+    try { if (v) localStorage.setItem('sd-senha', v); else localStorage.removeItem('sd-senha'); }
+    catch (e) {}
+  }
+  function pedir(corpo) {
+    /* gancho de teste: deixa exercitar todo o caminho sem gastar chamada */
+    if (window.__GERACAO_STUB__) return Promise.resolve(window.__GERACAO_STUB__(corpo));
+    var cab = { 'Content-Type': 'application/json' };
+    var sn = senhaGuardada();
+    if (sn) cab['X-Senha'] = sn;
+    return fetch(ENDPOINT, { method: 'POST', headers: cab, body: JSON.stringify(corpo) })
+      .then(function (r) {
+        if (r.status === 404) throw new Error('desligado');
+        if (r.status === 401 || r.status === 403) throw new Error('acesso');
+        if (r.status === 429) throw new Error('fila');
+        if (r.status === 422) throw new Error('recusado');
+        if (r.status === 503) throw new Error('semchave');
+        if (!r.ok) throw new Error('http ' + r.status);
+        return r.json();
+      }, function () { throw new Error('rede'); });
+  }
+
+  function geraCarrossel(frase) {
+    var m = marcaDaFrase(frase) || marca;
+    var ct = contratoDe(m);
+    return pedir({ pedido: frase, contrato: ct }).then(function (r) {
+      var laminas = (r && r.laminas) || [];
+      if (!laminas.length) throw new Error('vazio');
+      var fora = confere(m, laminas);
+      if (!fora.length) return { marca: m, laminas: laminas };
+      /* uma unica rodada de correcao, com o limite explicito de cada campo */
+      return pedir({ pedido: frase, contrato: ct, laminas: laminas, estouros: fora })
+        .then(function (r2) {
+          var l2 = (r2 && r2.laminas) || laminas;
+          return { marca: m, laminas: l2.length ? l2 : laminas };
+        }, function () { return { marca: m, laminas: laminas }; });
+    });
+  }
+
+  function aplicaGeracao(m, laminas) {
+    marca = m;
+    slides = laminas.slice(0, 20).map(function (l, i) { return paraLamina(m, l, i); });
+    if (!slides.length) return false;
+    foco = 0; sel = null;
+    /* carrossel gerado nasce documento novo: nao escreve por cima do aberto */
+    pecaAtual = null; pecaExplicita = false; miniBlob = null; miniAssin = null;
+    abrir('carrossel');
+    return true;
+  }
+
+  /* ---------- a barra da home ---------- */
+  var RECADO = {
+    desligado: 'A geração ainda não está ligada neste endereço. O gerador de carrossel continua funcionando.',
+    semchave:  'O servidor está no ar, mas sem chave configurada. Quem cuida do ambiente precisa definir a chave.',
+    fila:      'Muitos pedidos ao mesmo tempo. Tente de novo em alguns segundos.',
+    rede:      'Não consegui falar com o servidor. Verifique a conexão e tente de novo.',
+    recusado:  'O modelo não escreveu esta peça. Reformule o pedido — pode ser algo que ele evita tratar.',
+    vazio:     'Não veio nenhuma lâmina. Tente descrever o assunto com um pouco mais de detalhe.'
+  };
+  /* a nota padrao tem um botao dentro (atalho para o gerador): guarda o HTML,
+     senao a primeira mensagem de erro apaga o atalho para sempre */
+  var NOTA_PADRAO = $('nota-prompt') ? $('nota-prompt').innerHTML : '';
+  function nota(txt, erro) {
+    var n = $('nota-prompt'); if (!n) return;
+    n.textContent = txt;
+    n.dataset.erro = erro ? '1' : '0';
+  }
+  function notaPadrao() {
+    var n = $('nota-prompt'); if (!n) return;
+    n.innerHTML = NOTA_PADRAO;
+    n.dataset.erro = '0';
+  }
+
+  /* pede a senha no lugar da nota, e ja tenta de novo com ela */
+  function pedeSenha(frase) {
+    var n = $('nota-prompt'); if (!n) return;
+    guardaSenha('');
+    n.dataset.erro = '1';
+    n.innerHTML = '';
+    var t = document.createElement('span');
+    t.textContent = 'Esta geração pede a senha combinada com quem cuida do ambiente. ';
+    var f = document.createElement('form'); f.className = 'senha';
+    var i = document.createElement('input');
+    i.type = 'password'; i.required = true; i.autocomplete = 'current-password';
+    i.placeholder = 'senha'; i.setAttribute('aria-label', 'Senha da geração');
+    var b = document.createElement('button'); b.type = 'submit'; b.textContent = 'Entrar';
+    f.appendChild(i); f.appendChild(b);
+    n.appendChild(t); n.appendChild(f);
+    i.focus();
+    f.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (!i.value) return;
+      guardaSenha(i.value);
+      notaPadrao();
+      $('prompt').value = frase;
+      forma.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+  }
+
+  var forma = $('forma-prompt');
+  if (forma) forma.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (forma.dataset.estado === 'indo') return;
+    var frase = $('prompt').value.trim();
+    if (frase.length < 10) {
+      nota('Diga o perfil e o assunto — algo como “um carrossel para o Baroni sobre carteira diversificada de FIIs”.', true);
+      return;
+    }
+    forma.dataset.estado = 'indo';
+    $('prompt').disabled = true;
+    nota('Escrevendo a copy e montando as lâminas…', false);
+    var solta = function () { forma.dataset.estado = ''; $('prompt').disabled = false; };
+    /* o Promise.resolve nao e enfeite: sem ele um erro sincrono — medir a
+       caixa, montar o contrato — escapa do par de handlers e a barra fica
+       travada em "escrevendo" sem jeito de voltar */
+    Promise.resolve().then(function () { return geraCarrossel(frase); })
+      .then(function (r) {
+        solta();
+        if (!aplicaGeracao(r.marca, r.laminas)) { nota(RECADO.vazio, true); return; }
+        $('prompt').value = '';
+        notaPadrao();
+        toast(slides.length + ' lâminas geradas em ' + txtDe(MARCAS[r.marca].arroba) + '.');
+      }, function (e) {
+        solta();
+        if (e && e.message === 'acesso') { pedeSenha(frase); return; }
+        nota(RECADO[e && e.message] || 'Não consegui gerar agora. Tente de novo.', true);
+      });
   });
 
   window.__abrir = abrir;

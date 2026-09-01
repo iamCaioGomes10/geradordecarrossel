@@ -38,13 +38,15 @@
           <img id="img-marca-sm" alt=""><img id="img-wordmark" alt="Suno Design">
         </div>
         <h1>O que vamos <em>criar</em> hoje?</h1>
-        <div class="prompt" data-breve="1" aria-disabled="true">
+        <form class="prompt" id="forma-prompt" autocomplete="off">
           <img id="img-ai" alt="" class="faisca">
-          <input id="prompt" autocomplete="off" disabled tabindex="-1"
-                 placeholder="Crie um carrossel para o Baroni sobre...">
-          <span class="tag-breve">em breve</span>
-        </div>
-        <p class="nota-prompt">Enquanto isso, o <button class="atalho" data-view="carrossel">gerador de carrossel</button> j&aacute; funciona.</p>
+          <input id="prompt" name="prompt" autocomplete="off"
+                 placeholder="Quero um carrossel para o Baroni sobre...">
+          <button class="ir" id="ir-prompt" type="submit" aria-label="Gerar carrossel" title="Gerar carrossel">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </form>
+        <p class="nota-prompt" id="nota-prompt">Diga o perfil e o assunto. A copy e as l&acirc;minas s&atilde;o montadas no <button class="atalho" data-view="carrossel">gerador</button>, prontas para editar.</p>
 
         <div class="recentes">
           <p class="rot-recentes">Criados por &uacute;ltimo</p>

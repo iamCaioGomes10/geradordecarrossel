@@ -90,13 +90,20 @@ if STATIC:
     (dist / "robots.txt").write_text("User-agent: *\nDisallow: /\n", encoding="utf-8")
     # tambem solto, para quem pedir /favicon.png na mao
     (dist / "favicon.png").write_bytes((ASSETS / "sd-marca.png").read_bytes())
+    # a funcao de geracao entra no dist porque a Vercel esta com Root Directory
+    # apontado para ca: o que fica fora desta pasta o deploy nao ve
+    api_src, api_dst = ROOT / "api", dist / "api"
+    api_dst.mkdir(exist_ok=True)
+    for py in sorted(api_src.glob("*.py")):
+        (api_dst / py.name).write_bytes(py.read_bytes())
+    (dist / "requirements.txt").write_bytes((ROOT / "requirements.txt").read_bytes())
     # CSP fechada: o app nao busca nada na rede e nao manda nada para lugar nenhum
     csp = ("default-src 'none'; "
            "img-src 'self' data: blob:; "
            "style-src 'self' 'unsafe-inline'; "
            "script-src 'self' 'unsafe-inline'; "
            "font-src 'self' data:; "
-           "connect-src 'none'; "
+           "connect-src 'self'; "   # a geracao por prompt fala com /api/gerar
            "base-uri 'none'; "
            "form-action 'none'; "
            "frame-ancestors 'none'")
@@ -112,6 +119,9 @@ if STATIC:
     sem_cache = [{"key": "Cache-Control", "value": "public, max-age=0, must-revalidate"}]
     vercel = {
         "$schema": "https://openapi.vercel.sh/vercel.json",
+        # escrever um carrossel com o modelo pensando leva mais que os poucos
+        # segundos do padrao; sem isso a funcao morre no meio da geracao
+        "functions": {"api/gerar.py": {"maxDuration": 120}},
         "headers": [
             {"source": "/(.*)", "headers": seguranca},
             {"source": "/", "headers": sem_cache},
@@ -120,10 +130,13 @@ if STATIC:
     }
     (dist / "vercel.json").write_text(json.dumps(vercel, indent=2, ensure_ascii=False) + "\n",
                                       encoding="utf-8")
-    total = sum(f.stat().st_size for f in dist.iterdir())
-    print("ok -> dist/ (%d arquivos, %.0f KB)" % (len(list(dist.iterdir())), total / 1024))
-    for f in sorted(dist.iterdir()):
+    arquivos = [f for f in dist.iterdir() if f.is_file()]
+    total = sum(f.stat().st_size for f in arquivos)
+    print("ok -> dist/ (%d arquivos, %.0f KB)" % (len(arquivos), total / 1024))
+    for f in sorted(arquivos):
         print("     %s  %.0f KB" % (f.name, f.stat().st_size / 1024))
+    for f in sorted(api_dst.iterdir()):
+        print("     api/%s  %.0f KB" % (f.name, f.stat().st_size / 1024))
     raise SystemExit
 
 OUT.write_text(html, encoding="utf-8")
