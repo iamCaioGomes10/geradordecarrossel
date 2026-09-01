@@ -366,7 +366,17 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
 /* ---------- colar texto ---------- */
 .cortina{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:60;padding:24px}
 .folha{width:min(720px,100%);background:var(--surface);border:1px solid var(--line-2);padding:22px;display:flex;flex-direction:column;gap:14px}
+.folha.larga{width:min(860px,100%)}
 .folha h2{margin:0;font-size:16px;font-weight:600}
+.passo-manual{display:flex;flex-direction:column;gap:8px}
+.passo-manual .rot{margin:0}
+.passo-manual textarea{
+  width:100%;background:#0f1114;border:1px solid var(--line-2);padding:11px 12px;
+  font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.6;
+  color:var(--ink);resize:vertical;
+}
+.passo-manual textarea[readonly]{color:var(--dim)}
+.passo-manual .acoes{margin:0}
 .folha .dica{margin:0;font-size:12.5px;color:var(--dim);line-height:1.5}
 .folha textarea{width:100%;background:#0f1114;border:1px solid var(--line-2);padding:12px;font-size:13.5px;line-height:1.55;resize:vertical}
 .folha textarea:focus{border-color:var(--accent);outline:none}
@@ -485,6 +495,33 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     </section>
 
   </main>
+</div>
+
+<div class="cortina" id="cortina-manual" hidden>
+  <div class="folha larga" role="dialog" aria-modal="true" aria-labelledby="tit-manual">
+    <h2 id="tit-manual">Gerar sem a chave, por enquanto</h2>
+    <p class="dica">Mesmo pedido que o app mandaria sozinho, com a voz da marca e os limites
+      de caracteres medidos na arte. Leve at&eacute; o Claude, traga a resposta de volta e o
+      restante do caminho roda igual: medi&ccedil;&atilde;o, montagem e biblioteca.</p>
+
+    <div class="passo-manual">
+      <div class="rot mono">1 &middot; COPIE E LEVE AO CLAUDE</div>
+      <textarea id="manual-pedido" rows="9" readonly></textarea>
+      <div class="acoes"><button class="btn2" id="copiar-pedido">Copiar pedido</button></div>
+    </div>
+
+    <div class="passo-manual">
+      <div class="rot mono">2 &middot; COLE A RESPOSTA</div>
+      <textarea id="manual-resposta" rows="7" placeholder="Cole aqui o JSON que o Claude devolveu."></textarea>
+      <p class="ajuda" id="manual-aviso"></p>
+    </div>
+
+    <div class="folha-pe">
+      <span style="flex:1"></span>
+      <button class="btn ghost" id="fechar-manual">Cancelar</button>
+      <button class="btn primary" id="manual-go">Montar as l&acirc;minas</button>
+    </div>
+  </div>
 </div>
 
 <div class="cortina" id="cortina-versoes" hidden>
@@ -2865,6 +2902,21 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     if (it) { abrir(it.dataset.view); return; }
     if (ev.target.closest('#ir-home')) { abrir('home'); return; }
     if (ev.target.closest('#btn-salvar')) { salvarPeca(); return; }
+    if (ev.target.closest('#fechar-manual') || ev.target.id === 'cortina-manual') {
+      $('cortina-manual').hidden = true; return;
+    }
+    if (ev.target.closest('#copiar-pedido')) {
+      var t = $('manual-pedido');
+      t.select(); t.setSelectionRange(0, t.value.length);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      if (navigator.clipboard && navigator.clipboard.writeText)
+        navigator.clipboard.writeText(t.value).then(function () { toast('Pedido copiado.'); },
+                                                    function () { if (!ok) toast('Copie com Ctrl+C.'); });
+      else toast(ok ? 'Pedido copiado.' : 'Copie com Ctrl+C.');
+      return;
+    }
+    if (ev.target.closest('#manual-go')) { montaManual(); return; }
     if (ev.target.closest('#btn-versoes')) {
       $('cortina-versoes').hidden = false; pintaVersoes(); return;
     }
@@ -3082,6 +3134,72 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     return true;
   }
 
+  /* ---------- modo manual ----------
+     Enquanto a chave nao existe, a pessoa faz o papel do transporte: leva o
+     pedido ao Claude e traz a resposta. Tudo o mais e o caminho de verdade —
+     inclusive o texto do pedido, que e montado pela mesma funcao do servidor,
+     e nao por uma copia aqui que sairia do lugar na primeira mudanca. */
+  var manualFrase = '', manualMarca = null;
+
+  function abreManual(frase) {
+    var m = marcaDaFrase(frase) || marca;
+    manualFrase = frase; manualMarca = m;
+    $('manual-resposta').value = '';
+    $('manual-aviso').textContent = '';
+    $('manual-pedido').value = 'Montando o pedido…';
+    $('cortina-manual').hidden = false;
+    pedir({ montar: true, pedido: frase, contrato: contratoDe(m) }).then(function (r) {
+      $('manual-pedido').value =
+        (r.sistema || '') + '\n\n---\n\n' + (r.mensagem || '') +
+        '\n\n---\n\nResponda SOMENTE com o JSON, no formato ' +
+        '{"laminas":[{"type":"...","title":"...","sub":"...","body":"..."}]}.';
+    }, function () {
+      $('manual-pedido').value = '';
+      $('manual-aviso').textContent = 'Não consegui montar o pedido: o servidor não respondeu.';
+    });
+  }
+
+  /* aceita o JSON puro, dentro de cerca de crase, ou so a lista de laminas */
+  function leResposta(txt) {
+    var t = String(txt || '').trim();
+    if (!t) return null;
+    var cerca = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (cerca) t = cerca[1].trim();
+    if (t.charAt(0) !== '{' && t.charAt(0) !== '[') {
+      var i = t.indexOf('{'), j = t.lastIndexOf('}');
+      if (i >= 0 && j > i) t = t.slice(i, j + 1);
+    }
+    var o;
+    try { o = JSON.parse(t); } catch (e) { return null; }
+    if (Array.isArray(o)) return o;
+    if (o && Array.isArray(o.laminas)) return o.laminas;
+    return null;
+  }
+
+  function nLaminas(n) { return n + (n === 1 ? ' lâmina' : ' lâminas'); }
+
+  function montaManual() {
+    var laminas = leResposta($('manual-resposta').value);
+    if (!laminas || !laminas.length) {
+      $('manual-aviso').textContent =
+        'Não achei as lâminas nesse texto. Cole o JSON inteiro, do { ao }.';
+      return;
+    }
+    var m = manualMarca || marca;
+    var fora = confere(m, laminas);
+    $('cortina-manual').hidden = true;
+    aplicaGeracao(m, laminas);
+    if (fora.length) {
+      var lista = fora.map(function (f) {
+        return 'lâmina ' + (f.i + 1) + ' (' + f.campo + '): cabem ' + f.cabe + ', vieram ' + f.tem;
+      }).join(' · ');
+      toast(nLaminas(slides.length) + ' montadas. ' + fora.length +
+            (fora.length === 1 ? ' campo passou do limite — ' : ' campos passaram do limite — ') + lista);
+    } else {
+      toast(nLaminas(slides.length) + ' montadas em ' + txtDe(MARCAS[m].arroba) + '.');
+    }
+  }
+
   /* ---------- a barra da home ---------- */
   var RECADO = {
     desligado: 'A geração ainda não está ligada neste endereço. O gerador de carrossel continua funcionando.',
@@ -3153,10 +3271,15 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
         if (!aplicaGeracao(r.marca, r.laminas)) { nota(RECADO.vazio, true); return; }
         $('prompt').value = '';
         notaPadrao();
-        toast(slides.length + ' lâminas geradas em ' + txtDe(MARCAS[r.marca].arroba) + '.');
+        toast(nLaminas(slides.length) + ' geradas em ' + txtDe(MARCAS[r.marca].arroba) + '.');
       }, function (e) {
         solta();
         if (e && e.message === 'acesso') { pedeSenha(frase); return; }
+        if (e && (e.message === 'semchave' || e.message === 'desligado')) {
+          nota(RECADO[e.message], true);
+          abreManual(frase);
+          return;
+        }
         nota(RECADO[e && e.message] || 'Não consegui gerar agora. Tente de novo.', true);
       });
   });

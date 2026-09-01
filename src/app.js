@@ -2347,6 +2347,21 @@
     if (it) { abrir(it.dataset.view); return; }
     if (ev.target.closest('#ir-home')) { abrir('home'); return; }
     if (ev.target.closest('#btn-salvar')) { salvarPeca(); return; }
+    if (ev.target.closest('#fechar-manual') || ev.target.id === 'cortina-manual') {
+      $('cortina-manual').hidden = true; return;
+    }
+    if (ev.target.closest('#copiar-pedido')) {
+      var t = $('manual-pedido');
+      t.select(); t.setSelectionRange(0, t.value.length);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      if (navigator.clipboard && navigator.clipboard.writeText)
+        navigator.clipboard.writeText(t.value).then(function () { toast('Pedido copiado.'); },
+                                                    function () { if (!ok) toast('Copie com Ctrl+C.'); });
+      else toast(ok ? 'Pedido copiado.' : 'Copie com Ctrl+C.');
+      return;
+    }
+    if (ev.target.closest('#manual-go')) { montaManual(); return; }
     if (ev.target.closest('#btn-versoes')) {
       $('cortina-versoes').hidden = false; pintaVersoes(); return;
     }
@@ -2564,6 +2579,72 @@
     return true;
   }
 
+  /* ---------- modo manual ----------
+     Enquanto a chave nao existe, a pessoa faz o papel do transporte: leva o
+     pedido ao Claude e traz a resposta. Tudo o mais e o caminho de verdade —
+     inclusive o texto do pedido, que e montado pela mesma funcao do servidor,
+     e nao por uma copia aqui que sairia do lugar na primeira mudanca. */
+  var manualFrase = '', manualMarca = null;
+
+  function abreManual(frase) {
+    var m = marcaDaFrase(frase) || marca;
+    manualFrase = frase; manualMarca = m;
+    $('manual-resposta').value = '';
+    $('manual-aviso').textContent = '';
+    $('manual-pedido').value = 'Montando o pedido…';
+    $('cortina-manual').hidden = false;
+    pedir({ montar: true, pedido: frase, contrato: contratoDe(m) }).then(function (r) {
+      $('manual-pedido').value =
+        (r.sistema || '') + '\n\n---\n\n' + (r.mensagem || '') +
+        '\n\n---\n\nResponda SOMENTE com o JSON, no formato ' +
+        '{"laminas":[{"type":"...","title":"...","sub":"...","body":"..."}]}.';
+    }, function () {
+      $('manual-pedido').value = '';
+      $('manual-aviso').textContent = 'Não consegui montar o pedido: o servidor não respondeu.';
+    });
+  }
+
+  /* aceita o JSON puro, dentro de cerca de crase, ou so a lista de laminas */
+  function leResposta(txt) {
+    var t = String(txt || '').trim();
+    if (!t) return null;
+    var cerca = t.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (cerca) t = cerca[1].trim();
+    if (t.charAt(0) !== '{' && t.charAt(0) !== '[') {
+      var i = t.indexOf('{'), j = t.lastIndexOf('}');
+      if (i >= 0 && j > i) t = t.slice(i, j + 1);
+    }
+    var o;
+    try { o = JSON.parse(t); } catch (e) { return null; }
+    if (Array.isArray(o)) return o;
+    if (o && Array.isArray(o.laminas)) return o.laminas;
+    return null;
+  }
+
+  function nLaminas(n) { return n + (n === 1 ? ' lâmina' : ' lâminas'); }
+
+  function montaManual() {
+    var laminas = leResposta($('manual-resposta').value);
+    if (!laminas || !laminas.length) {
+      $('manual-aviso').textContent =
+        'Não achei as lâminas nesse texto. Cole o JSON inteiro, do { ao }.';
+      return;
+    }
+    var m = manualMarca || marca;
+    var fora = confere(m, laminas);
+    $('cortina-manual').hidden = true;
+    aplicaGeracao(m, laminas);
+    if (fora.length) {
+      var lista = fora.map(function (f) {
+        return 'lâmina ' + (f.i + 1) + ' (' + f.campo + '): cabem ' + f.cabe + ', vieram ' + f.tem;
+      }).join(' · ');
+      toast(nLaminas(slides.length) + ' montadas. ' + fora.length +
+            (fora.length === 1 ? ' campo passou do limite — ' : ' campos passaram do limite — ') + lista);
+    } else {
+      toast(nLaminas(slides.length) + ' montadas em ' + txtDe(MARCAS[m].arroba) + '.');
+    }
+  }
+
   /* ---------- a barra da home ---------- */
   var RECADO = {
     desligado: 'A geração ainda não está ligada neste endereço. O gerador de carrossel continua funcionando.',
@@ -2635,10 +2716,15 @@
         if (!aplicaGeracao(r.marca, r.laminas)) { nota(RECADO.vazio, true); return; }
         $('prompt').value = '';
         notaPadrao();
-        toast(slides.length + ' lâminas geradas em ' + txtDe(MARCAS[r.marca].arroba) + '.');
+        toast(nLaminas(slides.length) + ' geradas em ' + txtDe(MARCAS[r.marca].arroba) + '.');
       }, function (e) {
         solta();
         if (e && e.message === 'acesso') { pedeSenha(frase); return; }
+        if (e && (e.message === 'semchave' || e.message === 'desligado')) {
+          nota(RECADO[e.message], true);
+          abreManual(frase);
+          return;
+        }
         nota(RECADO[e && e.message] || 'Não consegui gerar agora. Tente de novo.', true);
       });
   });

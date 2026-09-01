@@ -358,7 +358,17 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
 /* ---------- colar texto ---------- */
 .cortina{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:60;padding:24px}
 .folha{width:min(720px,100%);background:var(--surface);border:1px solid var(--line-2);padding:22px;display:flex;flex-direction:column;gap:14px}
+.folha.larga{width:min(860px,100%)}
 .folha h2{margin:0;font-size:16px;font-weight:600}
+.passo-manual{display:flex;flex-direction:column;gap:8px}
+.passo-manual .rot{margin:0}
+.passo-manual textarea{
+  width:100%;background:#0f1114;border:1px solid var(--line-2);padding:11px 12px;
+  font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.6;
+  color:var(--ink);resize:vertical;
+}
+.passo-manual textarea[readonly]{color:var(--dim)}
+.passo-manual .acoes{margin:0}
 .folha .dica{margin:0;font-size:12.5px;color:var(--dim);line-height:1.5}
 .folha textarea{width:100%;background:#0f1114;border:1px solid var(--line-2);padding:12px;font-size:13.5px;line-height:1.55;resize:vertical}
 .folha textarea:focus{border-color:var(--accent);outline:none}

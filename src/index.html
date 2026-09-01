@@ -107,6 +107,33 @@
   </main>
 </div>
 
+<div class="cortina" id="cortina-manual" hidden>
+  <div class="folha larga" role="dialog" aria-modal="true" aria-labelledby="tit-manual">
+    <h2 id="tit-manual">Gerar sem a chave, por enquanto</h2>
+    <p class="dica">Mesmo pedido que o app mandaria sozinho, com a voz da marca e os limites
+      de caracteres medidos na arte. Leve at&eacute; o Claude, traga a resposta de volta e o
+      restante do caminho roda igual: medi&ccedil;&atilde;o, montagem e biblioteca.</p>
+
+    <div class="passo-manual">
+      <div class="rot mono">1 &middot; COPIE E LEVE AO CLAUDE</div>
+      <textarea id="manual-pedido" rows="9" readonly></textarea>
+      <div class="acoes"><button class="btn2" id="copiar-pedido">Copiar pedido</button></div>
+    </div>
+
+    <div class="passo-manual">
+      <div class="rot mono">2 &middot; COLE A RESPOSTA</div>
+      <textarea id="manual-resposta" rows="7" placeholder="Cole aqui o JSON que o Claude devolveu."></textarea>
+      <p class="ajuda" id="manual-aviso"></p>
+    </div>
+
+    <div class="folha-pe">
+      <span style="flex:1"></span>
+      <button class="btn ghost" id="fechar-manual">Cancelar</button>
+      <button class="btn primary" id="manual-go">Montar as l&acirc;minas</button>
+    </div>
+  </div>
+</div>
+
 <div class="cortina" id="cortina-versoes" hidden>
   <div class="folha" role="dialog" aria-modal="true" aria-labelledby="tit-versoes">
     <h2 id="tit-versoes">Vers&otilde;es deste carrossel</h2>

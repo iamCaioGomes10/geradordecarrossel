@@ -163,8 +163,6 @@ class handler(BaseHTTPRequestHandler):
         senha = os.environ.get("SENHA_GERACAO")
         if senha and self.headers.get("X-Senha") != senha:
             return self._responde(403, {"erro": "acesso"})
-        if not os.environ.get("ANTHROPIC_API_KEY"):
-            return self._responde(503, {"erro": "sem chave configurada"})
 
         try:
             tamanho = int(self.headers.get("Content-Length") or 0)
@@ -181,6 +179,19 @@ class handler(BaseHTTPRequestHandler):
         if not isinstance(dados, dict) or not dados.get("pedido") \
            or not isinstance(dados.get("contrato"), dict):
             return self._responde(400, {"erro": "faltou pedido ou contrato"})
+
+        # modo manual: devolve o pedido montado para uma pessoa levar ao modelo
+        # por fora. Nao chama a API, logo nao precisa de chave — e usa as MESMAS
+        # funcoes do caminho normal, para o que se testa ser o que vai rodar.
+        if dados.get("montar"):
+            contrato = dados["contrato"]
+            return self._responde(200, {
+                "sistema": brief(contrato.get("marca", "suno")) + "\n\n" + instrucoes(contrato),
+                "mensagem": monta_mensagens(dados)[0]["content"],
+            })
+
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            return self._responde(503, {"erro": "sem chave configurada"})
 
         try:
             return self._responde(200, gera(dados))
