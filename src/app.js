@@ -455,9 +455,15 @@
       spec.size = Math.round(spec.size * 0.94);
     }
     if (blk.height > avail) of = true, ESTOUROU = "corpo";
-    var top = cfg.topAlign ? t.regionTop : t.regionTop + (avail - blk.height) / 2;
-    baroniHeader(ctx, t.x, t.headY, 'light');
-    paintSolid(ctx, blk, t.x, Math.max(top, t.regionTop), "corpo");
+    var top = Math.max(t.regionTop,
+      cfg.topAlign ? t.regionTop : t.regionTop + (avail - blk.height) / 2);
+    /* o @ acompanha o texto em vez de ficar preso no alto: com pouco texto,
+       ficava um vao enorme entre o perfil e a primeira linha. A distancia e a
+       do proprio layout (regionTop - headY - avatar), entao com o texto cheio
+       o cabecalho cai exatamente onde o Figma o desenhou. */
+    var gapCab = t.regionTop - t.headY - HEAD.av;
+    baroniHeader(ctx, t.x, top - gapCab - HEAD.av, 'light');
+    paintSolid(ctx, blk, t.x, top, "corpo");
     baroniDisc(ctx, t, cfg);
     return of;
   }
@@ -984,7 +990,10 @@
     for (var p = 0; p < 14; p++) {
       blk = layout(ctx, s.body || '', bs, 'corpo');
       top = t.textCenter - blk.height / 2;
-      headTop = Math.min(t.headY, top - t.gapHeadText - FE_HEAD.av * t.k);
+      /* sem teto em headY: com pouco texto o cabecalho ficava parado no alto e
+         o texto descia para o centro, abrindo um vao. Seguindo o texto, com o
+         texto cheio ele cai no mesmo lugar de antes. */
+      headTop = top - t.gapHeadText - FE_HEAD.av * t.k;
       if (headTop >= 50 || !cfg.autofit || bs.size < 26) break;
       bs.size = Math.round(bs.size * 0.94);
     }
