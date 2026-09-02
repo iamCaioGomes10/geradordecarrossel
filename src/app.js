@@ -45,12 +45,14 @@
       new FontFace('Caladea', b64ToBuf(A.caladea700), { weight: '700' }),
       new FontFace('Montserrat', b64ToBuf(A.montserrat), { weight: '100 900' }),
       new FontFace('Afacad', b64ToBuf(A.afacad), { weight: '100 900' }),
-      new FontFace('Instrument Sans', b64ToBuf(A.instrument), { weight: '100 900' })
+      new FontFace('Instrument Sans', b64ToBuf(A.instrument), { weight: '100 900' }),
+      new FontFace('Instrument Serif', b64ToBuf(A.instrSerif), { weight: '400' })
     ];
     fonts.forEach(function (f) { document.fonts.add(f); });
     var svgName = atob(A.nameSvg), svgHandle = atob(A.handleSvg);
     var trNome = atob(A.trNomeSvg), trHandle = atob(A.trHandleSvg);
     var snNome = atob(A.snNomeSvg), snHandle = atob(A.snHandleSvg);
+    var dnNome = atob(A.dnNomeSvg), dnHandle = atob(A.dnHandleSvg);
     return Promise.all([
       Promise.all(fonts.map(function (f) { return f.load(); })),
       loadImage('data:image/png;base64,' + A.avatar).then(function (i) { IMG.avatar = i; }),
@@ -92,7 +94,13 @@
       loadImage(svgFill(snNome, 'black', '#ffffff')).then(function (i) { IMG.snNomeDark = i; }),
       loadImage(svgFill(snNome, 'black', '#000000')).then(function (i) { IMG.snNomeLight = i; }),
       loadImage(svgFill(snHandle, '#6F7377', '#B6B6B6')).then(function (i) { IMG.snHandleDark = i; }),
-      loadImage(svgFill(snHandle, '#6F7377', '#6F7377')).then(function (i) { IMG.snHandleLight = i; })
+      loadImage(svgFill(snHandle, '#6F7377', '#6F7377')).then(function (i) { IMG.snHandleLight = i; }),
+      loadImage('data:image/png;base64,' + A.dnAvatar).then(function (i) { IMG.dnAvatar = i; }),
+      loadImage('data:image/png;base64,' + A.dnBadge).then(function (i) { IMG.dnBadge = i; }),
+      loadImage(svgFill(dnNome, 'black', '#ffffff')).then(function (i) { IMG.dnNomeDark = i; }),
+      loadImage(svgFill(dnNome, 'black', '#1b1b1b')).then(function (i) { IMG.dnNomeLight = i; }),
+      loadImage(svgFill(dnHandle, '#868686', '#c9c9c9')).then(function (i) { IMG.dnHandleDark = i; }),
+      loadImage(svgFill(dnHandle, '#868686', '#868686')).then(function (i) { IMG.dnHandleLight = i; })
     ]).then(function () { return document.fonts.ready; });
   }
 
@@ -1030,6 +1038,109 @@
   }
 
   /* =========================================================
+     9b. MARCA: @daniellelopesn
+     Figma 2480:282 (capa), 2480:196 (so texto), 2480:239 (texto + imagem).
+     Titulo em Instrument Serif. O corpo e SF Pro no arquivo, que a Apple nao
+     licencia para embutir: entra Instrument Sans, que foi a fonte do pacote
+     cujas quebras de linha bateram com as do Figma depois de calibrar o
+     espacamento em -2,75 (o arquivo pede -2,25). Medido, nao chutado.
+     ========================================================= */
+  var DN_HEAD = { av: 92.779, nameDx: 109, nameDy: 15, nameW: 263, nameH: 30.601,
+                  hDx: 109, hDy: 50.79, hW: 179, hH: 25.953, bDx: 382, bDy: 15, bW: 26.195 };
+
+  function dnHeader(ctx, x, y, theme) {
+    tweetHeader(ctx, DN_HEAD, { avatar: IMG.dnAvatar, badge: IMG.dnBadge,
+      nameLight: IMG.dnNomeLight, nameDark: IMG.dnNomeDark,
+      handleLight: IMG.dnHandleLight, handleDark: IMG.dnHandleDark }, x, y, theme);
+  }
+
+  /* fundo claro dos layouts de texto */
+  function dnFundo(ctx) {
+    ctx.fillStyle = cssGrad(ctx, 154.4523392216068, 0, 0, W, H,
+      [[0.084259, 'rgb(255,255,255)'], [0.95185, 'rgb(240,240,240)']]);
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  var D = {
+    capa: { label: 'Capa', campos: ['title', 'img'],
+      x: 76, minTop: 40, shadeTop: 651, gapHeadTitle: 48.4, titleBottom: 1265.8,
+      title: { font: 'Instrument Serif', size: 95, lh: 1.03, ls: -3.8, w: 928,
+               weight: 400, color: '#fffbd2' } },
+    texto: { label: 'S&oacute; texto', campos: ['title', 'body'],
+      x: 131, gapHeadTitle: 39.62, gapTitleBody: 38.4,
+      title: { font: 'Instrument Serif', size: 80, lh: 1.03, ls: -3.2, w: 784,
+               weight: 400, color: '#1b1b1b' },
+      body: { font: 'Instrument Sans', size: 45, lh: 1.23, ls: -2.75, w: 784,
+              weight: 500, color: '#242424', emWeight: 700 } },
+    imagem: { label: 'Texto + imagem', campos: ['title', 'body', 'img'],
+      x: 131, gapHeadTitle: 45.6, gapTitleBody: 38.9, gapBodyImg: 52.45,
+      title: { font: 'Instrument Serif', size: 80, lh: 1.03, ls: -3.2, w: 784,
+               weight: 400, color: '#1b1b1b' },
+      body: { font: 'Instrument Sans', size: 45, lh: 1.23, ls: -2.75, w: 784,
+              weight: 500, color: '#242424', emWeight: 700 },
+      img: { x: 124, w: 778, h: 398, r: 27 } }
+  };
+
+  function dnCapa(ctx, s, cfg) {
+    var t = D.capa, of = false;
+    var ts = Object.assign({}, t.title), tb, headTop;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts, 'titulo');
+      headTop = t.titleBottom - tb.height - t.gapHeadTitle - DN_HEAD.av;
+      if (headTop >= t.minTop || !cfg.autofit || ts.size < 46) break;
+      ts.size = Math.round(ts.size * 0.94);
+    }
+    if (headTop < t.minTop) of = true, ESTOUROU = 'titulo';
+    ctx.fillStyle = '#141414'; ctx.fillRect(0, 0, W, H);
+    regiao('imagem', 0, 0, W, H);
+    if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
+    /* o degrade nasce onde o Figma pos, mas sobe junto se o titulo crescer:
+       senao o texto acaba caindo sobre a parte clara da foto */
+    shade(ctx, Math.min(t.shadeTop, headTop - 40), 3, 'rgba(0,0,0,0)');
+    dnHeader(ctx, t.x, headTop, 'dark');
+    paintSolid(ctx, tb, t.x, t.titleBottom - tb.height, 'titulo');
+    return of;
+  }
+
+  /* texto e imagem compartilham a composicao: o grupo inteiro — perfil, titulo,
+     corpo e, quando existe, a foto — fica centrado na lamina, que e como o
+     Figma posiciona os dois (margens de topo e base iguais no arquivo). */
+  function dnCorpo(ctx, s, cfg, comImagem) {
+    var t = comImagem ? D.imagem : D.texto, of = false;
+    dnFundo(ctx);
+    var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
+    var extra = comImagem ? (t.gapBodyImg + t.img.h) : 0;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts, 'titulo');
+      bb = layout(ctx, s.body || '', bs, 'corpo');
+      total = DN_HEAD.av + t.gapHeadTitle + tb.height + t.gapTitleBody + bb.height + extra;
+      if (total <= H - 120 || !cfg.autofit || bs.size < 24) break;
+      bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
+    }
+    if (total > H - 120) of = true, ESTOUROU = 'corpo';
+
+    var y = (H - total) / 2;
+    if (y < 50) y = 50;
+    dnHeader(ctx, t.x, y, 'light');
+    y += DN_HEAD.av + t.gapHeadTitle;
+    paintSolid(ctx, tb, t.x, y, 'titulo');
+    y += tb.height + t.gapTitleBody;
+    paintSolid(ctx, bb, t.x, y, 'corpo');
+
+    if (comImagem) {
+      y += bb.height + t.gapBodyImg;
+      regiao('imagem', t.img.x, y, t.img.w, t.img.h);
+      ctx.save(); roundRect(ctx, t.img.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
+      if (s.img) drawCover(ctx, s.img, t.img.x, y, t.img.w, t.img.h, s);
+      else { ctx.fillStyle = '#e4e4e4'; ctx.fillRect(t.img.x, y, t.img.w, t.img.h); }
+      ctx.restore();
+    }
+    return of;
+  }
+  function dnTexto(ctx, s, cfg) { return dnCorpo(ctx, s, cfg, false); }
+  function dnImagem(ctx, s, cfg) { return dnCorpo(ctx, s, cfg, true); }
+
+  /* =========================================================
      10. Registro de marcas
      ========================================================= */
   var MARCAS = {
@@ -1056,7 +1167,12 @@
     funds: { nome: 'Funds Explorer', arroba: '@fundsexplorer', cor: '#00c0f5', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica azul na capa e negrito no texto &middot; <kbd>__sublinhado__</kbd>',
       tipos: { capa: F.capa, texto: F.texto, imagem: F.imagem },
-      render: { capa: feCapa, texto: feTexto, imagem: feImagem } }
+      render: { capa: feCapa, texto: feTexto, imagem: feImagem } },
+    danielle: { nome: 'Danielle Nicoli Lopes', arroba: '@daniellelopesn', cor: '#289aff',
+      disclaimer: false, topAlign: false,
+      dica: '<kbd>**destaque**</kbd> deixa o trecho em negrito no texto',
+      tipos: { capa: D.capa, texto: D.texto, imagem: D.imagem },
+      render: { capa: dnCapa, texto: dnTexto, imagem: dnImagem } }
   };
 
   function render(canvas, marca, s, cfg) {
@@ -1479,7 +1595,7 @@
       if (atual) { var sn2 = blank('texto'); sn2.body = atual; out.push(sn2); }
       return out;
     }
-    if (marca === 'suno' || marca === 'tiago' || marca === 'consultoria') {
+    if (marca === 'suno' || marca === 'tiago' || marca === 'consultoria' || marca === 'danielle') {
       paras.forEach(function (p, i) {
         var ls = p.split('\n'), s = blank('texto');
         s.title = ls[0]; s.body = ls.slice(1).join('\n');

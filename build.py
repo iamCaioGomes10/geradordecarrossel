@@ -47,6 +47,11 @@ assets = {
     "coGlow":      b64("co-glow.svg"),
     "afacad":      b64("afacad.woff2"),
     "instrument":  b64("instrument-sans.woff2"),
+    "instrSerif":  b64("instrument-serif.woff2"),
+    "dnAvatar":    b64("dn-avatar.png"),
+    "dnBadge":     b64("dn-badge.png"),
+    "dnNomeSvg":   b64("dn-nome.svg"),      # fill="black"   -> recolorido
+    "dnHandleSvg": b64("dn-handle.svg"),    # fill="#868686" -> recolorido
     "feLogo":      b64("fe-logo.png"),
     "feBadge":     b64("fe-badge.png"),
     "feEllipse":   b64("fe-ellipse.svg"),
