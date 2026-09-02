@@ -1341,6 +1341,9 @@
   }
 
   /* ---------- palco ---------- */
+  function celular() {
+    return window.matchMedia && window.matchMedia('(max-width:760px)').matches;
+  }
   function molde(i, alt, focada) {
     var lam = slides[i], larg = alt * 0.8, k = larg / W;
     var d = document.createElement('div');
@@ -1385,9 +1388,12 @@
     }
     if (foco >= slides.length) foco = slides.length - 1;
     var porAlt = p.clientHeight - 52;
-    var porLarg = ((p.clientWidth - 56 - 52) / 2.48) / 0.8;
+    /* no celular so a lamina em foco aparece; dividir a largura por tres
+       deixaria a arte pequena a toa */
+    var vizinhas = !celular();
+    var porLarg = ((p.clientWidth - (vizinhas ? 108 : 20)) / (vizinhas ? 2.48 : 1)) / 0.8;
     var altF = Math.max(200, Math.min(porAlt, porLarg, 620));
-    [foco - 1, foco, foco + 1].forEach(function (i) {
+    (vizinhas ? [foco - 1, foco, foco + 1] : [foco]).forEach(function (i) {
       if (i < 0 || i >= slides.length) return;
       p.appendChild(molde(i, i === foco ? altF : altF * 0.74, i === foco));
     });
@@ -1856,7 +1862,7 @@
 
   var reTempo;
   window.addEventListener('resize', function () {
-    clearTimeout(reTempo); reTempo = setTimeout(pintaPalco, 120);
+    clearTimeout(reTempo); reTempo = setTimeout(function () { pinta(); }, 120);
   });
 
   /* ---------- partida ---------- */
@@ -2196,6 +2202,20 @@
   /* redimensionar a janela reaplica o teto, mas nao reescreve a preferencia */
   window.addEventListener('resize', aplicaLateral);
 
+  /* ---------- gaveta do menu no celular ---------- */
+  function gaveta(abrirGaveta) {
+    lateral.dataset.aberta = abrirGaveta ? '1' : '0';
+    $('veu-menu').hidden = !abrirGaveta;
+    $('abre-menu').setAttribute('aria-expanded', abrirGaveta ? 'true' : 'false');
+  }
+  $('abre-menu').addEventListener('click', function () {
+    gaveta(lateral.dataset.aberta !== '1');
+  });
+  $('veu-menu').addEventListener('click', function () { gaveta(false); });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && lateral.dataset.aberta === '1') gaveta(false);
+  });
+
   btnLateral.addEventListener('click', function () {
     colapsada = !colapsada; aplicaLateral(); guardaLateral();
     setTimeout(refazPalco, 200);   /* depois da transicao de largura */
@@ -2489,8 +2509,8 @@
 
   document.addEventListener('click', function (ev) {
     var it = ev.target.closest('.item, .atalho');
-    if (it) { abrir(it.dataset.view); return; }
-    if (ev.target.closest('#ir-home')) { abrir('home'); return; }
+    if (it) { abrir(it.dataset.view); gaveta(false); return; }
+    if (ev.target.closest('#ir-home')) { abrir('home'); gaveta(false); return; }
     if (ev.target.closest('#btn-salvar')) { salvarPeca(); return; }
     if (ev.target.closest('#fechar-manual') || ev.target.id === 'cortina-manual') {
       $('cortina-manual').hidden = true; return;

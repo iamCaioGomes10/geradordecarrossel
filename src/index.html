@@ -10,6 +10,11 @@
 <body>
 <div class="plataforma">
 
+  <button class="abre-menu" id="abre-menu" aria-label="Abrir menu" aria-expanded="false" aria-controls="lateral">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+  </button>
+  <div class="veu-menu" id="veu-menu" hidden></div>
+
   <nav class="lateral" id="lateral" aria-label="Ferramentas">
     <div class="topo-lateral">
       <button class="marca" id="ir-home" aria-label="In&iacute;cio" title="In&iacute;cio">
@@ -63,8 +68,8 @@
           <div class="perfis" id="perfis" role="group" aria-label="Perfil"></div>
           <span class="conta mono" id="conta"></span>
           <button class="btn" id="btn-versoes">Vers&otilde;es</button>
-          <button class="btn" id="btn-salvar">Salvar na biblioteca</button>
-          <button class="btn" id="btn-colar">Colar texto</button>
+          <button class="btn" id="btn-salvar">Salvar<span class="so-largo">&nbsp;na biblioteca</span></button>
+          <button class="btn" id="btn-colar">Colar<span class="so-largo">&nbsp;texto</span></button>
           <button class="btn primary" id="dl-all">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             <span id="rot-exportar">Exportar</span>
