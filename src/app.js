@@ -1358,10 +1358,6 @@
         h.push('<div class="acoes"><button class="btn2" id="reset-ajuste">Voltar ao padrão do layout</button></div>');
     }
 
-    if (M.disclaimer)
-      h.push('<label class="check"><input type="checkbox" id="disc-on"' +
-        (lam.semDisc ? '' : ' checked') + '> Mostrar disclaimer nesta lâmina</label>');
-
     h.push('<div id="aviso-slot"></div>');
 
     h.push('<div class="acoes">' +
@@ -1369,6 +1365,11 @@
       '<button class="btn2" id="dir" ' + (foco === slides.length - 1 ? 'disabled' : '') + ' aria-label="Mover para frente">→</button>' +
       '<button class="btn2" id="dup">Duplicar</button>' +
       (slides.length > 1 ? '<button class="btn2 perigo" id="del">Excluir</button>' : '') + '</div>');
+    if (M.disclaimer)
+      h.push('<div class="acoes"><button class="btn2 alterna" id="disc-on" data-ativo="' +
+        (lam.semDisc ? '0' : '1') + '">' +
+        (lam.semDisc ? 'Pôr o disclaimer nesta lâmina' : 'Tirar o disclaimer desta lâmina') +
+        '</button></div>');
     h.push('<div class="acoes"><button class="btn2" id="dl-one">Baixar esta lâmina</button></div>');
     h.push('</div>');
 
@@ -1590,6 +1591,10 @@
     if (ev.target.closest('#dir') && foco < slides.length - 1) {
       slides.splice(foco + 1, 0, slides.splice(foco, 1)[0]); foco++; pinta(); return;
     }
+    if (ev.target.closest('#disc-on')) {
+      slides[foco].semDisc = !slides[foco].semDisc;
+      pinta(); return;
+    }
     if (ev.target.closest('#reset-ajuste')) {
       var lm = slides[foco];
       if (lm.fonte) delete lm.fonte[sel];
@@ -1657,7 +1662,7 @@
   document.addEventListener('change', function (ev) {
     var id = ev.target.id;
     if (id === 'tipo') { slides[foco].type = ev.target.value; sel = null; pinta(); return; }
-    if (id === 'disc-on') { slides[foco].semDisc = !ev.target.checked; pinta(); return; }
+
     if (id === 'autofit') { opts.autofit = ev.target.checked; pinta(); return; }
     if (id === 'topalign') { opts.topAlign = ev.target.checked; pinta(); return; }
     if (id === 'arq') {

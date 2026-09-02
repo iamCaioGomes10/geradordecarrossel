@@ -376,6 +376,16 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
 }
 .passo-manual textarea[readonly]{color:var(--dim)}
 .passo-manual .acoes{margin:0}
+
+/* botao que liga e desliga algo da lamina: o estado tem de ler de longe */
+.btn2.alterna{
+  display:flex;align-items:center;gap:8px;justify-content:flex-start;text-align:left;
+}
+.btn2.alterna::before{
+  content:'';width:8px;height:8px;border-radius:50%;flex:none;
+  background:#4a5058;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.btn2.alterna[data-ativo="1"]::before{background:#e8b62c;box-shadow:0 0 0 3px rgba(232,182,44,.18)}
 .folha .dica{margin:0;font-size:12.5px;color:var(--dim);line-height:1.5}
 .folha textarea{width:100%;background:#0f1114;border:1px solid var(--line-2);padding:12px;font-size:13.5px;line-height:1.55;resize:vertical}
 .folha textarea:focus{border-color:var(--accent);outline:none}
@@ -1912,10 +1922,6 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
         h.push('<div class="acoes"><button class="btn2" id="reset-ajuste">Voltar ao padrão do layout</button></div>');
     }
 
-    if (M.disclaimer)
-      h.push('<label class="check"><input type="checkbox" id="disc-on"' +
-        (lam.semDisc ? '' : ' checked') + '> Mostrar disclaimer nesta lâmina</label>');
-
     h.push('<div id="aviso-slot"></div>');
 
     h.push('<div class="acoes">' +
@@ -1923,6 +1929,11 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       '<button class="btn2" id="dir" ' + (foco === slides.length - 1 ? 'disabled' : '') + ' aria-label="Mover para frente">→</button>' +
       '<button class="btn2" id="dup">Duplicar</button>' +
       (slides.length > 1 ? '<button class="btn2 perigo" id="del">Excluir</button>' : '') + '</div>');
+    if (M.disclaimer)
+      h.push('<div class="acoes"><button class="btn2 alterna" id="disc-on" data-ativo="' +
+        (lam.semDisc ? '0' : '1') + '">' +
+        (lam.semDisc ? 'Pôr o disclaimer nesta lâmina' : 'Tirar o disclaimer desta lâmina') +
+        '</button></div>');
     h.push('<div class="acoes"><button class="btn2" id="dl-one">Baixar esta lâmina</button></div>');
     h.push('</div>');
 
@@ -2144,6 +2155,10 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     if (ev.target.closest('#dir') && foco < slides.length - 1) {
       slides.splice(foco + 1, 0, slides.splice(foco, 1)[0]); foco++; pinta(); return;
     }
+    if (ev.target.closest('#disc-on')) {
+      slides[foco].semDisc = !slides[foco].semDisc;
+      pinta(); return;
+    }
     if (ev.target.closest('#reset-ajuste')) {
       var lm = slides[foco];
       if (lm.fonte) delete lm.fonte[sel];
@@ -2211,7 +2226,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   document.addEventListener('change', function (ev) {
     var id = ev.target.id;
     if (id === 'tipo') { slides[foco].type = ev.target.value; sel = null; pinta(); return; }
-    if (id === 'disc-on') { slides[foco].semDisc = !ev.target.checked; pinta(); return; }
+
     if (id === 'autofit') { opts.autofit = ev.target.checked; pinta(); return; }
     if (id === 'topalign') { opts.topAlign = ev.target.checked; pinta(); return; }
     if (id === 'arq') {
