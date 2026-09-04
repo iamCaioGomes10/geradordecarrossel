@@ -154,6 +154,93 @@
   var GUIA = { titulo: 'insira o título', sub: 'insira o subtítulo', corpo: 'insira o texto' };
   var GUIAS = true;
 
+  /* ---------- tema claro / escuro por lamina ----------
+     Cada marca ja tem as duas paletas dentro dela: a capa e o tratamento
+     escuro, as laminas de texto sao o claro. Trocar o tema e usar as cores da
+     propria marca, nao inventar cor nova. `nativo` diz qual e o tema que o
+     Figma desenhou para aquele layout — sem escolha da pessoa, e ele que vale. */
+  var TEMAS = {
+    baroni: {
+      escuro: { fundo: '#050505', titulo: '#f1f1f1', sub: '#ffffff', corpo: '#f0f0f0',
+                cab: 'dark', disc: '#8b8f93' },
+      claro:  { fundo: '#ffffff', titulo: '#111111', sub: '#3a3a3a', corpo: '#000000',
+                cab: 'light', disc: '#6f7377' } },
+    suno: {
+      escuro: { fundo: '#0d0d0d', grad: 'GRAD_CAPA', sub: '#e5e5e5', cab: 'dark' },
+      claro:  { fundo: '#ffffff', grad: 'GRAD_TITLE', sub: '#3a3a3a', cab: 'light' } },
+    tiago: {
+      escuro: { fundo: '#111111', titulo: '#ffffff', sub: '#ececec', corpo: '#ececec',
+                cab: 'dark' },
+      claro:  { fundo: 'TR_BG', titulo: '#1b1b1b', sub: '#3a3a3a', corpo: '#242424',
+                cab: 'light' } },
+    noticias: {
+      escuro: { fundo: '#141414', titulo: '#ffffff', corpo: '#f0f0f0', cab: 'dark',
+                semPapel: true },
+      claro:  { fundo: 'PAPEL', titulo: '#111111', corpo: '#000000', cab: 'light' } },
+    consultoria: {
+      escuro: { fundo: '#141414', titulo: '#ffffff', sub: '#ffffff', corpo: '#ececec',
+                cab: 'dark' },
+      claro:  { fundo: '#f7f7f7', titulo: '#1e1e1e', sub: '#1e1e1e', corpo: '#1e1e1e',
+                cab: 'light' } },
+    funds: {
+      escuro: { fundo: '#111111', titulo: '#ffffff', sub: '#ffffff', corpo: '#f0f0f0',
+                cab: 'dark' },
+      claro:  { fundo: 'TR_BG', titulo: '#1b1b1b', sub: '#1b1b1b', corpo: '#000000',
+                cab: 'light' } },
+    danielle: {
+      escuro: { fundo: '#141414', titulo: '#fffbd2', corpo: '#ececec', cab: 'dark' },
+      claro:  { fundo: 'DN_BG', titulo: '#1b1b1b', corpo: '#242424', cab: 'light' } }
+  };
+  /* qual tema o Figma desenhou para cada layout */
+  var TEMA_NATIVO = {
+    baroni:      { capa: 'escuro', corpo: 'claro',  corpoImg: 'escuro' },
+    suno:        { capa: 'escuro', corpoImg: 'claro', texto: 'claro' },
+    tiago:       { capa: 'escuro', texto: 'claro',  foto: 'claro' },
+    noticias:    { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
+    consultoria: { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
+    funds:       { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
+    danielle:    { capa: 'escuro', texto: 'claro',  imagem: 'claro' }
+  };
+
+  var TEMA = null, TEMA_MARCA = null, TEMA_TIPO = null;
+
+  function nativo() {
+    return (TEMA_NATIVO[TEMA_MARCA] || {})[TEMA_TIPO] || 'claro';
+  }
+  /* o tema em vigor: o escolhido pela pessoa, ou o do projeto */
+  function tema() { return TEMA || nativo(); }
+  function paleta() { return (TEMAS[TEMA_MARCA] || {})[tema()] || {}; }
+  /* true quando a pessoa pediu algo diferente do que o layout ja era */
+  function temaTrocado() { return !!TEMA && TEMA !== nativo(); }
+
+  /* pinta o fundo: o do projeto quando nao ha troca, o da paleta quando ha */
+  function pintaFundo(ctx, padrao) {
+    if (!temaTrocado()) return padrao();
+    var f = paleta().fundo;
+    if (f === 'TR_BG')      ctx.fillStyle = cssGrad(ctx, TR_BG.angle, 0, 0, W, H, TR_BG.stops);
+    else if (f === 'DN_BG') return dnFundo(ctx);
+    else if (f === 'PAPEL') return snPapel(ctx);
+    else                    ctx.fillStyle = f;
+    ctx.fillRect(0, 0, W, H);
+  }
+  /* nas capas o fundo e a foto; esta e a base de quando ainda nao ha foto.
+     Em tema claro ela precisa ser clara, senao o texto escuro some. */
+  function baseCapa(padrao) {
+    if (!temaTrocado()) return padrao;
+    return tema() === 'claro' ? '#f2f2f2' : (paleta().fundo || padrao);
+  }
+
+  /* tema do cabecalho de perfil (nome e arroba tem versao clara e escura) */
+  function cab(padrao) { return temaTrocado() ? paleta().cab : padrao; }
+
+  /* os gradientes do @suno so existem depois; por isso a paleta guarda o nome */
+  function gradDoTema() {
+    var g = paleta().grad;
+    if (g === 'GRAD_CAPA') return GRAD_CAPA;
+    if (g === 'GRAD_TITLE') return GRAD_TITLE;
+    return null;
+  }
+
   /* ajustes manuais da lamina que esta sendo desenhada (definidos por render):
      fonte e largura por campo, como fracao do que o layout projetou */
   var AJUSTES = null;
@@ -172,7 +259,13 @@
   }
 
   function comAjuste(spec, campo) {
-    if (!AJUSTES || !campo) return spec;
+    if (!campo) return spec;
+    /* cor do tema primeiro: quem manda no texto e a paleta da marca */
+    if (temaTrocado()) {
+      var cor = paleta()[campo];
+      if (cor) spec = Object.assign({}, spec, { color: cor });
+    }
+    if (!AJUSTES) return spec;
     var f = (AJUSTES.fonte || {})[campo], w = (AJUSTES.larg || {})[campo];
     if (!f && !w) return spec;
     var novo = Object.assign({}, spec);
@@ -303,6 +396,12 @@
      desenha em camada offscreen e recorta o gradiente com source-in */
   function paintGrad(ctx, blk, x, top, style, campo) {
     regiao(campo, x, top, blk.spec.w, blk.height);
+    /* no @suno o texto e pintado por gradiente: trocar o tema troca o gradiente,
+       nao a cor. O vermelho do destaque fica como esta nos dois temas. */
+    if (temaTrocado()) {
+      var g = gradDoTema();
+      if (g) style = Object.assign({}, style, { grad: g });
+    }
     var pad = 80, ox = x - pad, oy = top - pad;
     var lw = Math.ceil(blk.spec.w + pad * 2), lh = Math.ceil(blk.height + pad * 2);
     var base = layerOf(lw, lh), bc = base.getContext('2d');
@@ -377,15 +476,21 @@
      identica e o comeco deixa de ser uma linha reta. */
   function shade(ctx, top, times, from, entrada) {
     var ini = top - (entrada || 0), alt = H - ini;
+    /* nas capas o fundo e a foto: o que escurece (ou clareia) o pe da lamina
+       para o texto ler e este veu. Em tema claro ele vira branco. */
+    var claro = tema() === 'claro';
+    var fim = claro ? 'rgba(255,255,255,1)' : 'rgba(0,0,0,1)';
+    var zero = claro ? 'rgba(255,255,255,0)' : 'rgba(0,0,0,0)';
+    var de = claro ? String(from).replace('0,0,0', '255,255,255') : from;
     for (var k = 0; k < times; k++) {
       var g = ctx.createLinearGradient(0, ini, 0, H);
       if (entrada) {
-        g.addColorStop(0, 'rgba(0,0,0,0)');
-        g.addColorStop(entrada / alt, from);
+        g.addColorStop(0, zero);
+        g.addColorStop(entrada / alt, de);
       } else {
-        g.addColorStop(0, from);
+        g.addColorStop(0, de);
       }
-      g.addColorStop(1, 'rgba(0,0,0,1)');
+      g.addColorStop(1, fim);
       ctx.fillStyle = g; ctx.fillRect(0, ini, W, H - ini);
     }
   }
@@ -412,7 +517,8 @@
   }
   function baroniDisc(ctx, t, cfg) {
     if (!cfg.discOn || !cfg.disc.trim()) return;
-    var spec = { font: 'Inter', size: 24, lh: 1.28, ls: -0.96, w: 900, color: '#6f7377', weight: 700 };
+    var spec = { font: 'Inter', size: 24, lh: 1.28, ls: -0.96, w: 900, weight: 700,
+                 color: temaTrocado() ? (paleta().disc || '#6f7377') : '#6f7377' };
     paintSolid(ctx, layout(ctx, cfg.disc, spec), t.discX, t.discY);
   }
 
@@ -433,7 +539,7 @@
 
   function baroniCapa(ctx, s, cfg) {
     var t = B.capa, of = false; if (0) ESTOUROU = null;
-    ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, W, H);
+    pintaFundo(ctx, function () { ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, W, H); });
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
     for (var p = 0; p < 14; p++) {
       tb = layout(ctx, s.title || '', ts, 'titulo'); sb = layout(ctx, s.sub || '', ss, 'sub');
@@ -447,7 +553,7 @@
     regiao("imagem", 0, 0, W, H);
     if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     shade(ctx, Math.min(616, headTop), 2, 'rgba(0,0,0,0.06)', 170);
-    baroniHeader(ctx, t.x, headTop, 'dark');
+    baroniHeader(ctx, t.x, headTop, cab('dark'));
     paintSolid(ctx, tb, t.x, titleTop, "titulo"); paintSolid(ctx, sb, t.x, subTop, "sub");
     baroniDisc(ctx, t, cfg);
     return of;
@@ -455,7 +561,7 @@
 
   function baroniCorpo(ctx, s, cfg) {
     var t = B.corpo, of = false;
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+    pintaFundo(ctx, function () { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H); });
     var spec = Object.assign({}, t.body), avail = t.regionBottom - t.regionTop, blk;
     for (var p = 0; p < 14; p++) {
       blk = layout(ctx, s.body || '', spec, 'corpo');
@@ -470,7 +576,7 @@
        do proprio layout (regionTop - headY - avatar), entao com o texto cheio
        o cabecalho cai exatamente onde o Figma o desenhou. */
     var gapCab = t.regionTop - t.headY - HEAD.av;
-    baroniHeader(ctx, t.x, top - gapCab - HEAD.av, 'light');
+    baroniHeader(ctx, t.x, top - gapCab - HEAD.av, cab('light'));
     paintSolid(ctx, blk, t.x, top, "corpo");
     baroniDisc(ctx, t, cfg);
     return of;
@@ -478,7 +584,7 @@
 
   function baroniCorpoImg(ctx, s, cfg) {
     var t = B.corpoImg, of = false;
-    ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, W, H);
+    pintaFundo(ctx, function () { ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, W, H); });
     var spec = Object.assign({}, t.body), blk, headTop, textTop, imgTop = t.img.bottom - t.img.h;
     for (var p = 0; p < 14; p++) {
       blk = layout(ctx, s.body || '', spec, 'corpo');
@@ -488,7 +594,7 @@
       spec.size = Math.round(spec.size * 0.94);
     }
     if (headTop < t.minTop) of = true, ESTOUROU = "titulo";
-    baroniHeader(ctx, t.x, headTop, 'dark');
+    baroniHeader(ctx, t.x, headTop, cab('dark'));
     paintSolid(ctx, blk, t.x, textTop, "corpo");
     regiao("imagem", t.x, imgTop, t.img.w, t.img.h);
     ctx.save(); roundRect(ctx, t.x, imgTop, t.img.w, t.img.h, t.img.r); ctx.clip();
@@ -533,7 +639,7 @@
       var g = ctx.createRadialGradient(540, 675, 0, 540, 675, 840);
       g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#f3f3f3');
       ctx.fillStyle = g;
-    } else ctx.fillStyle = '#141414';   /* sem foto: placeholder escuro, legivel */
+    } else ctx.fillStyle = baseCapa('#141414');   /* sem foto: base legivel */
     ctx.fillRect(0, 0, W, H);
 
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, logoTop;
@@ -558,7 +664,7 @@
 
   function sunoCorpoImg(ctx, s, cfg) {
     var t = S.corpoImg, of = false;
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+    pintaFundo(ctx, function () { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H); });
     var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, titleTop;
     for (var p = 0; p < 14; p++) {
       tb = layout(ctx, s.title || '', ts, 'titulo'); bb = layout(ctx, s.body || '', bs, 'corpo');
@@ -581,7 +687,7 @@
 
   function sunoTexto(ctx, s, cfg) {
     var t = S.texto, of = false;
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+    pintaFundo(ctx, function () { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H); });
     var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
     for (var p = 0; p < 14; p++) {
       tb = layout(ctx, s.title || '', ts, 'titulo'); bb = layout(ctx, s.body || '', bs, 'corpo');
@@ -635,7 +741,11 @@
 
   function trCapa(ctx, s, cfg) {
     var t = T.capa, of = false;
-    trFundo(ctx);
+    /* base escura como nas outras capas: o gradiente claro do trFundo so
+       aparecia quando nao havia foto, e ai o titulo branco sumia nele */
+    pintaFundo(ctx, function () {
+      ctx.fillStyle = baseCapa('#111111'); ctx.fillRect(0, 0, W, H);
+    });
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
     for (var p = 0; p < 14; p++) {
       tb = layout(ctx, s.title || '', ts, 'titulo'); sb = layout(ctx, s.sub || '', ss, 'sub');
@@ -658,7 +768,7 @@
   /* nos dois layouts de corpo o conjunto inteiro e centralizado na vertical */
   function trCorpo(ctx, s, cfg, comFoto) {
     var t = comFoto ? T.foto : T.texto, of = false;
-    trFundo(ctx);
+    pintaFundo(ctx, function () { trFundo(ctx); });
     var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
     var extra = comFoto ? (t.gapBodyImg + t.img.h) : 0;
     for (var p = 0; p < 14; p++) {
@@ -671,7 +781,7 @@
 
     var y = (H - total) / 2;
     if (y < 50) y = 50;
-    trHeader(ctx, t.x, y, 'light');
+    trHeader(ctx, t.x, y, cab('light'));
     y += TR_HEAD.av + t.gapHeadTitle;
     paintSolid(ctx, tb, t.x, y, "titulo");
     y += tb.height + t.gapTitleBody;
@@ -729,7 +839,7 @@
 
   function snCapa(ctx, s, cfg) {
     var t = N.capa, of = false;
-    ctx.fillStyle = '#141414'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = baseCapa('#141414'); ctx.fillRect(0, 0, W, H);
     var ts = Object.assign({}, t.title), tb, headTop;
     for (var p = 0; p < 14; p++) {
       tb = layout(ctx, s.title || '', ts, 'titulo');
@@ -758,7 +868,7 @@
 
   function snTexto(ctx, s, cfg) {
     var t = N.texto, of = false;
-    snPapel(ctx);
+    pintaFundo(ctx, function () { snPapel(ctx); });
     var bs = Object.assign({}, t.body), blk, headTop;
     for (var p = 0; p < 14; p++) {
       blk = layout(ctx, s.body || '', bs, 'corpo');
@@ -768,7 +878,7 @@
     }
     if (headTop < 60) of = true, ESTOUROU = "corpo";
     var top = t.textCenter - blk.height / 2;
-    snHeader(ctx, t.x, headTop, 'light');
+    snHeader(ctx, t.x, headTop, cab('light'));
     paintSolid(ctx, blk, t.x, top, "corpo");
     return of;
   }
@@ -776,7 +886,7 @@
   /* aqui o conjunto inteiro e centralizado, como no arquivo */
   function snImagem(ctx, s, cfg) {
     var t = N.imagem, of = false;
-    snPapel(ctx);
+    pintaFundo(ctx, function () { snPapel(ctx); });
     var bs = Object.assign({}, t.body), blk, total;
     for (var p = 0; p < 14; p++) {
       blk = layout(ctx, s.body || '', bs, 'corpo');
@@ -786,7 +896,7 @@
     }
     if (total > H - 120) of = true, ESTOUROU = "corpo";
     var y = (H - total) / 2; if (y < 50) y = 50;
-    snHeader(ctx, t.x, y, 'light');
+    snHeader(ctx, t.x, y, cab('light'));
     y += SN_HEAD.av + t.gapHeadText;
     paintSolid(ctx, blk, t.x, y, "corpo");
     y += blk.height + t.gapTextImg;
@@ -845,7 +955,7 @@
 
   function coCapa(ctx, s, cfg) {
     var t = C.capa, of = false;
-    ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = baseCapa('#000000'); ctx.fillRect(0, 0, W, H);
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, titleTop;
     for (var p = 0; p < 14; p++) {
       tb = layout(ctx, s.title || '', ts, 'titulo'); sb = layout(ctx, s.sub || '', ss, 'sub');
@@ -879,7 +989,7 @@
 
   function coCorpo(ctx, s, cfg, comImagem) {
     var t = comImagem ? C.imagem : C.texto, of = false;
-    ctx.fillStyle = '#f7f7f7'; ctx.fillRect(0, 0, W, H);
+    pintaFundo(ctx, function () { ctx.fillStyle = '#f7f7f7'; ctx.fillRect(0, 0, W, H); });
     var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, fim;
     var extra = comImagem ? (t.gapTitleImg + t.img.h + t.gapImgBody) : t.gapTitleBody;
     for (var p = 0; p < 14; p++) {
@@ -962,7 +1072,7 @@
 
   function feCapa(ctx, s, cfg) {
     var t = F.capa, of = false;
-    ctx.fillStyle = '#0b0b0b'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = baseCapa('#0b0b0b'); ctx.fillRect(0, 0, W, H);
     var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
     for (var p = 0; p < 14; p++) {
       tb = layout(ctx, s.title || '', ts, 'titulo'); sb = layout(ctx, s.sub || '', ss, 'sub');
@@ -993,7 +1103,7 @@
 
   function feTexto(ctx, s, cfg) {
     var t = F.texto, of = false;
-    feFundo(ctx);
+    pintaFundo(ctx, function () { feFundo(ctx); });
     var bs = Object.assign({}, t.body), blk, top, headTop;
     for (var p = 0; p < 14; p++) {
       blk = layout(ctx, s.body || '', bs, 'corpo');
@@ -1006,7 +1116,7 @@
       bs.size = Math.round(bs.size * 0.94);
     }
     if (headTop < 50) of = true, ESTOUROU = "corpo";
-    feHeader(ctx, t.x, headTop, 'light', t.k);
+    feHeader(ctx, t.x, headTop, cab('light'), t.k);
     paintSolid(ctx, blk, t.x, top, "corpo");
     return of;
   }
@@ -1014,7 +1124,7 @@
   /* aqui o conjunto e centralizado e os dois vaos sao iguais */
   function feImagem(ctx, s, cfg) {
     var t = F.imagem, of = false;
-    feFundo(ctx);
+    pintaFundo(ctx, function () { feFundo(ctx); });
     var bs = Object.assign({}, t.body), blk, total;
     var avh = FE_HEAD.av * t.k;
     for (var p = 0; p < 14; p++) {
@@ -1094,13 +1204,13 @@
       ts.size = Math.round(ts.size * 0.94);
     }
     if (headTop < t.minTop) of = true, ESTOUROU = 'titulo';
-    ctx.fillStyle = '#141414'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = baseCapa('#141414'); ctx.fillRect(0, 0, W, H);
     regiao('imagem', 0, 0, W, H);
     if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     /* o degrade nasce onde o Figma pos, mas sobe junto se o titulo crescer:
        senao o texto acaba caindo sobre a parte clara da foto */
     shade(ctx, Math.min(t.shadeTop, headTop - 40), 3, 'rgba(0,0,0,0)');
-    dnHeader(ctx, t.x, headTop, 'dark');
+    dnHeader(ctx, t.x, headTop, cab('dark'));
     paintSolid(ctx, tb, t.x, t.titleBottom - tb.height, 'titulo');
     return of;
   }
@@ -1110,7 +1220,7 @@
      Figma posiciona os dois (margens de topo e base iguais no arquivo). */
   function dnCorpo(ctx, s, cfg, comImagem) {
     var t = comImagem ? D.imagem : D.texto, of = false;
-    dnFundo(ctx);
+    pintaFundo(ctx, function () { dnFundo(ctx); });
     var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
     var extra = comImagem ? (t.gapBodyImg + t.img.h) : 0;
     for (var p = 0; p < 14; p++) {
@@ -1124,7 +1234,7 @@
 
     var y = (H - total) / 2;
     if (y < 50) y = 50;
-    dnHeader(ctx, t.x, y, 'light');
+    dnHeader(ctx, t.x, y, cab('light'));
     y += DN_HEAD.av + t.gapHeadTitle;
     paintSolid(ctx, tb, t.x, y, 'titulo');
     y += tb.height + t.gapTitleBody;
@@ -1184,6 +1294,8 @@
     ctx.clearRect(0, 0, W, H); ctx.textAlign = 'left';
     GUIAS = cfg.guias !== false;
     AJUSTES = s;
+    TEMA = s && s.tema ? s.tema : null;
+    TEMA_MARCA = marca; TEMA_TIPO = s ? s.type : null;
     REGIOES = []; ESTOUROU = null;
     var M = MARCAS[marca];
     var fn = M.render[s.type] || M.render[Object.keys(M.render)[0]];
@@ -1297,7 +1409,7 @@
   function blank(type) {
     return { type: type || tipoPadrao(), title: '', sub: '', body: '', numero: '',
              img: null, imgName: '', zoom: 1, fx: 0.5, fy: 0.5,
-             fonte: {}, larg: {}, semDisc: false };
+             fonte: {}, larg: {}, semDisc: false, tema: null };
   }
   /* copia de lamina que nao compartilha os mapas de ajuste com a original */
   function clonaLamina(l) {
@@ -1461,6 +1573,13 @@
       Object.keys(tipos()).map(function (k) {
         return '<option value="' + k + '"' + (k === lam.type ? ' selected' : '') + '>' + txtDe(labelDe(k)) + '</option>';
       }).join('') + '</select></div>');
+
+    var tm = lam.tema || '';
+    h.push('<div><div class="rot mono">FUNDO DESTA LÂMINA</div><div class="segmento">' +
+      '<button class="seg' + (tm === '' ? ' on' : '') + '" data-tema="">Do layout</button>' +
+      '<button class="seg' + (tm === 'escuro' ? ' on' : '') + '" data-tema="escuro">Escuro</button>' +
+      '<button class="seg' + (tm === 'claro' ? ' on' : '') + '" data-tema="claro">Claro</button>' +
+      '</div></div>');
 
     if (marca === 'consultoria' && lam.type !== 'capa')
       h.push('<div><div class="rot mono">NÚMERO NO CÍRCULO</div>' +
@@ -1725,6 +1844,11 @@
     if (ev.target.closest('#dir') && foco < slides.length - 1) {
       slides.splice(foco + 1, 0, slides.splice(foco, 1)[0]); foco++; pinta(); return;
     }
+    var bt = ev.target.closest('[data-tema]');
+    if (bt) {
+      slides[foco].tema = bt.dataset.tema || null;
+      pinta(); return;
+    }
     if (ev.target.closest('#disc-on')) {
       slides[foco].semDisc = !slides[foco].semDisc;
       pinta(); return;
@@ -1961,7 +2085,7 @@
       }
       return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
                zoom: l.zoom, fx: l.fx, fy: l.fy, imgRef: ref, imgName: l.imgName,
-               semDisc: !!l.semDisc,
+               semDisc: !!l.semDisc, tema: l.tema || null,
                fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
     });
     var v = {
@@ -2053,7 +2177,7 @@
                    numero: l.numero || '', zoom: l.zoom || 1,
                    fx: l.fx == null ? .5 : l.fx, fy: l.fy == null ? .5 : l.fy,
                    img: imgs[i], imgName: l.imgName || '',
-                   semDisc: !!l.semDisc || velhoSemDisc,
+                   semDisc: !!l.semDisc || velhoSemDisc, tema: l.tema || null,
                    fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
         });
         foco = 0; sel = null;
@@ -2286,7 +2410,8 @@
     return JSON.stringify([marca, opts.disc, opts.discOn, opts.autofit, opts.topAlign,
       slides.map(function (l) {
         return [l.type, l.title, l.sub, l.body, l.numero, l.imgName,
-                l.zoom, l.fx, l.fy, l.img ? 1 : 0, ajusteStr(l), l.semDisc ? 1 : 0].join('\u0001');
+                l.zoom, l.fx, l.fy, l.img ? 1 : 0, ajusteStr(l), l.semDisc ? 1 : 0,
+                l.tema || ''].join('\u0001');
       })]);
   }
   /* so o que muda a miniatura da biblioteca: a primeira lamina */
@@ -2295,7 +2420,7 @@
     if (!l) return '';
     return JSON.stringify([marca, opts.disc, opts.discOn, opts.autofit, opts.topAlign,
       l.type, l.title, l.sub, l.body, l.numero, l.imgName, l.zoom, l.fx, l.fy,
-      l.img ? 1 : 0, ajusteStr(l), l.semDisc ? 1 : 0]);
+      l.img ? 1 : 0, ajusteStr(l), l.semDisc ? 1 : 0, l.tema || '']);
   }
   function documentoVazio() {
     return !slides.some(function (l) {
@@ -2342,7 +2467,7 @@
           laminas: slides.map(function (l) {
             return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
                      zoom: l.zoom, fx: l.fx, fy: l.fy, img: l.img ? l.img.src : null,
-                     imgName: l.imgName, semDisc: !!l.semDisc,
+                     imgName: l.imgName, semDisc: !!l.semDisc, tema: l.tema || null,
                      fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
           })
         };
@@ -2495,7 +2620,7 @@
           return { type: l.type, title: l.title || '', sub: l.sub || '', body: l.body || '',
                    numero: l.numero || '', zoom: l.zoom || 1, fx: l.fx == null ? .5 : l.fx,
                    fy: l.fy == null ? .5 : l.fy, img: carregadas[i], imgName: l.imgName || '',
-                   semDisc: !!l.semDisc || velhoSemDisc,
+                   semDisc: !!l.semDisc || velhoSemDisc, tema: l.tema || null,
                    fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
         });
         /* a partir daqui a edicao continua NESTE registro, sem criar copia */
