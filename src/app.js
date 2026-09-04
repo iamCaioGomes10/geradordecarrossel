@@ -1045,8 +1045,11 @@
      cujas quebras de linha bateram com as do Figma depois de calibrar o
      espacamento em -2,75 (o arquivo pede -2,25). Medido, nao chutado.
      ========================================================= */
-  var DN_HEAD = { av: 92.779, nameDx: 109, nameDy: 15, nameW: 263, nameH: 30.601,
-                  hDx: 109, hDy: 50.79, hW: 179, hH: 25.953, bDx: 382, bDy: 15, bW: 26.195 };
+  /* o nome na arte e "Danielle Lopes": o SVG do Figma vinha com "Nicoli" no
+     meio e foi cortado no proprio arquivo, entao a largura caiu de 263 para
+     187,14 e o selo de verificado subiu junto, mantendo os 10px de folga */
+  var DN_HEAD = { av: 92.779, nameDx: 109, nameDy: 15, nameW: 187.14, nameH: 30.601,
+                  hDx: 109, hDy: 50.79, hW: 179, hH: 25.953, bDx: 306.14, bDy: 15, bW: 26.195 };
 
   function dnHeader(ctx, x, y, theme) {
     tweetHeader(ctx, DN_HEAD, { avatar: IMG.dnAvatar, badge: IMG.dnBadge,
@@ -1168,7 +1171,7 @@
       dica: '<kbd>**destaque**</kbd> fica azul na capa e negrito no texto &middot; <kbd>__sublinhado__</kbd>',
       tipos: { capa: F.capa, texto: F.texto, imagem: F.imagem },
       render: { capa: feCapa, texto: feTexto, imagem: feImagem } },
-    danielle: { nome: 'Danielle Nicoli Lopes', arroba: '@daniellelopesn', cor: '#289aff',
+    danielle: { nome: 'Danielle Lopes', arroba: '@daniellelopesn', cor: '#289aff',
       disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> deixa o trecho em negrito no texto',
       tipos: { capa: D.capa, texto: D.texto, imagem: D.imagem },
