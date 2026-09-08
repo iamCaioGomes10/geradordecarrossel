@@ -53,6 +53,7 @@
     var trNome = atob(A.trNomeSvg), trHandle = atob(A.trHandleSvg);
     var snNome = atob(A.snNomeSvg), snHandle = atob(A.snHandleSvg);
     var dnNome = atob(A.dnNomeSvg), dnHandle = atob(A.dnHandleSvg);
+    var stAnel = atob(A.stAnelSvg), stNome = atob(A.stNomeSvg), stHandle = atob(A.stHandleSvg);
     return Promise.all([
       Promise.all(fonts.map(function (f) { return f.load(); })),
       loadImage('data:image/png;base64,' + A.avatar).then(function (i) { IMG.avatar = i; }),
@@ -100,7 +101,16 @@
       loadImage(svgFill(dnNome, 'black', '#ffffff')).then(function (i) { IMG.dnNomeDark = i; }),
       loadImage(svgFill(dnNome, 'black', '#1b1b1b')).then(function (i) { IMG.dnNomeLight = i; }),
       loadImage(svgFill(dnHandle, '#868686', '#c9c9c9')).then(function (i) { IMG.dnHandleDark = i; }),
-      loadImage(svgFill(dnHandle, '#868686', '#868686')).then(function (i) { IMG.dnHandleLight = i; })
+      loadImage(svgFill(dnHandle, '#868686', '#868686')).then(function (i) { IMG.dnHandleLight = i; }),
+      loadImage('data:image/png;base64,' + A.stMarca).then(function (i) { IMG.stMarca = i; }),
+      loadImage('data:image/png;base64,' + A.stLogo).then(function (i) { IMG.stLogo = i; }),
+      loadImage('data:image/png;base64,' + A.stBadge).then(function (i) { IMG.stBadge = i; }),
+      loadImage(svgFill(stAnel, '#D9D9D9', '#ffffff')).then(function (i) { IMG.stAnelDark = i; }),
+      loadImage(svgFill(stAnel, '#D9D9D9', '#D9D9D9')).then(function (i) { IMG.stAnelLight = i; }),
+      loadImage(svgFill(stNome, '#202020', '#ffffff')).then(function (i) { IMG.stNomeDark = i; }),
+      loadImage(svgFill(stNome, '#202020', '#202020')).then(function (i) { IMG.stNomeLight = i; }),
+      loadImage(svgFill(stHandle, '#B6B6B6', '#cfcfcf')).then(function (i) { IMG.stHandleDark = i; }),
+      loadImage(svgFill(stHandle, '#B6B6B6', '#B6B6B6')).then(function (i) { IMG.stHandleLight = i; })
     ]).then(function () { return document.fonts.ready; });
   }
 
@@ -189,7 +199,12 @@
                 cab: 'light' } },
     danielle: {
       escuro: { fundo: '#141414', titulo: '#fffbd2', corpo: '#ececec', cab: 'dark' },
-      claro:  { fundo: 'DN_BG', titulo: '#1b1b1b', corpo: '#242424', cab: 'light' } }
+      claro:  { fundo: 'DN_BG', titulo: '#1b1b1b', corpo: '#242424', cab: 'light' } },
+    status: {
+      escuro: { fundo: '#111111', titulo: '#efefef', sub: '#efefef', corpo: '#d2d2d2',
+                cab: 'dark' },
+      claro:  { fundo: 'ST_BG', titulo: '#1b1b1b', sub: '#3a3a3a', corpo: '#787878',
+                cab: 'light' } }
   };
   /* qual tema o Figma desenhou para cada layout */
   var TEMA_NATIVO = {
@@ -199,7 +214,8 @@
     noticias:    { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
     consultoria: { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
     funds:       { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
-    danielle:    { capa: 'escuro', texto: 'claro',  imagem: 'claro' }
+    danielle:    { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
+    status:      { capa: 'escuro', texto: 'claro',  imagem: 'claro' }
   };
 
   var TEMA = null, TEMA_MARCA = null, TEMA_TIPO = null;
@@ -220,6 +236,7 @@
     if (f === 'TR_BG')      ctx.fillStyle = cssGrad(ctx, TR_BG.angle, 0, 0, W, H, TR_BG.stops);
     else if (f === 'DN_BG') return dnFundo(ctx);
     else if (f === 'PAPEL') return snPapel(ctx);
+    else if (f === 'ST_BG') return stFundo(ctx);
     else                    ctx.fillStyle = f;
     ctx.fillRect(0, 0, W, H);
   }
@@ -1254,6 +1271,149 @@
   function dnImagem(ctx, s, cfg) { return dnCorpo(ctx, s, cfg, true); }
 
   /* =========================================================
+     9c. MARCA: @status.invest
+     Figma 2023:422 (capa), 2021:2 (so texto), 2022:297 (texto + imagem).
+     Inter nos dois pesos que o arquivo pede, e o fundo e o mesmo gradiente do
+     @tiagogreis, com dois aneis da marca quase transparentes por cima.
+     O destaque tem duas caras aqui: verde-agua no titulo, cinza escuro no
+     corpo (que nasce cinza medio, nao preto).
+     ========================================================= */
+  var ST_HEAD = { av: 93, logoDx: 9, logoDy: 9, logo: 75,
+                  nameDx: 100.1, nameDy: 20.35, nameW: 158.63, nameH: 21.919,
+                  hDx: 99.98, hDy: 48.22, hW: 145.832, hH: 23.647,
+                  bDx: 268, bDy: 21, bW: 22 };
+  /* na capa o cabecalho e um pouco menor e os deslocamentos mudam 3px */
+  var ST_HEAD_CAPA = { av: 87, logoDx: 6, logoDy: 6, logo: 75,
+                  nameDx: 97.1, nameDy: 17.35, nameW: 158.631, nameH: 21.919,
+                  hDx: 96.98, hDy: 45.22, hW: 145.832, hH: 23.647,
+                  bDx: 265, bDy: 18, bW: 22 };
+
+  function stHeader(ctx, m, x, y, theme) {
+    var claro = theme === 'light';
+    ctx.drawImage(claro ? IMG.stAnelLight : IMG.stAnelDark, x, y, m.av, m.av);
+    ctx.drawImage(IMG.stLogo, x + m.logoDx, y + m.logoDy, m.logo, m.logo);
+    ctx.drawImage(claro ? IMG.stNomeLight : IMG.stNomeDark,
+      x + m.nameDx, y + m.nameDy, m.nameW, m.nameH);
+    ctx.drawImage(claro ? IMG.stHandleLight : IMG.stHandleDark,
+      x + m.hDx, y + m.hDy, m.hW, m.hH);
+    ctx.drawImage(IMG.stBadge, x + m.bDx, y + m.bDy, m.bW, m.bW);
+  }
+
+  /* os dois aneis da marca: o arquivo os coloca em caixas centradas e giradas,
+     entao aqui a conta e o centro de cada caixa mais o giro */
+  var ST_ANEIS = [
+    { cx: -115 + 1895.665 / 2, cy: 684 + 1895.665 / 2, giro: 145.21 },
+    { cx: -430 + 1829.441 / 2, cy: -651.72 + 1829.441 / 2, giro: -26.77 }
+  ];
+  function stAneis(ctx, alfa) {
+    ctx.save();
+    ctx.globalAlpha = alfa;
+    ST_ANEIS.forEach(function (a) {
+      ctx.save();
+      ctx.translate(a.cx, a.cy);
+      ctx.rotate(a.giro * Math.PI / 180);
+      ctx.drawImage(IMG.stMarca, -681, -681, 1362, 1362);
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+  function stFundo(ctx) {
+    ctx.fillStyle = cssGrad(ctx, TR_BG.angle, 0, 0, W, H, TR_BG.stops);
+    ctx.fillRect(0, 0, W, H);
+    stAneis(ctx, 0.07);
+  }
+
+  var ST = {
+    capa: { label: 'Capa', campos: ['title', 'sub', 'img'],
+      x: 97, subX: 100, minTop: 40, shadeTop: 657,
+      subBottom: 1252.85, gapTitleSub: 29.55, gapHeadTitle: 39.4,
+      title: { font: 'Inter', size: 85, lh: 1.03, ls: -5.95, w: 868, weight: 600,
+               color: '#efefef', emColor: '#00ab93' },
+      sub: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 865, weight: 500,
+             color: '#efefef', emColor: '#cacaca' } },
+    texto: { label: 'S&oacute; texto', campos: ['title', 'body'],
+      /* vaos do arquivo; o bias existe porque a composicao do Figma nao esta
+         exatamente centrada: fica 6,6px mais baixa que o centro da lamina */
+      x: 128, gapHeadTitle: 46.66, gapTitleBody: 66.46, bias: 6.6,
+      title: { font: 'Inter', size: 64, lh: 1.03, ls: -4.48, w: 762, weight: 600,
+               color: '#1b1b1b', emColor: '#00ab93' },
+      body: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 824, weight: 600,
+              color: '#787878', emColor: '#3d3d3d' } },
+    imagem: { label: 'Texto + imagem', campos: ['title', 'body', 'img'],
+      x: 114, bodyX: 118, topo: 127,
+      gapHeadTitle: 21.65, gapTitleBody: 24.45, gapBodyImg: 52,
+      title: { font: 'Inter', size: 64, lh: 1.03, ls: -4.48, w: 762, weight: 600,
+               color: '#1b1b1b', emColor: '#00ab93' },
+      body: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 824, weight: 600,
+              color: '#787878', emColor: '#3d3d3d' },
+      img: { x: 114, w: 852, h: 420, r: 27 } }
+  };
+
+  function stCapa(ctx, s, cfg) {
+    var t = ST.capa, of = false;
+    var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts, 'titulo');
+      sb = layout(ctx, s.sub || '', ss, 'sub');
+      headTop = (t.subBottom - sb.height) - t.gapTitleSub - tb.height
+                - t.gapHeadTitle - ST_HEAD_CAPA.av;
+      if (headTop >= t.minTop || !cfg.autofit || ts.size < 48) break;
+      ts.size = Math.round(ts.size * 0.94);
+      if (ts.size < 60) ss.size = Math.round(ss.size * 0.94);
+    }
+    if (headTop < t.minTop) of = true, ESTOUROU = 'titulo';
+    pintaFundo(ctx, function () {
+      ctx.fillStyle = baseCapa('#111111'); ctx.fillRect(0, 0, W, H);
+    });
+    regiao('imagem', 0, 0, W, H);
+    if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
+    stAneis(ctx, 0.10);
+    shade(ctx, Math.min(t.shadeTop, headTop - 40), 2, 'rgba(0,0,0,0)');
+    stHeader(ctx, ST_HEAD_CAPA, t.x + 3, headTop, cab('dark'));
+    var subTop = t.subBottom - sb.height;
+    paintSolid(ctx, tb, t.x, subTop - t.gapTitleSub - tb.height, 'titulo');
+    paintSolid(ctx, sb, t.subX, subTop, 'sub');
+    return of;
+  }
+
+  /* so texto centra o grupo na lamina; texto + imagem ancora no topo, porque
+     a foto entra depois do corpo e fecha a composicao embaixo */
+  function stCorpo(ctx, s, cfg, comImagem) {
+    var t = comImagem ? ST.imagem : ST.texto, of = false;
+    pintaFundo(ctx, function () { stFundo(ctx); });
+    var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
+    var extra = comImagem ? (t.gapBodyImg + t.img.h) : 0;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts, 'titulo');
+      bb = layout(ctx, s.body || '', bs, 'corpo');
+      total = ST_HEAD.av + t.gapHeadTitle + tb.height + t.gapTitleBody + bb.height + extra;
+      if (total <= H - 160 || !cfg.autofit || bs.size < 24) break;
+      bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
+    }
+    if (total > H - 160) of = true, ESTOUROU = 'corpo';
+
+    var y = comImagem ? t.topo : (H - total) / 2 + (t.bias || 0);
+    if (y < 50) y = 50;
+    stHeader(ctx, ST_HEAD, t.x, y, cab('light'));
+    y += ST_HEAD.av + t.gapHeadTitle;
+    paintSolid(ctx, tb, t.x, y, 'titulo');
+    y += tb.height + t.gapTitleBody;
+    paintSolid(ctx, bb, t.bodyX || t.x, y, 'corpo');
+
+    if (comImagem) {
+      y += bb.height + t.gapBodyImg;
+      regiao('imagem', t.img.x, y, t.img.w, t.img.h);
+      ctx.save(); roundRect(ctx, t.img.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
+      if (s.img) drawCover(ctx, s.img, t.img.x, y, t.img.w, t.img.h, s);
+      else { ctx.fillStyle = '#e4e4e4'; ctx.fillRect(t.img.x, y, t.img.w, t.img.h); }
+      ctx.restore();
+    }
+    return of;
+  }
+  function stTexto(ctx, s, cfg) { return stCorpo(ctx, s, cfg, false); }
+  function stImagem(ctx, s, cfg) { return stCorpo(ctx, s, cfg, true); }
+
+  /* =========================================================
      10. Registro de marcas
      ========================================================= */
   var MARCAS = {
@@ -1285,7 +1445,12 @@
       disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> deixa o trecho em negrito no texto',
       tipos: { capa: D.capa, texto: D.texto, imagem: D.imagem },
-      render: { capa: dnCapa, texto: dnTexto, imagem: dnImagem } }
+      render: { capa: dnCapa, texto: dnTexto, imagem: dnImagem } },
+    status: { nome: 'Status Invest', arroba: '@status.invest', cor: '#00ab93',
+      disclaimer: false, topAlign: false,
+      dica: '<kbd>**destaque**</kbd> fica verde no t&iacute;tulo e escuro no texto',
+      tipos: { capa: ST.capa, texto: ST.texto, imagem: ST.imagem },
+      render: { capa: stCapa, texto: stTexto, imagem: stImagem } }
   };
 
   function render(canvas, marca, s, cfg) {
@@ -1723,7 +1888,8 @@
       if (atual) { var sn2 = blank('texto'); sn2.body = atual; out.push(sn2); }
       return out;
     }
-    if (marca === 'suno' || marca === 'tiago' || marca === 'consultoria' || marca === 'danielle') {
+    if (marca === 'suno' || marca === 'tiago' || marca === 'consultoria' ||
+        marca === 'danielle' || marca === 'status') {
       paras.forEach(function (p, i) {
         var ls = p.split('\n'), s = blank('texto');
         s.title = ls[0]; s.body = ls.slice(1).join('\n');
