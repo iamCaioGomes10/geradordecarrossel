@@ -2029,14 +2029,17 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       x: 128, gapHeadTitle: 46.66, gapTitleBody: 66.46, bias: 6.6,
       title: { font: 'Inter', size: 64, lh: 1.03, ls: -4.48, w: 762, weight: 600,
                color: '#1b1b1b', emColor: '#00ab93' },
-      body: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 824, weight: 600,
+      /* o Figma marca o corpo como SemiBold, mas 600 a 45px fica pesado na arte:
+         500, como o corpo do @tiagogreis, que e a mesma fonte no mesmo tamanho.
+         O destaque aqui e por cor, nao por peso, entao nao perde contraste. */
+      body: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 824, weight: 500,
               color: '#787878', emColor: '#3d3d3d' } },
     imagem: { label: 'Texto + imagem', campos: ['title', 'body', 'img'],
       x: 114, bodyX: 118, topo: 127,
       gapHeadTitle: 21.65, gapTitleBody: 24.45, gapBodyImg: 52,
       title: { font: 'Inter', size: 64, lh: 1.03, ls: -4.48, w: 762, weight: 600,
                color: '#1b1b1b', emColor: '#00ab93' },
-      body: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 824, weight: 600,
+      body: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 824, weight: 500,
               color: '#787878', emColor: '#3d3d3d' },
       img: { x: 114, w: 852, h: 420, r: 27 } }
   };
