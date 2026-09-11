@@ -319,6 +319,41 @@ body[data-arrastando-texto="1"]{cursor:ew-resize;user-select:none}
 .maisq:hover{border-color:var(--accent);color:var(--accent)}
 
 /* ---------- painel ---------- */
+/* ---------- bandeja de blocos (esquerda) ---------- */
+.pecas{width:186px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;
+  gap:9px;padding:16px 14px;overflow-y:auto;background:var(--ground)}
+.pecas[hidden]{display:none}
+.pecas .rot{margin-bottom:2px}
+/* bpeca, nao peca: `.peca` ja e o cartao da galeria da Biblioteca, com
+   aspect-ratio de lamina — reusar o nome deformava os dois lados */
+.bpeca{
+  flex:none;
+  display:flex;align-items:center;gap:10px;width:100%;
+  background:var(--surface);border:1px solid var(--line-2);
+  padding:11px 12px;font-size:13px;color:var(--ink);text-align:left;
+  cursor:grab;user-select:none;
+}
+.bpeca:hover{border-color:var(--accent);background:var(--raised)}
+.bpeca:active{cursor:grabbing}
+.bpeca.arrastando{opacity:.45}
+.bpeca .ic-peca{flex:none;width:22px;height:22px;display:flex;align-items:center;justify-content:center;color:var(--dim)}
+.bpeca:hover .ic-peca{color:var(--accent)}
+.pecas .ajuda-peca{margin-top:4px;font-size:11px;line-height:1.5;color:var(--mute)}
+/* fita que mostra onde o bloco vai entrar na pilha */
+.fita{position:absolute;left:0;right:0;height:3px;background:var(--accent);pointer-events:none;
+  box-shadow:0 0 0 1px rgba(212,33,38,.35)}
+.lam.recebendo canvas{outline:2px dashed var(--accent);outline-offset:-1px}
+/* lista de blocos da lamina, no painel da direita */
+.pilha{display:flex;flex-direction:column;gap:6px}
+.pilha-item{display:flex;align-items:center;gap:8px;background:#0f1114;border:1px solid var(--line-2);
+  padding:8px 9px;font-size:12.5px;cursor:grab}
+.pilha-item[data-sel="1"]{border-color:var(--accent)}
+.pilha-item.arrastando{opacity:.45}
+.pilha-item .nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pilha-item .tira{flex:none;background:none;border:0;color:var(--mute);cursor:pointer;padding:2px 4px;font-size:14px;line-height:1}
+.pilha-item .tira:hover{color:var(--accent)}
+.pilha-vazia{font-size:12px;color:var(--mute);line-height:1.5}
+
 .painel{width:306px;flex:none;border-left:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto}
 .pcab{padding:15px 18px;border-bottom:1px solid var(--line)}
 .pcab .k{font-size:10px;color:var(--mute);letter-spacing:.1em}

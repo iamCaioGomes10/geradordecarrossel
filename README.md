@@ -48,11 +48,31 @@ Setas ← → do teclado passam de lâmina. `Esc` fecha a janela de colar.
 A diferença existe porque no layout do @suno cada lâmina tem título próprio, e no
 do @ProfessorBaroni o corpo é um bloco de texto corrido.
 
+## Lâmina de blocos
+
+Além dos layouts fechados, o **@ProfessorBaroni** tem o layout **Blocos** — escolha
+`Blocos` no seletor de layout. Nele a lâmina deixa de ser uma moldura pronta e passa a
+ser uma pilha que você monta: a bandeja da esquerda traz **Título**, **Subtítulo**,
+**Texto** e **Imagem**, e você arrasta a peça para a arte (ou clica, e ela vai para o
+fim da pilha). Uma fita vermelha mostra onde a peça vai encaixar.
+
+O que muda de mão é a **composição** — ordem, quantidade e combinação de blocos. O que
+o perfil continua decidindo é a **forma**: fonte, corpo, cor, margem, cabeçalho e
+disclaimer saem do mesmo projeto dos outros layouts. Por isso é lego e não tela em
+branco: as peças são livres, o encaixe não.
+
+Para reordenar, arraste o bloco na própria arte ou na lista **Pilha desta lâmina**, no
+painel da direita — é nessa lista que também se tira um bloco, no `×`.
+
+Os demais perfis seguem só com os layouts fechados; o modo blocos começou no Baroni
+como piloto.
+
 ## Layouts
 
 | Perfil | Layout | Nó no Figma | Fundo |
 |---|---|---|---|
 | Baroni | Capa | `6:233` | imagem + gradiente preto |
+| Baroni | Blocos | — (pilha montada à mão) | preto `#050505`, ou claro pelo tema |
 | Baroni | Corpo | `3:2` | branco |
 | Baroni | Corpo + imagem | `6:193` | preto `#050505`, imagem 768×357 |
 | Suno | Capa | `705:2` | imagem + gradiente preto, logo branco |

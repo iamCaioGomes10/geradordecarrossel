@@ -327,6 +327,41 @@ body[data-arrastando-texto="1"]{cursor:ew-resize;user-select:none}
 .maisq:hover{border-color:var(--accent);color:var(--accent)}
 
 /* ---------- painel ---------- */
+/* ---------- bandeja de blocos (esquerda) ---------- */
+.pecas{width:186px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;
+  gap:9px;padding:16px 14px;overflow-y:auto;background:var(--ground)}
+.pecas[hidden]{display:none}
+.pecas .rot{margin-bottom:2px}
+/* bpeca, nao peca: `.peca` ja e o cartao da galeria da Biblioteca, com
+   aspect-ratio de lamina — reusar o nome deformava os dois lados */
+.bpeca{
+  flex:none;
+  display:flex;align-items:center;gap:10px;width:100%;
+  background:var(--surface);border:1px solid var(--line-2);
+  padding:11px 12px;font-size:13px;color:var(--ink);text-align:left;
+  cursor:grab;user-select:none;
+}
+.bpeca:hover{border-color:var(--accent);background:var(--raised)}
+.bpeca:active{cursor:grabbing}
+.bpeca.arrastando{opacity:.45}
+.bpeca .ic-peca{flex:none;width:22px;height:22px;display:flex;align-items:center;justify-content:center;color:var(--dim)}
+.bpeca:hover .ic-peca{color:var(--accent)}
+.pecas .ajuda-peca{margin-top:4px;font-size:11px;line-height:1.5;color:var(--mute)}
+/* fita que mostra onde o bloco vai entrar na pilha */
+.fita{position:absolute;left:0;right:0;height:3px;background:var(--accent);pointer-events:none;
+  box-shadow:0 0 0 1px rgba(212,33,38,.35)}
+.lam.recebendo canvas{outline:2px dashed var(--accent);outline-offset:-1px}
+/* lista de blocos da lamina, no painel da direita */
+.pilha{display:flex;flex-direction:column;gap:6px}
+.pilha-item{display:flex;align-items:center;gap:8px;background:#0f1114;border:1px solid var(--line-2);
+  padding:8px 9px;font-size:12.5px;cursor:grab}
+.pilha-item[data-sel="1"]{border-color:var(--accent)}
+.pilha-item.arrastando{opacity:.45}
+.pilha-item .nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pilha-item .tira{flex:none;background:none;border:0;color:var(--mute);cursor:pointer;padding:2px 4px;font-size:14px;line-height:1}
+.pilha-item .tira:hover{color:var(--accent)}
+.pilha-vazia{font-size:12px;color:var(--mute);line-height:1.5}
+
 .painel{width:306px;flex:none;border-left:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto}
 .pcab{padding:15px 18px;border-bottom:1px solid var(--line)}
 .pcab .k{font-size:10px;color:var(--mute);letter-spacing:.1em}
@@ -599,6 +634,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
           </button>
         </div>
         <div class="meio">
+          <aside class="pecas" id="pecas" aria-label="Blocos"></aside>
           <div class="centro">
             <div class="palco" id="palco"></div>
             <div class="esteira" id="esteira"></div>
@@ -901,7 +937,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   };
   /* qual tema o Figma desenhou para cada layout */
   var TEMA_NATIVO = {
-    baroni:      { capa: 'escuro', corpo: 'claro',  corpoImg: 'escuro' },
+    baroni:      { capa: 'escuro', corpo: 'claro',  corpoImg: 'escuro', livre: 'escuro' },
     suno:        { capa: 'escuro', corpoImg: 'claro', texto: 'claro' },
     tiago:       { capa: 'escuro', texto: 'claro',  foto: 'claro' },
     noticias:    { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
@@ -1313,6 +1349,134 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     ctx.restore();
     ctx.strokeStyle = t.img.border; ctx.lineWidth = 1;
     roundRect(ctx, t.x + .5, imgTop + .5, t.img.w - 1, t.img.h - 1, t.img.r); ctx.stroke();
+    baroniDisc(ctx, t, cfg);
+    return of;
+  }
+
+  /* ---------------------------------------------------------
+     Lamina de blocos (piloto no Baroni)
+
+     Os outros tipos sao molduras fechadas: o Figma decidiu onde cada campo
+     fica e a pessoa so preenche. Aqui a ordem e o conteudo sao dela — o que
+     o perfil continua garantindo e a tipografia, a cor, a margem e o
+     cabecalho. Encaixa, nao posiciona: os blocos empilham na coluna do
+     perfil, na ordem em que foram soltos.
+     --------------------------------------------------------- */
+  B.livre = {
+    label: 'Blocos', campos: [], livre: true,
+    x: 125, discX: 124, discY: 1139,
+    topo: 150, minTop: 40, regionBottom: 1095,
+    gapCab: 45,   /* do pe do avatar ate o primeiro bloco */
+    gap: 32,      /* entre blocos vizinhos */
+    pecas: {
+      titulo: { rot: 'T&iacute;tulo', kind: 'texto',
+        spec: { font: 'Staatliches', size: 76, lh: 1.03, ls: -3.04, w: 790, color: '#f1f1f1', weight: 400, caps: true } },
+      sub: { rot: 'Subt&iacute;tulo', kind: 'texto',
+        spec: { font: 'Inter', size: 40, lh: 1.28, ls: -0.8, w: 790, color: '#ffffff', weight: 400 } },
+      texto: { rot: 'Texto', kind: 'texto',
+        spec: { font: 'Inter', size: 40, lh: 1.28, ls: -0.8, w: 790, color: '#f0f0f0', weight: 400, emWeight: 600, underlineAlt: true } },
+      imagem: { rot: 'Imagem', kind: 'img',
+        img: { w: 790, h: 357, r: 11, border: '#d6d6d6' } }
+    }
+  };
+
+  /* a cor sai da paleta quando a pessoa troca o tema da lamina; fora isso e
+     a que o bloco ja traz */
+  function corBloco(k, spec) {
+    if (!temaTrocado()) return spec.color;
+    var p = paleta();
+    if (k === 'titulo') return p.titulo || spec.color;
+    if (k === 'sub') return p.sub || spec.color;
+    return p.corpo || spec.color;
+  }
+
+  /* mede a pilha inteira numa dada escala, sem desenhar nada */
+  function medeBlocos(ctx, lista, t, esc) {
+    var itens = [], total = 0;
+    lista.forEach(function (b, i) {
+      var pc = t.pecas[b.k]; if (!pc) return;
+      var h, blk = null;
+      if (pc.kind === 'img') {
+        h = pc.img.h * esc;
+      } else {
+        var spec = Object.assign({}, pc.spec);
+        spec.size = spec.size * esc;
+        spec.color = corBloco(b.k, pc.spec);
+        blk = layout(ctx, b.v || '', spec, 'b' + i);
+        h = blk.height;
+      }
+      if (itens.length) total += t.gap * esc;
+      itens.push({ b: b, i: i, pc: pc, blk: blk, h: h, esc: esc });
+      total += h;
+    });
+    return { itens: itens, total: total };
+  }
+
+  function baroniLivre(ctx, s, cfg) {
+    var t = B.livre, of = false, claro = tema() === 'claro';
+    pintaFundo(ctx, function () {
+      ctx.fillStyle = claro ? '#ffffff' : '#050505'; ctx.fillRect(0, 0, W, H);
+    });
+    var lista = (s.blocos || []).filter(function (b) { return t.pecas[b.k]; });
+
+    /* lamina ainda vazia: o proprio palco explica o que fazer */
+    if (!lista.length) {
+      baroniHeader(ctx, t.x, t.topo, cab(claro ? 'light' : 'dark'));
+      var g = { font: 'Inter', size: 34, lh: 1.3, ls: -0.7, w: 790, weight: 400,
+                color: claro ? '#a6a6a6' : '#4e4e4e' };
+      var vazio = layout(ctx, 'Arraste um bloco da esquerda para começar.', g);
+      vazio.guia = true;
+      paintSolid(ctx, vazio, t.x, t.topo + HEAD.av + t.gapCab);
+      baroniDisc(ctx, t, cfg);
+      return false;
+    }
+
+    /* espaco util: entre o topo do cabecalho e o pe da regiao de texto */
+    var util = t.regionBottom - t.topo - HEAD.av - t.gapCab;
+    var esc = 1, m;
+    for (var p = 0; p < 14; p++) {
+      m = medeBlocos(ctx, lista, t, esc);
+      if (m.total <= util || !cfg.autofit || esc < 0.55) break;
+      esc *= 0.94;
+    }
+    if (m.total > util) { of = true; ESTOUROU = 'b0'; }
+
+    /* a pilha inteira centra na regiao, como os layouts de corpo fazem */
+    var topo = cfg.topAlign ? t.topo + HEAD.av + t.gapCab
+             : Math.max(t.topo + HEAD.av + t.gapCab,
+                        t.topo + HEAD.av + t.gapCab + (util - m.total) / 2);
+    baroniHeader(ctx, t.x, topo - t.gapCab - HEAD.av, cab(claro ? 'light' : 'dark'));
+
+    var y = topo;
+    m.itens.forEach(function (it, n) {
+      if (n) y += t.gap * esc;
+      var campo = 'b' + it.i;
+      if (it.pc.kind === 'img') {
+        var iw = it.pc.img.w * esc, ih = it.pc.img.h * esc, r = it.pc.img.r * esc;
+        regiao(campo, t.x, y, iw, ih);
+        ctx.save(); roundRect(ctx, t.x, y, iw, ih, r); ctx.clip();
+        if (it.b.img) drawCover(ctx, it.b.img, t.x, y, iw, ih, it.b);
+        else { ctx.fillStyle = claro ? '#ececec' : '#15181c'; ctx.fillRect(t.x, y, iw, ih); }
+        ctx.restore();
+        ctx.strokeStyle = claro ? '#c8c8c8' : it.pc.img.border; ctx.lineWidth = 1;
+        roundRect(ctx, t.x + .5, y + .5, iw - 1, ih - 1, r); ctx.stroke();
+        y += ih;
+      } else {
+        /* bloco de texto ainda em branco vira guia, para nao sumir do palco */
+        if (!(it.b.v || '').trim()) {
+          var gspec = Object.assign({}, it.pc.spec);
+          gspec.size = gspec.size * esc;
+          gspec.color = corBloco(it.b.k, it.pc.spec);
+          var gb = layout(ctx, txtDe(it.pc.rot), gspec, campo);
+          gb.guia = true;
+          paintSolid(ctx, gb, t.x, y, campo);
+          y += gb.height;
+        } else {
+          paintSolid(ctx, it.blk, t.x, y, campo);
+          y += it.h;
+        }
+      }
+    });
     baroniDisc(ctx, t, cfg);
     return of;
   }
@@ -2115,8 +2279,8 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   var MARCAS = {
     baroni: { nome: 'Professor Baroni', arroba: '@ProfessorBaroni', cor: '#3fbf68', disclaimer: true, topAlign: true,
       dica: '<kbd>**negrito**</kbd> <kbd>__sublinhado__</kbd>',
-      tipos: { capa: B.capa, corpo: B.corpo, corpoImg: B.corpoImg },
-      render: { capa: baroniCapa, corpo: baroniCorpo, corpoImg: baroniCorpoImg } },
+      tipos: { capa: B.capa, corpo: B.corpo, corpoImg: B.corpoImg, livre: B.livre },
+      render: { capa: baroniCapa, corpo: baroniCorpo, corpoImg: baroniCorpoImg, livre: baroniLivre } },
     suno: { nome: 'Suno', arroba: '@suno', cor: '#ff2020', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> pinta o trecho em vermelho',
       tipos: { capa: S.capa, corpoImg: S.corpoImg, texto: S.texto },
@@ -2270,15 +2434,31 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   function blank(type) {
     return { type: type || tipoPadrao(), title: '', sub: '', body: '', numero: '',
              img: null, imgName: '', zoom: 1, fx: 0.5, fy: 0.5,
-             fonte: {}, larg: {}, semDisc: false, tema: null };
+             fonte: {}, larg: {}, semDisc: false, tema: null, blocos: [] };
   }
-  /* copia de lamina que nao compartilha os mapas de ajuste com a original */
+  /* copia de lamina que nao compartilha os mapas de ajuste com a original —
+     nem a pilha de blocos, senao editar a copia mexeria no original */
   function clonaLamina(l) {
     var c = Object.assign({}, l);
     delete c._regioes; delete c._estouro;
     c.fonte = Object.assign({}, l.fonte || {});
     c.larg = Object.assign({}, l.larg || {});
+    c.blocos = (l.blocos || []).map(function (b) { return Object.assign({}, b); });
     return c;
+  }
+  /* ---------- blocos ----------
+     A lamina livre guarda uma pilha: cada item diz que peca e (k) e o que
+     ela carrega. Texto vive em `v`; imagem em `img` com o proprio recorte. */
+  function pecasDe(m) { return ((MARCAS[m || marca].tipos.livre || {}).pecas) || null; }
+  function ehLivre(lam) { return !!(tipos()[lam.type] || {}).livre; }
+  function novoBloco(k) {
+    return { k: k, v: '', img: null, imgName: '', zoom: 1, fx: 0.5, fy: 0.5 };
+  }
+  /* indice do bloco a partir do nome do campo registrado no render ('b3') */
+  function idxBloco(campo) {
+    if (!campo || campo.charAt(0) !== 'b') return -1;
+    var n = +campo.slice(1);
+    return isFinite(n) ? n : -1;
   }
   function txtDe(html) { var d = document.createElement('div'); d.innerHTML = html; return d.textContent; }
   function labelDe(t) { return txtDe((tipos()[t] || {}).label || t); }
@@ -2295,11 +2475,22 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     (lam._regioes || []).forEach(function (r) {
       if (!vistos[r.campo]) { vistos[r.campo] = 1; ordem.push(r.campo); }
     });
+    /* na lamina de blocos os campos sao a propria pilha, na ordem dela */
+    if (ehLivre(lam)) return ordem.filter(function (c) { return idxBloco(c) >= 0; });
     var pref = ['titulo', 'sub', 'corpo', 'imagem'];
     return pref.filter(function (c) { return vistos[c]; });
   }
   var CHAVE = { titulo: 'title', sub: 'sub', corpo: 'body' };
   var NOME = { titulo: 'Título', sub: 'Subtítulo', corpo: 'Texto', imagem: 'Imagem' };
+  /* rotulo de um campo, seja ele de layout fechado ou um bloco da pilha */
+  function nomeCampo(lam, campo) {
+    var n = idxBloco(campo);
+    if (n >= 0) {
+      var b = (lam.blocos || [])[n], pc = b && (pecasDe() || {})[b.k];
+      return pc ? txtDe(pc.rot) : 'Bloco';
+    }
+    return NOME[campo] || 'Lâmina';
+  }
 
   /* ---------- perfis ---------- */
   function pintaPerfis() {
@@ -2399,22 +2590,68 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   }
 
   /* ---------- recorte da imagem, desenhado como sai na lamina ---------- */
-  function caixaImg(lam) {
+  /* Onde a imagem selecionada mora: a propria lamina nos layouts fechados,
+     ou o bloco quando a pilha e que manda. Todo o resto do painel (zoom,
+     enquadramento, remover) passou a falar com este alvo, e por isso os dois
+     modos usam os mesmos controles. */
+  function alvoImg(lam, campo) {
+    var n = idxBloco(campo == null ? sel : campo);
+    if (n >= 0) return (lam.blocos || [])[n] || lam;
+    return lam;
+  }
+  function selEhImagem(lam, campo) {
+    campo = (campo == null ? sel : campo);
+    if (campo === 'imagem') return true;
+    var n = idxBloco(campo); if (n < 0) return false;
+    var b = (lam.blocos || [])[n];
+    return !!(b && ((pecasDe() || {})[b.k] || {}).kind === 'img');
+  }
+  function caixaImg(lam, campo) {
+    var n = idxBloco(campo == null ? sel : campo);
+    if (n >= 0) {
+      var b = (lam.blocos || [])[n], pc = b && (pecasDe() || {})[b.k];
+      if (pc && pc.img) return { w: pc.img.w, h: pc.img.h };
+    }
     var t = tipos()[lam.type] || {};
     return t.img ? { w: t.img.w, h: t.img.h } : { w: W, h: H };
   }
   function pintaRecorte() {
     var cv = document.querySelector('.recorte canvas');
     if (!cv) return;
-    var lam = slides[foco], c = caixaImg(lam);
+    var lam = slides[foco], c = caixaImg(lam), alvo = alvoImg(lam);
     var esc = 260 / c.w;
     cv.width = Math.round(c.w * esc); cv.height = Math.round(c.h * esc);
     var x = cv.getContext('2d');
     x.fillStyle = '#0f1114'; x.fillRect(0, 0, cv.width, cv.height);
-    if (lam.img) { x.save(); x.scale(esc, esc); drawCover(x, lam.img, 0, 0, c.w, c.h, lam); x.restore(); }
+    if (alvo.img) { x.save(); x.scale(esc, esc); drawCover(x, alvo.img, 0, 0, c.w, c.h, alvo); x.restore(); }
   }
 
   /* ---------- painel ---------- */
+  /* ---------- bandeja de blocos ----------
+     So aparece quando o perfil tem lamina de blocos e ela esta em foco:
+     nos layouts fechados nao ha onde encaixar peca, e a bandeja seria um
+     convite a uma acao que nao existe. */
+  var ICONE_PECA = {
+    titulo: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7V5h16v2"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="9" y1="19" x2="15" y2="19"/></svg>',
+    sub: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="14" x2="14" y2="14"/></svg>',
+    texto: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="15" y2="17"/></svg>',
+    imagem: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-6 6"/></svg>'
+  };
+  function pintaPecas() {
+    var el = $('pecas'), pc = pecasDe();
+    var mostra = !!pc && slides.length && ehLivre(slides[foco]);
+    el.hidden = !mostra;
+    if (!mostra) { el.innerHTML = ''; return; }
+    var h = ['<div class="rot mono">BLOCOS</div>'];
+    Object.keys(pc).forEach(function (k) {
+      h.push('<button class="bpeca" draggable="true" data-peca="' + k + '">' +
+        '<span class="ic-peca">' + (ICONE_PECA[k] || '') + '</span>' +
+        '<span>' + txtDe(pc[k].rot) + '</span></button>');
+    });
+    h.push('<p class="ajuda-peca">Arraste para a lâmina, ou clique para jogar no fim da pilha.</p>');
+    el.innerHTML = h.join('');
+  }
+
   function pintaPainel() {
     var el = $('painel');
     if (!slides.length) {
@@ -2427,13 +2664,41 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     var h = [];
 
     h.push('<div class="pcab"><div class="k mono">LÂMINA ' + pad(foco + 1) + '</div>' +
-      '<div class="v">' + txtDe(NOME[sel] || 'Lâmina') + '</div></div>');
+      '<div class="v">' + nomeCampo(lam, sel) + '</div></div>');
 
     h.push('<div class="pbloco">');
     h.push('<div><div class="rot mono">LAYOUT</div><select class="campo" id="tipo">' +
       Object.keys(tipos()).map(function (k) {
         return '<option value="' + k + '"' + (k === lam.type ? ' selected' : '') + '>' + txtDe(labelDe(k)) + '</option>';
       }).join('') + '</select></div>');
+
+    /* a pilha da lamina de blocos: reordenar aqui e o mesmo que reordenar
+       arrastando na arte, e aqui cabe o botao de tirar */
+    if (ehLivre(lam)) {
+      var pcs = pecasDe() || {};
+      h.push('<div><div class="rot mono">PILHA DESTA LÂMINA</div>');
+      if (!(lam.blocos || []).length) {
+        h.push('<p class="pilha-vazia">Nenhum bloco ainda. Arraste um da bandeja à esquerda.</p>');
+      } else {
+        h.push('<div class="pilha" id="pilha">');
+        lam.blocos.forEach(function (b, i) {
+          var pc = pcs[b.k] || {};
+          var resumo = pc.kind === 'img'
+            ? (b.imgName || 'sem imagem')
+            : ((b.v || '').trim().slice(0, 28) || 'vazio');
+          h.push('<div class="pilha-item" draggable="true" data-bloco="' + i + '"' +
+            ' data-sel="' + (sel === 'b' + i ? '1' : '0') + '">' +
+            '<span class="ic-peca">' + (ICONE_PECA[b.k] || '') + '</span>' +
+            '<span class="nome">' + txtDe(pc.rot || b.k) + ' · ' +
+            txtDe(resumo).replace(/[&<>]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]; }) +
+            '</span>' +
+            '<button class="tira" data-tira="' + i + '" aria-label="Tirar este bloco" title="Tirar este bloco">×</button>' +
+            '</div>');
+        });
+        h.push('</div>');
+      }
+      h.push('</div>');
+    }
 
     var tm = lam.tema || '';
     h.push('<div><div class="rot mono">FUNDO DESTA LÂMINA</div><div class="segmento">' +
@@ -2446,23 +2711,29 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       h.push('<div><div class="rot mono">NÚMERO NO CÍRCULO</div>' +
         '<input class="campo" id="num" value="' + txtDe(lam.numero || '') + '" style="max-width:96px"></div>');
 
-    if (sel === 'imagem') {
-      var c = caixaImg(lam), fg = lam.img ? folga(lam.img, c.w, c.h, lam.zoom) : { x: 0, y: 0 };
+    if (selEhImagem(lam, sel)) {
+      var alvo = alvoImg(lam, sel);
+      var c = caixaImg(lam, sel), fg = alvo.img ? folga(alvo.img, c.w, c.h, alvo.zoom) : { x: 0, y: 0 };
       h.push('<div><div class="rot mono">IMAGEM</div>' +
         '<input class="campo" type="file" id="arq" accept="image/*"></div>');
-      if (lam.img) {
+      if (alvo.img) {
         h.push('<div><div class="rot mono">ENQUADRAMENTO</div><div class="recorte"><canvas></canvas></div></div>');
-        h.push(ctrl('zoom', 'Zoom', Math.round((lam.zoom || 1) * 100), 100, 300, Math.round((lam.zoom || 1) * 100) + '%', false));
-        h.push(ctrl('fx', 'Horizontal', Math.round((lam.fx == null ? .5 : lam.fx) * 100), 0, 100,
-          fg.x > 1 ? Math.round((lam.fx == null ? .5 : lam.fx) * 100) + '%' : 'sem folga', fg.x <= 1));
-        h.push(ctrl('fy', 'Vertical', Math.round((lam.fy == null ? .5 : lam.fy) * 100), 0, 100,
-          fg.y > 1 ? Math.round((lam.fy == null ? .5 : lam.fy) * 100) + '%' : 'sem folga', fg.y <= 1));
+        h.push(ctrl('zoom', 'Zoom', Math.round((alvo.zoom || 1) * 100), 100, 300, Math.round((alvo.zoom || 1) * 100) + '%', false));
+        h.push(ctrl('fx', 'Horizontal', Math.round((alvo.fx == null ? .5 : alvo.fx) * 100), 0, 100,
+          fg.x > 1 ? Math.round((alvo.fx == null ? .5 : alvo.fx) * 100) + '%' : 'sem folga', fg.x <= 1));
+        h.push(ctrl('fy', 'Vertical', Math.round((alvo.fy == null ? .5 : alvo.fy) * 100), 0, 100,
+          fg.y > 1 ? Math.round((alvo.fy == null ? .5 : alvo.fy) * 100) + '%' : 'sem folga', fg.y <= 1));
         h.push('<div class="acoes"><button class="btn2 perigo" id="semimg">Remover imagem</button></div>');
       }
     } else if (sel) {
-      h.push('<div><div class="rot mono">' + txtDe((NOME[sel] || sel).toUpperCase()) + '</div>' +
-        '<textarea class="campo" id="txt" rows="' + (sel === 'corpo' ? 8 : 3) + '">' +
-        txtDe(lam[CHAVE[sel]] || '').replace(/[&<>]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]; }) +
+      var nb = idxBloco(sel);
+      var valor = nb >= 0 ? ((lam.blocos || [])[nb] || {}).v : lam[CHAVE[sel]];
+      var alto = nb >= 0 ? (((pecasDe() || {})[((lam.blocos || [])[nb] || {}).k] || {}).kind === 'texto'
+                            && ((lam.blocos || [])[nb] || {}).k === 'texto' ? 8 : 3)
+                         : (sel === 'corpo' ? 8 : 3);
+      h.push('<div><div class="rot mono">' + nomeCampo(lam, sel).toUpperCase() + '</div>' +
+        '<textarea class="campo" id="txt" rows="' + alto + '">' +
+        txtDe(valor || '').replace(/[&<>]/g, function (ch) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]; }) +
         '</textarea><p class="ajuda">' + M.dica + '</p></div>');
       var pf = Math.round(((lam.fonte || {})[sel] || 1) * 100);
       var pl = Math.round(((lam.larg || {})[sel] || 1) * 100);
@@ -2534,7 +2805,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   function pinta() {
     $('conta').textContent = slides.length + ' / 20 lâminas';
     $('rot-exportar').textContent = slides.length > 1 ? 'Exportar' : 'Exportar';
-    pintaPerfis(); pintaPalco(); pintaEsteira(); pintaPainel();
+    pintaPerfis(); pintaPecas(); pintaPalco(); pintaEsteira(); pintaPainel();
   }
   /* durante o arrasto o palco nao pode ser reconstruido: o elemento que esta
      sendo arrastado sumiria no meio do gesto. Aqui so a arte e redesenhada e
@@ -2559,7 +2830,23 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     pintaPalco();
     var q = $('esteira').querySelector('.quadro[data-i="' + foco + '"]');
     if (q) { var cv = q.querySelector('canvas'); if (cv) render(cv, marca, slides[foco], cfg()); }
+    atualizaResumoPilha();
     marcaEstouro();
+  }
+
+  /* o resumo de cada bloco na pilha acompanha a digitacao. Repintar o painel
+     inteiro mataria o foco de quem esta escrevendo, entao so o rotulo troca. */
+  function atualizaResumoPilha() {
+    if (!slides.length || !ehLivre(slides[foco])) return;
+    var lam = slides[foco], pcs = pecasDe() || {};
+    document.querySelectorAll('#pilha [data-bloco]').forEach(function (el) {
+      var b = (lam.blocos || [])[+el.dataset.bloco]; if (!b) return;
+      var pc = pcs[b.k] || {};
+      var resumo = pc.kind === 'img' ? (b.imgName || 'sem imagem')
+                 : ((b.v || '').trim().slice(0, 28) || 'vazio');
+      var n = el.querySelector('.nome');
+      if (n) n.textContent = txtDe(pc.rot || b.k) + ' · ' + resumo;
+    });
   }
 
   /* ---------- divisao automatica do texto colado ---------- */
@@ -2721,7 +3008,28 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       if (lm.larg) delete lm.larg[sel];
       pinta(); return;
     }
-    if (ev.target.closest('#semimg')) { slides[foco].img = null; slides[foco].imgName = ''; pinta(); return; }
+    if (ev.target.closest('#semimg')) {
+      var sm = alvoImg(slides[foco], sel);
+      sm.img = null; sm.imgName = ''; pinta(); return;
+    }
+    /* ---- blocos: clicar na bandeja joga a peca no fim da pilha ---- */
+    var bp = ev.target.closest('[data-peca]');
+    if (bp) {
+      var lamP = slides[foco];
+      if (!lamP.blocos) lamP.blocos = [];
+      lamP.blocos.push(novoBloco(bp.dataset.peca));
+      sel = 'b' + (lamP.blocos.length - 1);
+      pinta(); return;
+    }
+    var bt2 = ev.target.closest('[data-tira]');
+    if (bt2) {
+      var lamT = slides[foco], nT = +bt2.dataset.tira;
+      marcaVersao('antes de tirar um bloco');
+      (lamT.blocos || []).splice(nT, 1);
+      sel = null; pinta(); return;
+    }
+    var bi = ev.target.closest('[data-bloco]');
+    if (bi) { sel = 'b' + bi.dataset.bloco; pinta(); return; }
     if (ev.target.closest('#dl-one')) { baixarUma(foco); return; }
     if (ev.target.closest('#dl-all')) { baixarTodas(); return; }
 
@@ -2752,7 +3060,12 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     if (id === 'disc') { opts.disc = ev.target.value; pintaLeve(); return; }
     if (!slides.length) return;
     var lam = slides[foco];
-    if (id === 'txt') { lam[CHAVE[sel]] = ev.target.value; pintaLeve(); return; }
+    if (id === 'txt') {
+      var nb = idxBloco(sel);
+      if (nb >= 0) { if ((lam.blocos || [])[nb]) lam.blocos[nb].v = ev.target.value; }
+      else lam[CHAVE[sel]] = ev.target.value;
+      pintaLeve(); return;
+    }
     if (id === 'num') { lam.numero = ev.target.value; pintaLeve(); return; }
     if (id === 'fonte' || id === 'largura') {
       if (!sel) return;
@@ -2765,15 +3078,16 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       return;
     }
     if (id === 'zoom' || id === 'fx' || id === 'fy') {
-      if (id === 'zoom') lam.zoom = ev.target.value / 100; else lam[id] = ev.target.value / 100;
+      var alvo = alvoImg(lam, sel);
+      if (id === 'zoom') alvo.zoom = ev.target.value / 100; else alvo[id] = ev.target.value / 100;
       pintaLeve(); pintaRecorte();
-      var c = caixaImg(lam), fg = folga(lam.img, c.w, c.h, lam.zoom);
+      var c = caixaImg(lam, sel), fg = folga(alvo.img, c.w, c.h, alvo.zoom);
       ev.target.closest('.pbloco').querySelectorAll('.ctrl').forEach(function (cc) {
         var r = cc.querySelector('input'), rot = cc.querySelector('.lin span:last-child');
         if (!r) return;
-        if (r.id === 'zoom') rot.textContent = Math.round(lam.zoom * 100) + '%';
-        if (r.id === 'fx') { cc.dataset.off = fg.x > 1 ? '0' : '1'; r.disabled = !(fg.x > 1); rot.textContent = fg.x > 1 ? Math.round(lam.fx * 100) + '%' : 'sem folga'; }
-        if (r.id === 'fy') { cc.dataset.off = fg.y > 1 ? '0' : '1'; r.disabled = !(fg.y > 1); rot.textContent = fg.y > 1 ? Math.round(lam.fy * 100) + '%' : 'sem folga'; }
+        if (r.id === 'zoom') rot.textContent = Math.round(alvo.zoom * 100) + '%';
+        if (r.id === 'fx') { cc.dataset.off = fg.x > 1 ? '0' : '1'; r.disabled = !(fg.x > 1); rot.textContent = fg.x > 1 ? Math.round(alvo.fx * 100) + '%' : 'sem folga'; }
+        if (r.id === 'fy') { cc.dataset.off = fg.y > 1 ? '0' : '1'; r.disabled = !(fg.y > 1); rot.textContent = fg.y > 1 ? Math.round(alvo.fy * 100) + '%' : 'sem folga'; }
       });
       return;
     }
@@ -2787,10 +3101,11 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     if (id === 'topalign') { opts.topAlign = ev.target.checked; pinta(); return; }
     if (id === 'arq') {
       var f = ev.target.files[0]; if (!f) return;
+      var destino = alvoImg(slides[foco], sel);
       var r = new FileReader();
       r.onload = function () {
         loadImage(r.result).then(function (im) {
-          slides[foco].img = im; slides[foco].imgName = f.name; pinta();
+          destino.img = im; destino.imgName = f.name; pinta();
         });
       };
       r.readAsDataURL(f); return;
@@ -2802,6 +3117,93 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     if (ev.target.matches('input,textarea,select')) return;
     if (ev.key === 'ArrowLeft' && foco > 0) { foco--; pinta(); }
     if (ev.key === 'ArrowRight' && foco < slides.length - 1) { foco++; pinta(); }
+  });
+
+  /* ---------- arrastar blocos ----------
+     Um gesto so, dois destinos: a peca vem da bandeja (nova) ou da propria
+     pilha (so mudando de lugar). A fita vermelha mostra onde vai encaixar,
+     porque soltar no escuro e a diferenca entre montar e adivinhar. */
+  var arrasto = null;
+
+  function tiraFita() {
+    document.querySelectorAll('.fita').forEach(function (f) { f.remove(); });
+    document.querySelectorAll('.lam.recebendo').forEach(function (l) { l.classList.remove('recebendo'); });
+  }
+  /* as caixas dos blocos, de cima para baixo, em coordenadas da arte */
+  function regioesBloco(lam) {
+    return (lam._regioes || []).filter(function (r) { return idxBloco(r.campo) >= 0; })
+      .sort(function (a, b) { return a.y - b.y; });
+  }
+  /* onde a peca entra, dado o Y do cursor: antes do bloco cuja metade de
+     cima o cursor alcancou, ou no fim se passou de todos */
+  function indiceDrop(lam, y) {
+    var regs = regioesBloco(lam);
+    for (var i = 0; i < regs.length; i++)
+      if (y < regs[i].y + regs[i].h / 2) return idxBloco(regs[i].campo);
+    return (lam.blocos || []).length;
+  }
+
+  document.addEventListener('dragstart', function (ev) {
+    var p = ev.target.closest('[data-peca]');
+    if (p) {
+      arrasto = { tipo: 'nova', k: p.dataset.peca };
+      p.classList.add('arrastando');
+      ev.dataTransfer.effectAllowed = 'copy';
+      ev.dataTransfer.setData('text/plain', 'peca');
+      return;
+    }
+    var it = ev.target.closest('[data-bloco]');
+    if (it) {
+      arrasto = { tipo: 'move', de: +it.dataset.bloco };
+      it.classList.add('arrastando');
+      ev.dataTransfer.effectAllowed = 'move';
+      ev.dataTransfer.setData('text/plain', 'bloco');
+    }
+  });
+
+  document.addEventListener('dragend', function () {
+    arrasto = null; tiraFita();
+    document.querySelectorAll('.arrastando').forEach(function (e) { e.classList.remove('arrastando'); });
+  });
+
+  document.addEventListener('dragover', function (ev) {
+    if (!arrasto || !slides.length || !ehLivre(slides[foco])) return;
+    var d = ev.target.closest('.lam[data-foco="1"]');
+    if (!d) return;
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = arrasto.tipo === 'nova' ? 'copy' : 'move';
+    var cv = d.querySelector('canvas'); if (!cv) return;
+    var pt = coordNaLamina(ev, cv), k = parseFloat(cv.style.width) / W;
+    var idx = indiceDrop(slides[foco], pt.y);
+    d.classList.add('recebendo');
+    var env = d.querySelector('.envelope'), f = env.querySelector('.fita');
+    if (!f) { f = document.createElement('div'); f.className = 'fita'; env.appendChild(f); }
+    var regs = regioesBloco(slides[foco]);
+    var alvo = regs.filter(function (r) { return idxBloco(r.campo) === idx; })[0];
+    var ult = regs[regs.length - 1];
+    var yArte = alvo ? alvo.y : (ult ? ult.y + ult.h + 14 : B.livre.topo + HEAD.av + B.livre.gapCab);
+    f.style.top = (yArte * k) + 'px';
+  });
+
+  document.addEventListener('drop', function (ev) {
+    if (!arrasto || !slides.length || !ehLivre(slides[foco])) return;
+    var d = ev.target.closest('.lam[data-foco="1"]');
+    if (!d) return;
+    ev.preventDefault();
+    var cv = d.querySelector('canvas'); if (!cv) return;
+    var lam = slides[foco];
+    if (!lam.blocos) lam.blocos = [];
+    var pt = coordNaLamina(ev, cv), idx = indiceDrop(lam, pt.y);
+    marcaVersao('antes de mexer nos blocos');
+    if (arrasto.tipo === 'nova') {
+      lam.blocos.splice(idx, 0, novoBloco(arrasto.k));
+    } else {
+      var de = arrasto.de;
+      if (idx > de) idx--;
+      if (idx !== de) lam.blocos.splice(idx, 0, lam.blocos.splice(de, 1)[0]);
+    }
+    sel = 'b' + idx;
+    arrasto = null; tiraFita(); pinta();
   });
 
   /* ---------- arrastar a borda do texto ---------- */
@@ -2935,6 +3337,40 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     return marcaVersao(motivo);
   }
 
+  /* ---------- a pilha de blocos tambem vai para o disco ----------
+     Um Image nao atravessa o IndexedDB. A foto de cada bloco viaja como
+     referencia nas versoes (onde varias versoes dividem a mesma foto) e como
+     texto na peca salva — exatamente o que ja se fazia com a imagem da lamina. */
+  function blocosComRef(l, idPeca, fotos) {
+    return (l.blocos || []).map(function (b) {
+      var ref = null;
+      if (b.img && b.img.src) {
+        ref = idPeca + ':' + hashTexto(b.img.src);
+        fotos.push({ id: ref, dados: b.img.src });
+      }
+      return { k: b.k, v: b.v || '', imgRef: ref, imgName: b.imgName || '',
+               zoom: b.zoom, fx: b.fx, fy: b.fy };
+    });
+  }
+  function blocosComSrc(l) {
+    return (l.blocos || []).map(function (b) {
+      return { k: b.k, v: b.v || '', img: b.img ? b.img.src : null,
+               imgName: b.imgName || '', zoom: b.zoom, fx: b.fx, fy: b.fy };
+    });
+  }
+  /* reconstroi a pilha na volta: cada bloco recupera o proprio Image */
+  function blocosDeVolta(lista, achaFoto) {
+    var saida = (lista || []).map(function (b) {
+      return { k: b.k, v: b.v || '', img: null, imgName: b.imgName || '',
+               zoom: b.zoom || 1, fx: b.fx == null ? .5 : b.fx, fy: b.fy == null ? .5 : b.fy };
+    });
+    return Promise.all((lista || []).map(function (b, i) {
+      var d = achaFoto(b);
+      return d ? loadImage(d).then(function (im) { saida[i].img = im; },
+                                   function () { }) : Promise.resolve();
+    })).then(function () { return saida; });
+  }
+
   function marcaVersao(motivo) {
     if (!slides.length || documentoVazio()) return Promise.resolve(false);
     if (!pecaAtual) pecaAtual = 'p' + Date.now();
@@ -2948,6 +3384,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
                zoom: l.zoom, fx: l.fx, fy: l.fy, imgRef: ref, imgName: l.imgName,
                semDisc: !!l.semDisc, tema: l.tema || null,
+               blocos: blocosComRef(l, idPeca, fotos),
                fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
     });
     var v = {
@@ -2957,7 +3394,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       motivo: motivo || 'edição',
       marca: marca,
       n: slides.length,
-      titulo: (slides[0].title || slides[0].body || '').replace(/\*\*|__/g, '').slice(0, 70) || 'Sem título',
+      titulo: tituloDoDoc(),
       opts: { disc: opts.disc, discOn: opts.discOn, autofit: opts.autofit, topAlign: opts.topAlign },
       laminas: laminas
     };
@@ -2976,10 +3413,16 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       var vivas = lista.slice(0, VERSOES_MAX), mortas = lista.slice(VERSOES_MAX);
       var usadas = {};
       vivas.forEach(function (v) {
-        v.laminas.forEach(function (l) { if (l.imgRef) usadas[l.imgRef] = 1; });
+        v.laminas.forEach(function (l) {
+          if (l.imgRef) usadas[l.imgRef] = 1;
+          (l.blocos || []).forEach(function (b) { if (b.imgRef) usadas[b.imgRef] = 1; });
+        });
       });
       slides.forEach(function (l) {
         if (l.img && l.img.src) usadas[idPeca + ':' + hashTexto(l.img.src)] = 1;
+        (l.blocos || []).forEach(function (b) {
+          if (b.img && b.img.src) usadas[idPeca + ':' + hashTexto(b.img.src)] = 1;
+        });
       });
       return comLojas(['versoes', 'fotos'], 'readwrite', function (lj) {
         mortas.forEach(function (v) { lj.versoes.delete(v.id); });
@@ -3013,10 +3456,14 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
           saida.v = p.result;
           if (!saida.v) return;
           saida.fotos = {};
+          var pega = function (ref) {
+            if (!ref) return;
+            var q = lj.fotos.get(ref);
+            q.onsuccess = function () { if (q.result) saida.fotos[ref] = q.result.dados; };
+          };
           saida.v.laminas.forEach(function (l) {
-            if (!l.imgRef) return;
-            var q = lj.fotos.get(l.imgRef);
-            q.onsuccess = function () { if (q.result) saida.fotos[l.imgRef] = q.result.dados; };
+            pega(l.imgRef);
+            (l.blocos || []).forEach(function (b) { pega(b.imgRef); });
           });
         };
       });
@@ -3039,14 +3486,20 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
                    numero: l.numero || '', zoom: l.zoom || 1,
                    fx: l.fx == null ? .5 : l.fx, fy: l.fy == null ? .5 : l.fy,
                    img: imgs[i], imgName: l.imgName || '',
-                   semDisc: !!l.semDisc || velhoSemDisc, tema: l.tema || null,
+                   semDisc: !!l.semDisc || velhoSemDisc, tema: l.tema || null, blocos: [],
                    fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
         });
-        foco = 0; sel = null;
-        miniBlob = null; miniAssin = null;   /* a capa mudou */
-        pinta();
-        assinaturaVersao = assinatura();
-        return true;
+        return Promise.all(v.laminas.map(function (l, i) {
+          return blocosDeVolta(l.blocos, function (b) {
+            return b.imgRef ? r.fotos[b.imgRef] : null;
+          }).then(function (bs) { slides[i].blocos = bs; });
+        })).then(function () {
+          foco = 0; sel = null;
+          miniBlob = null; miniAssin = null;   /* a capa mudou */
+          pinta();
+          assinaturaVersao = assinatura();
+          return true;
+        });
       });
     });
   }
@@ -3268,13 +3721,32 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     }).join(',');
   }
 
+  /* o nome que a Biblioteca mostra. Numa lamina de blocos nao ha `title`
+     nem `body`: o nome sai do primeiro bloco de texto com conteudo. */
+  function tituloDoDoc() {
+    var l = slides[0]; if (!l) return 'Sem título';
+    var t = l.title || l.body || '';
+    if (!t.trim()) {
+      var b = (l.blocos || []).filter(function (x) { return (x.v || '').trim(); })[0];
+      if (b) t = b.v;
+    }
+    return t.replace(/\*\*|__/g, '').slice(0, 70).trim() || 'Sem título';
+  }
   function assinatura() {
     return JSON.stringify([marca, opts.disc, opts.discOn, opts.autofit, opts.topAlign,
       slides.map(function (l) {
         return [l.type, l.title, l.sub, l.body, l.numero, l.imgName,
                 l.zoom, l.fx, l.fy, l.img ? 1 : 0, ajusteStr(l), l.semDisc ? 1 : 0,
-                l.tema || ''].join('\u0001');
+                l.tema || '', blocoStr(l)].join('\u0001');
       })]);
+  }
+  /* a pilha entra na assinatura: e ela que avisa o app de que ha algo
+     novo para guardar. Sem isso, uma lamina so de blocos nunca seria salva. */
+  function blocoStr(l) {
+    return (l.blocos || []).map(function (b) {
+      return [b.k, b.v || '', b.imgName || '', b.zoom, b.fx, b.fy,
+              b.img ? 1 : 0].join('|');
+    }).join('//');
   }
   /* so o que muda a miniatura da biblioteca: a primeira lamina */
   function assinaturaCapa() {
@@ -3282,10 +3754,11 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     if (!l) return '';
     return JSON.stringify([marca, opts.disc, opts.discOn, opts.autofit, opts.topAlign,
       l.type, l.title, l.sub, l.body, l.numero, l.imgName, l.zoom, l.fx, l.fy,
-      l.img ? 1 : 0, ajusteStr(l), l.semDisc ? 1 : 0, l.tema || '']);
+      l.img ? 1 : 0, ajusteStr(l), l.semDisc ? 1 : 0, l.tema || '', blocoStr(l)]);
   }
   function documentoVazio() {
     return !slides.some(function (l) {
+      if ((l.blocos || []).some(function (b) { return (b.v || '').trim() || b.img; })) return true;
       return ((l.title || '') + (l.sub || '') + (l.body || '') + (l.numero || '')).trim() || l.img;
     });
   }
@@ -3323,13 +3796,14 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
           quando: new Date().toISOString(),
           auto: !pecaExplicita,
           opts: { disc: opts.disc, discOn: opts.discOn, autofit: opts.autofit, topAlign: opts.topAlign },
-          titulo: (slides[0].title || slides[0].body || '').replace(/\*\*|__/g, '').slice(0, 70) || 'Sem título',
+          titulo: tituloDoDoc(),
           n: slides.length,
           capa: capa,
           laminas: slides.map(function (l) {
             return { type: l.type, title: l.title, sub: l.sub, body: l.body, numero: l.numero,
                      zoom: l.zoom, fx: l.fx, fy: l.fy, img: l.img ? l.img.src : null,
                      imgName: l.imgName, semDisc: !!l.semDisc, tema: l.tema || null,
+                     blocos: blocosComSrc(l),
                      fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
           })
         };
@@ -3482,16 +3956,21 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
           return { type: l.type, title: l.title || '', sub: l.sub || '', body: l.body || '',
                    numero: l.numero || '', zoom: l.zoom || 1, fx: l.fx == null ? .5 : l.fx,
                    fy: l.fy == null ? .5 : l.fy, img: carregadas[i], imgName: l.imgName || '',
-                   semDisc: !!l.semDisc || velhoSemDisc, tema: l.tema || null,
+                   semDisc: !!l.semDisc || velhoSemDisc, tema: l.tema || null, blocos: [],
                    fonte: Object.assign({}, l.fonte || {}), larg: Object.assign({}, l.larg || {}) };
         });
-        /* a partir daqui a edicao continua NESTE registro, sem criar copia */
-        pecaAtual = p.id; pecaExplicita = !p.auto;
-        foco = 0; sel = null;
-        abrir('carrossel');
-        assinaturaSalva = assinaturaVista = assinatura();
-        miniBlob = p.capa; miniAssin = assinaturaCapa();
-        toast('Aberto: ' + p.titulo);
+        return Promise.all(p.laminas.map(function (l, i) {
+          return blocosDeVolta(l.blocos, function (b) { return b.img || null; })
+            .then(function (bs) { slides[i].blocos = bs; });
+        })).then(function () {
+          /* a partir daqui a edicao continua NESTE registro, sem criar copia */
+          pecaAtual = p.id; pecaExplicita = !p.auto;
+          foco = 0; sel = null;
+          abrir('carrossel');
+          assinaturaSalva = assinaturaVista = assinatura();
+          miniBlob = p.capa; miniAssin = assinaturaCapa();
+          toast('Aberto: ' + p.titulo);
+        });
       });
     });
   }
