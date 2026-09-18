@@ -25,7 +25,7 @@
       </button>
     </div>
     <ul class="menu">
-      <li><button class="item" data-view="ideias" title="Gerador de ideias (em breve)"><img class="ic" id="ic-ideias" alt=""><span class="sd-rot"><span class="sd-nome">Gerador de ideias</span><span class="sd-breve">em breve</span></span></button></li>
+      <li><button class="item" data-view="ideias" title="Gerador de ideias"><img class="ic" id="ic-ideias" alt=""><span class="sd-rot"><span class="sd-nome">Gerador de ideias</span></span></button></li>
       <li><button class="item" data-view="carrossel" title="Gerador de Carrossel"><img class="ic" id="ic-carrossel" alt=""><span class="sd-rot"><span class="sd-nome">Gerador de Carrossel</span></span></button></li>
       <li><button class="item" data-view="biblioteca" title="Biblioteca"><img class="ic" id="ic-biblioteca" alt=""><span class="sd-rot"><span class="sd-nome">Biblioteca</span></span></button></li>
     </ul>
@@ -97,15 +97,13 @@
     <!-- ---------- gerador de ideias ---------- -->
     <section class="view" data-view="ideias">
       <div class="pagina">
-        <h2>Gerador de ideias <span class="tag-breve">em breve</span></h2>
-        <p class="sub">Ainda n&atilde;o existe.</p>
-        <div class="porvir">
-          <p>Escrever pauta a partir de um tema exige chamar um modelo de linguagem, e isso
-          precisa de um servidor: a chave de API n&atilde;o pode viver numa p&aacute;gina que qualquer
-          um abre. Hoje o app &eacute; um arquivo est&aacute;tico, sem back-end e sem nenhuma chamada de rede.</p>
-          <p>&Eacute; uma decis&atilde;o de infraestrutura, n&atilde;o de interface &mdash; e passa por onde roda,
-          quem paga as chamadas e onde o texto trafega.</p>
-        </div>
+        <h2>Gerador de ideias</h2>
+        <p class="sub">O que saiu hoje nas fontes que o time acompanha, separado por perfil.
+          Escolha uma pauta e ela j&aacute; vira o pedido do carrossel.</p>
+
+        <div class="perfis-pauta" id="perfis-pauta"></div>
+        <div class="lista-pautas" id="lista-pautas"></div>
+        <p class="rodape-pautas" id="rodape-pautas"></p>
       </div>
     </section>
 

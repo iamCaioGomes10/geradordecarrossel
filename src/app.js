@@ -2212,6 +2212,7 @@
     });
     /* o palco mede a altura disponivel: so da para calcular depois de visivel */
     if (v === 'carrossel') pinta();
+    if (v === 'ideias') carregaPautas(false);
     if (v === 'biblioteca' || v === 'home') pintaGaleria(v === 'home' ? 'galeria-home' : 'galeria');
   }
 
@@ -3012,8 +3013,8 @@
       }, function () { throw new Error('rede'); });
   }
 
-  function geraCarrossel(frase) {
-    var m = marcaDaFrase(frase) || marca;
+  function geraCarrossel(frase, forcada) {
+    var m = forcada || marcaDaFrase(frase) || marca;
     var ct = contratoDe(m);
     return pedir({ pedido: frase, contrato: ct }).then(function (r) {
       var laminas = (r && r.laminas) || [];
@@ -3048,8 +3049,8 @@
      e nao por uma copia aqui que sairia do lugar na primeira mudanca. */
   var manualFrase = '', manualMarca = null;
 
-  function abreManual(frase) {
-    var m = marcaDaFrase(frase) || marca;
+  function abreManual(frase, forcada) {
+    var m = forcada || marcaDaFrase(frase) || marca;
     manualFrase = frase; manualMarca = m;
     $('manual-resposta').value = '';
     $('manual-aviso').textContent = '';
@@ -3165,6 +3166,10 @@
       nota('Diga o perfil e o assunto — algo como “um carrossel para o Baroni sobre carteira diversificada de FIIs”.', true);
       return;
     }
+    /* pauta escolhida na aba de ideias ja traz o perfil: adivinhar pelo
+       titulo erraria, porque manchete de FII cita "Suno" o tempo todo */
+    var forcada = forma.dataset.marca || null;
+    forma.dataset.marca = '';
     forma.dataset.estado = 'indo';
     $('prompt').disabled = true;
     nota('Escrevendo a copy e montando as lâminas…', false);
@@ -3172,7 +3177,7 @@
     /* o Promise.resolve nao e enfeite: sem ele um erro sincrono — medir a
        caixa, montar o contrato — escapa do par de handlers e a barra fica
        travada em "escrevendo" sem jeito de voltar */
-    Promise.resolve().then(function () { return geraCarrossel(frase); })
+    Promise.resolve().then(function () { return geraCarrossel(frase, forcada); })
       .then(function (r) {
         solta();
         if (!aplicaGeracao(r.marca, r.laminas)) { nota(RECADO.vazio, true); return; }
@@ -3184,11 +3189,207 @@
         if (e && e.message === 'acesso') { pedeSenha(frase); return; }
         if (e && (e.message === 'semchave' || e.message === 'desligado')) {
           nota(RECADO[e.message], true);
-          abreManual(frase);
+          abreManual(frase, forcada);
           return;
         }
         nota(RECADO[e && e.message] || 'Não consegui gerar agora. Tente de novo.', true);
       });
+  });
+
+
+  /* =========================================================
+     15. GERADOR DE IDEIAS
+     As pautas sao lidas dos feeds pelo servidor (o navegador nao alcanca
+     dominio de fora: a CSP so libera 'self') e chegam prontas: titulo, fonte,
+     hora e link. Nada aqui e escrito por modelo — o que aparece na tela saiu
+     do feed do veiculo e leva o link para conferir. Numa casa que fala de
+     investimento, manchete sem origem nao serve.
+     ========================================================= */
+  var PAUTAS_ENDPOINT = '/api/pautas';
+  var pautas = null, horaPautas = 0, perfilPauta = 'suno', estadoPautas = '';
+  var VALIDADE_PAUTAS = 10 * 60 * 1000;
+
+  function haQuanto(ts) {
+    if (!ts) return '';
+    /* o feed do Valor marca a hora adiantada; data no futuro vira "agora"
+       em vez de "ha -3 h", que seria so exibir o defeito deles */
+    var min = Math.max(0, (Date.now() / 1000 - ts) / 60);
+    if (min < 60) return 'há ' + Math.max(1, Math.round(min)) + ' min';
+    if (min < 1440) return 'há ' + Math.round(min / 60) + ' h';
+    var d = Math.round(min / 1440);
+    return d === 1 ? 'ontem' : 'há ' + d + ' dias';
+  }
+
+  function carregaPautas(forcar) {
+    if (estadoPautas === 'indo') return;
+    if (!forcar && pautas && Date.now() - horaPautas < VALIDADE_PAUTAS) {
+      pintaPautas(); return;
+    }
+    /* no arquivo solto nao ha servidor nenhum para chamar: falar em conexao
+       ali seria mandar a pessoa conferir o wi-fi por um problema que nao e esse */
+    if (location.protocol === 'file:') { estadoPautas = 'solto'; pintaPautas(); return; }
+    estadoPautas = 'indo';
+    pintaPautas();
+    fetch(PAUTAS_ENDPOINT, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status === 404 ? 'desligado' : 'http');
+        return r.json();
+      })
+      .then(function (d) {
+        pautas = (d && d.pautas) || {};
+        horaPautas = Date.now();
+        estadoPautas = (d && d.aviso) ? 'fontes' : 'ok';
+        pintaPautas();
+      }, function (e) {
+        estadoPautas = (e && e.message === 'desligado') ? 'desligado' : 'rede';
+        pintaPautas();
+      });
+  }
+
+  function pintaChips() {
+    var caixa = $('perfis-pauta'); if (!caixa) return;
+    if (caixa.dataset.pronto === '1') { marcaChip(); return; }
+    var html = '';
+    Object.keys(MARCAS).forEach(function (m) {
+      var n = pautas && pautas[m] ? pautas[m].length : 0;
+      html += '<button class="chip-perfil" data-perfil="' + m + '" aria-pressed="false">' +
+        '<i style="background:' + (MARCAS[m].cor || '#7e848b') + '"></i>' +
+        '<span>' + txtDe(MARCAS[m].arroba || MARCAS[m].nome) + '</span>' +
+        '<b data-n="' + m + '">' + (n || '') + '</b></button>';
+    });
+    caixa.innerHTML = html;
+    caixa.dataset.pronto = '1';
+    marcaChip();
+  }
+
+  function marcaChip() {
+    var caixa = $('perfis-pauta'); if (!caixa) return;
+    caixa.querySelectorAll('.chip-perfil').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.perfil === perfilPauta ? 'true' : 'false');
+      var n = pautas && pautas[b.dataset.perfil] ? pautas[b.dataset.perfil].length : 0;
+      var alvo = b.querySelector('b');
+      if (alvo) alvo.textContent = n ? String(n) : '';
+    });
+  }
+
+  function recadoPautas(txt) {
+    var lista = $('lista-pautas'); if (!lista) return;
+    lista.innerHTML = '';
+    var d = document.createElement('div');
+    d.className = 'vazio-pautas';
+    d.textContent = txt;
+    lista.appendChild(d);
+  }
+
+  function pintaPautas() {
+    var lista = $('lista-pautas'), rodape = $('rodape-pautas');
+    if (!lista) return;
+    pintaChips();
+    if (rodape) rodape.textContent = '';
+
+    if (estadoPautas === 'indo' && !pautas) { recadoPautas('Lendo as fontes…'); return; }
+    if (estadoPautas === 'solto') {
+      recadoPautas('Esta c\u00f3pia \u00e9 o arquivo solto, aberto direto do computador, e ' +
+        'sem servidor n\u00e3o d\u00e1 para ler os feeds. As pautas aparecem na vers\u00e3o ' +
+        'publicada; o gerador de carrossel funciona normalmente aqui.');
+      return;
+    }
+    if (estadoPautas === 'desligado') {
+      recadoPautas('A leitura de pautas ainda não está ligada neste endereço. ' +
+        'Ela roda no servidor, porque o navegador não pode buscar feed de outro domínio daqui.');
+      return;
+    }
+    if (estadoPautas === 'rede') {
+      recadoPautas('Não consegui falar com o servidor para buscar as pautas. ' +
+        'Verifique a conexão e tente de novo.');
+      return;
+    }
+    if (estadoPautas === 'fontes') {
+      recadoPautas('Nenhuma fonte respondeu agora. Pode ser instabilidade nos feeds — ' +
+        'tente daqui a pouco.');
+      return;
+    }
+
+    var itens = (pautas && pautas[perfilPauta]) || [];
+    if (!itens.length) {
+      recadoPautas('Nada casou com o assunto deste perfil nas fontes de hoje. ' +
+        'Os outros perfis podem ter pauta — e o gerador continua aceitando tema escrito à mão.');
+      return;
+    }
+
+    /* titulo e link vem de site de fora: entram como texto, nunca como HTML */
+    lista.innerHTML = '';
+    itens.forEach(function (it, i) {
+      var art = document.createElement('article');
+      art.className = 'pauta';
+
+      var h = document.createElement('h3');
+      h.textContent = it.titulo;
+      art.appendChild(h);
+
+      var de = document.createElement('p');
+      de.className = 'de';
+
+      var selo = document.createElement('span');
+      selo.className = 'selo-pauta';
+      selo.dataset.tipo = it.tipo || 'dia';
+      selo.textContent = it.tipo === 'atemporal' ? 'tema atemporal' : 'do dia';
+      de.appendChild(selo);
+
+      var fonte = document.createElement('span');
+      fonte.textContent = it.fonte;
+      de.appendChild(fonte);
+
+      var quando = haQuanto(it.quando);
+      if (quando && it.tipo !== 'atemporal') {
+        var pt = document.createElement('span'); pt.className = 'pt'; pt.textContent = '·';
+        var q = document.createElement('span'); q.textContent = quando;
+        de.appendChild(pt); de.appendChild(q);
+      }
+
+      if (/^https?:\/\//i.test(it.link || '')) {
+        var pt2 = document.createElement('span'); pt2.className = 'pt'; pt2.textContent = '·';
+        var a = document.createElement('a');
+        a.href = it.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        a.textContent = 'ler a matéria';
+        de.appendChild(pt2); de.appendChild(a);
+      }
+      art.appendChild(de);
+
+      var b = document.createElement('button');
+      b.className = 'usar';
+      b.dataset.pauta = String(i);
+      b.textContent = 'Criar carrossel';
+      art.appendChild(b);
+
+      lista.appendChild(art);
+    });
+
+    if (rodape) {
+      rodape.textContent = 'Manchetes dos próprios veículos, sem resumo nosso. ' +
+        'Confira a matéria antes de publicar: número e data saem da fonte, ' +
+        'e recomendação de terceiro não vira recomendação da Suno.';
+    }
+  }
+
+  function usaPauta(i) {
+    var itens = (pautas && pautas[perfilPauta]) || [];
+    var it = itens[i]; if (!it) return;
+    var campo = $('prompt'); if (!campo || !forma) return;
+    campo.value = 'Um carrossel para o ' + txtDe(MARCAS[perfilPauta].arroba) +
+      ' sobre este assunto: ' + it.titulo;
+    forma.dataset.marca = perfilPauta;
+    abrir('home');
+    campo.focus();
+    forma.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  }
+
+  var paginaIdeias = document.querySelector('.view[data-view="ideias"]');
+  if (paginaIdeias) paginaIdeias.addEventListener('click', function (ev) {
+    var chip = ev.target.closest('.chip-perfil');
+    if (chip) { perfilPauta = chip.dataset.perfil; marcaChip(); pintaPautas(); return; }
+    var usar = ev.target.closest('.usar');
+    if (usar) usaPauta(parseInt(usar.dataset.pauta, 10));
   });
 
   window.__abrir = abrir;

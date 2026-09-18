@@ -108,13 +108,13 @@ if STATIC:
     for py in sorted(api_src.glob("*.py")):
         (api_dst / py.name).write_bytes(py.read_bytes())
     (dist / "requirements.txt").write_bytes((ROOT / "requirements.txt").read_bytes())
-    # CSP fechada: o app nao busca nada na rede e nao manda nada para lugar nenhum
+    # CSP fechada: as unicas chamadas saem para o proprio dominio (/api)
     csp = ("default-src 'none'; "
            "img-src 'self' data: blob:; "
            "style-src 'self' 'unsafe-inline'; "
            "script-src 'self' 'unsafe-inline'; "
            "font-src 'self' data:; "
-           "connect-src 'self'; "   # a geracao por prompt fala com /api/gerar
+           "connect-src 'self'; "   # /api/gerar e /api/pautas, nada de terceiro
            "base-uri 'none'; "
            "form-action 'none'; "
            "frame-ancestors 'none'")
@@ -132,7 +132,8 @@ if STATIC:
         "$schema": "https://openapi.vercel.sh/vercel.json",
         # escrever um carrossel com o modelo pensando leva mais que os poucos
         # segundos do padrao; sem isso a funcao morre no meio da geracao
-        "functions": {"api/gerar.py": {"maxDuration": 120}},
+        "functions": {"api/gerar.py": {"maxDuration": 120},
+                      "api/pautas.py": {"maxDuration": 30}},
         "headers": [
             {"source": "/(.*)", "headers": seguranca},
             {"source": "/", "headers": sem_cache},

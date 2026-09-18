@@ -3,6 +3,9 @@
   "functions": {
     "api/gerar.py": {
       "maxDuration": 120
+    },
+    "api/pautas.py": {
+      "maxDuration": 30
     }
   },
   "headers": [
