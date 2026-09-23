@@ -133,7 +133,8 @@ if STATIC:
         # escrever um carrossel com o modelo pensando leva mais que os poucos
         # segundos do padrao; sem isso a funcao morre no meio da geracao
         "functions": {"api/gerar.py": {"maxDuration": 120},
-                      "api/pautas.py": {"maxDuration": 30}},
+                      "api/pautas.py": {"maxDuration": 30},
+                      "api/texto.py": {"maxDuration": 30}},
         "headers": [
             {"source": "/(.*)", "headers": seguranca},
             {"source": "/", "headers": sem_cache},

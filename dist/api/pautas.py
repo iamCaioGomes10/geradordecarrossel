@@ -221,7 +221,7 @@ def monta(perfis):
         saida[perfil] = [{
             "titulo": it["titulo"], "link": it["link"], "fonte": it["fonte"],
             "quando": it["quando"], "categorias": it["categorias"],
-            "tipo": it["tipo"],
+            "tipo": it["tipo"], "casa": bool(it["daCasa"]),
         } for _, it in marcados[:MAX_POR_PERFIL]]
     return saida
 

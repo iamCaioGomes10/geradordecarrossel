@@ -3356,11 +3356,24 @@
       }
       art.appendChild(de);
 
+      var acoes = document.createElement('div');
+      acoes.className = 'acoes-pauta';
+      if (it.casa) {
+        /* so a materia da casa tem texto que podemos recortar; de terceiro
+           a manchete indica o assunto e alguem escreve */
+        var r = document.createElement('button');
+        r.className = 'usar rascunho';
+        r.dataset.rascunho = String(i);
+        r.textContent = 'Montar rascunho';
+        r.title = 'Recorta as l\u00e2minas do texto da pr\u00f3pria mat\u00e9ria, sem modelo';
+        acoes.appendChild(r);
+      }
       var b = document.createElement('button');
       b.className = 'usar';
       b.dataset.pauta = String(i);
       b.textContent = 'Criar carrossel';
-      art.appendChild(b);
+      acoes.appendChild(b);
+      art.appendChild(acoes);
 
       lista.appendChild(art);
     });
@@ -3370,6 +3383,180 @@
         'Confira a matéria antes de publicar: número e data saem da fonte, ' +
         'e recomendação de terceiro não vira recomendação da Suno.';
     }
+  }
+
+
+  /* ---------- rascunho a partir da materia da casa ----------
+     Sem chave e sem modelo: as laminas sao recortadas do proprio artigo, que
+     o feed da Suno entrega inteiro. Nada e escrito aqui, entao nada pode ser
+     inventado — o preco e que sai com cara de noticia, e nao com a voz do
+     perfil. E esqueleto para editar, nao copy pronta. */
+  var TEXTO_ENDPOINT = '/api/texto';
+  var MAX_RASCUNHO = 8;
+
+  /* corta em frases sem quebrar em "R$ 1.100": o ponto so encerra frase
+     quando vem espaco ou fim depois dele */
+  function frasesDe(t) {
+    var re = /[\s\S]+?[.!?]+(?=\s|$)/g, out = [], m, fim = 0;
+    while ((m = re.exec(t)) !== null) { out.push(m[0].trim()); fim = re.lastIndex; }
+    var resto = t.slice(fim).trim();
+    if (resto) out.push(resto);
+    return out.filter(Boolean);
+  }
+
+  function cortaPalavra(t, max) {
+    if (!max || t.length <= max) return t;
+    var c = t.slice(0, max), i = c.lastIndexOf(' ');
+    if (i > max * 0.55) c = c.slice(0, i);
+    return c.replace(/[\s,;:.—-]+$/, '');
+  }
+
+  /* Num texto de investimento, cortar no lugar errado nao e deselegancia, e
+     erro factual: um paragrafo em lista ("Principal: US$ 1.080.945.000;
+     Pagamento total: US$ 1.092.404.292,52") cortado por palavra termina em
+     "Pagamento total: US$" e publica um valor decapitado. Por isso o corte
+     procura fim de frase, aceita o ponto e virgula da lista, e por ultimo
+     joga fora o pedaco de item que tiver sobrado. */
+  function semRabo(t) {
+    /* rotulo sem valor, moeda sem numero, numero cortado no meio */
+    return t.replace(/[\s,;:]*(?:[^.;:!?]{0,40}:)?\s*(?:US\$|R\$|\u20ac)?\s*[\d.,]*$/, function (m, off) {
+      return /[.!?;]\s*$/.test(t.slice(0, off + 1)) ? m : '';
+    }).replace(/[\s,;:\u2014-]+$/, '');
+  }
+
+  /* "o valor ficou da seguinte forma:" no fim da lamina promete uma lista
+     que ficou na lamina seguinte, ou em nenhuma. Sem a resposta junto, a
+     frase que anuncia tem de sair. */
+  function semPromessa(t) {
+    if (!/:\s*$/.test(t)) return t;
+    var corte = t.replace(/[^.!?]*:\s*$/, '').trim();
+    return corte.length > 24 ? corte : t;
+  }
+
+  function cortaFrase(t, max) {
+    if (!max || t.length <= max) return t;
+    var c = t.slice(0, max), fim = -1, m;
+    var re = /[.!?](?=\s|$)/g;
+    while ((m = re.exec(c)) !== null) fim = m.index;
+    if (fim > max * 0.5) return c.slice(0, fim + 1);
+    /* paragrafo em lista nao tem ponto interno: o ; fecha um item inteiro */
+    var rl = /;(?=\s|$)/g; fim = -1;
+    while ((m = rl.exec(c)) !== null) fim = m.index;
+    if (fim > max * 0.5) return c.slice(0, fim);
+    var cortado = semRabo(cortaPalavra(t, max));
+    return cortado.length > max * 0.4 ? cortado : cortaPalavra(t, max);
+  }
+
+  /* um ** solto depois do corte pintaria o resto da lamina inteira */
+  function fechaDestaque(t) {
+    var n = (t.match(/\*\*/g) || []).length;
+    if (n % 2 === 0) return t;
+    var i = t.lastIndexOf('**');
+    return (t.slice(0, i) + t.slice(i + 2)).replace(/\s+/g, ' ').trim();
+  }
+
+  /* lamina de texto corrido: a que tem corpo e nao pede foto */
+  function tipoDeTexto(m) {
+    var tipos = MARCAS[m].tipos, chaves = Object.keys(tipos), semFoto = null, comFoto = null;
+    for (var i = 1; i < chaves.length; i++) {
+      var campos = tipos[chaves[i]].campos || [];
+      if (campos.indexOf('body') < 0) continue;
+      if (campos.indexOf('img') < 0) { semFoto = semFoto || chaves[i]; }
+      else { comFoto = comFoto || chaves[i]; }
+    }
+    return semFoto || comFoto || chaves[chaves.length - 1];
+  }
+
+  function montaRascunho(dados, m) {
+    var orc = orcamentoDe(m), chaves = Object.keys(MARCAS[m].tipos);
+    var tCapa = chaves[0], tTexto = tipoDeTexto(m);
+    var capaC = orc[tCapa] || {}, txtC = orc[tTexto] || {};
+    var laminas = [];
+
+    /* a manchete da casa costuma vir partida em gancho e complemento:
+       "Petrobras vai desembolsar US$ 1,09 bilhao; entenda quem recebe" */
+    var manchete = dados.titulo || '', sub = '';
+    var corte = manchete.search(/[;:]\s/);
+    if (corte > 20) {
+      sub = manchete.slice(corte + 1).trim();
+      manchete = manchete.slice(0, corte).trim();
+    }
+    var capa = { type: tCapa };
+    if (capaC.title) capa.title = fechaDestaque(cortaPalavra(manchete, capaC.title));
+    if (capaC.sub) {
+      if (!sub && dados.paragrafos.length) sub = frasesDe(dados.paragrafos[0])[0] || '';
+      if (sub) sub = sub.charAt(0).toUpperCase() + sub.slice(1);
+      capa.sub = fechaDestaque(cortaPalavra(sub, capaC.sub));
+    } else if (!capaC.title) {
+      capa.body = fechaDestaque(cortaPalavra(manchete, capaC.body));
+    }
+    laminas.push(capa);
+
+    var frases = [];
+    dados.paragrafos.forEach(function (p) {
+      frasesDe(p).forEach(function (f) { frases.push(f); });
+    });
+    /* a primeira frase ja foi para o subtitulo da capa: nao repetir */
+    if (capaC.sub && frases.length && frases[0] === sub) frases.shift();
+
+    /* nao encher ate a borda: o orcamento de um campo e medido com os
+       vizinhos em tamanho tipico, e o rascunho enche todos de uma vez */
+    var FOLGA_T = 0.8, FOLGA_B = 0.85;
+    var maxT = Math.floor((txtC.title || 0) * FOLGA_T);
+    var maxB = Math.floor((txtC.body || 0) * FOLGA_B);
+    var i = 0;
+    while (i < frases.length && laminas.length < MAX_RASCUNHO) {
+      var l = { type: tTexto }, corpo = '';
+      if (maxT) {
+        /* o titulo sai do comeco da frase e o que sobrou dela abre o corpo:
+           assim nada do artigo se perde e nada aparece duas vezes */
+        var frase = frases[i++];
+        var titulo = cortaPalavra(frase, maxT);
+        l.title = semPromessa(fechaDestaque(titulo));
+        corpo = frase.slice(titulo.length).replace(/^[\s,;:—-]+/, '');
+      }
+      while (i < frases.length) {
+        var junta = corpo ? corpo + ' ' + frases[i] : frases[i];
+        if (maxB && junta.length > maxB) break;
+        corpo = junta; i++;
+      }
+      if (!corpo && i < frases.length) corpo = cortaPalavra(frases[i++], maxB);
+      if (maxB) l.body = semPromessa(fechaDestaque(cortaPalavra(corpo, maxB)));
+      if (!l.title && !l.body) break;
+      laminas.push(l);
+    }
+    return laminas;
+  }
+
+  /* o corte foi por contagem de caracteres, mas quem decide e o desenho:
+     passa pela mesma conferencia que valida o que o modelo devolve e apara
+     o que ainda estourar */
+  function aparaRascunho(m, laminas) {
+    for (var volta = 0; volta < 8; volta++) {
+      var fora = confere(m, laminas);
+      if (!fora.length) return laminas;
+      fora.forEach(function (f) {
+        var l = laminas[f.i], t = String(l[f.campo] || '');
+        /* proporcao, e nao "cabe - 1": o limite medido ja foi respeitado e
+           mesmo assim estourou, entao insistir nele nao sai do lugar */
+        var teto = Math.floor(t.length * 0.88);
+        if (f.cabe) teto = Math.min(teto, f.cabe);
+        if (teto < 12) { l[f.campo] = ''; return; }
+        l[f.campo] = semPromessa(fechaDestaque(
+          f.campo === 'body' ? cortaFrase(t, teto) : cortaPalavra(t, teto)));
+      });
+    }
+    return laminas;
+  }
+
+  function pedeRascunho(it) {
+    return fetch(TEXTO_ENDPOINT + '?link=' + encodeURIComponent(it.link))
+      .then(function (r) {
+        return r.json().then(function (d) {
+          if (!r.ok) throw new Error(d.recado || 'Não consegui ler a matéria.');
+          return d;
+        }, function () { throw new Error('Não consegui ler a matéria.'); });
+      }, function () { throw new Error('Não consegui falar com o servidor.'); });
   }
 
   function usaPauta(i) {
@@ -3384,15 +3571,37 @@
     forma.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   }
 
+  function fazRascunho(i, botao) {
+    var itens = (pautas && pautas[perfilPauta]) || [];
+    var it = itens[i]; if (!it || botao.disabled) return;
+    var antes = botao.textContent;
+    botao.disabled = true; botao.textContent = 'Lendo a mat\u00e9ria\u2026';
+    var solta = function () { botao.disabled = false; botao.textContent = antes; };
+    var m = perfilPauta;
+    pedeRascunho(it).then(function (d) {
+      solta();
+      var laminas = aparaRascunho(m, montaRascunho(d, m));
+      if (!laminas.length) { toast('O feed n\u00e3o trouxe texto para recortar.'); return; }
+      if (!aplicaGeracao(m, laminas)) { toast('N\u00e3o consegui montar o rascunho.'); return; }
+      toast(nLaminas(slides.length) + ' recortadas de ' + d.fonte + '. Revise antes de publicar.');
+    }, function (e) {
+      solta();
+      toast((e && e.message) || 'N\u00e3o consegui montar o rascunho.');
+    });
+  }
+
   var paginaIdeias = document.querySelector('.view[data-view="ideias"]');
   if (paginaIdeias) paginaIdeias.addEventListener('click', function (ev) {
     var chip = ev.target.closest('.chip-perfil');
     if (chip) { perfilPauta = chip.dataset.perfil; marcaChip(); pintaPautas(); return; }
+    var rasc = ev.target.closest('.rascunho');
+    if (rasc) { fazRascunho(parseInt(rasc.dataset.rascunho, 10), rasc); return; }
     var usar = ev.target.closest('.usar');
     if (usar) usaPauta(parseInt(usar.dataset.pauta, 10));
   });
 
   window.__abrir = abrir;
+  window.__rascunho = { monta: montaRascunho, apara: aparaRascunho, confere: confere };
   window.__salvarPeca = salvarPeca; window.__listarPecas = listarPecas;
 
 })();

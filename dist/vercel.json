@@ -6,6 +6,9 @@
     },
     "api/pautas.py": {
       "maxDuration": 30
+    },
+    "api/texto.py": {
+      "maxDuration": 30
     }
   },
   "headers": [
