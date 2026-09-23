@@ -3747,6 +3747,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       .then(function (r) {
         if (r.status === 404) throw new Error('desligado');
         if (r.status === 401 || r.status === 403) throw new Error('acesso');
+        if (r.status === 402) throw new Error('saldo');
         if (r.status === 429) throw new Error('fila');
         if (r.status === 422) throw new Error('recusado');
         if (r.status === 503) throw new Error('semchave');
@@ -3855,6 +3856,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     desligado: 'A geração ainda não está ligada neste endereço. O gerador de carrossel continua funcionando.',
     semchave:  'O servidor está no ar, mas sem chave configurada. Quem cuida do ambiente precisa definir a chave.',
     fila:      'Muitos pedidos ao mesmo tempo. Tente de novo em alguns segundos.',
+    saldo:     'A chave é válida, mas a conta do fornecedor está sem saldo ou no teto de gasto. Isso não passa esperando: precisa de crédito ou de limite maior no painel do fornecedor.',
     rede:      'Não consegui falar com o servidor. Verifique a conexão e tente de novo.',
     recusado:  'O modelo não escreveu esta peça. Reformule o pedido — pode ser algo que ele evita tratar.',
     vazio:     'Não veio nenhuma lâmina. Tente descrever o assunto com um pouco mais de detalhe.'

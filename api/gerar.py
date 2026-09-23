@@ -179,6 +179,8 @@ class handler(BaseHTTPRequestHandler):
             return self._responde(200, gera(dados))
         except Recusa as e:
             return self._responde(422, {"erro": "recusado", "motivo": str(e)})
+        except provedores.SemSaldo:
+            return self._responde(402, {"erro": "sem saldo"})
         except provedores.Fila:
             return self._responde(429, {"erro": "fila"})
         except provedores.ChaveRuim:

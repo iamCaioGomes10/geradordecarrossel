@@ -32,6 +32,15 @@ class ChaveRuim(Exception):
     pass
 
 
+class SemSaldo(Exception):
+    """Chave valida, conta sem credito ou no teto de gasto.
+
+    Os dois fornecedores devolvem isso junto com limite de taxa — a OpenAI
+    manda 429 nos dois casos —, e tratar como fila manda a pessoa reetentar
+    para sempre um problema que so o faturamento resolve.
+    """
+
+
 class ErroApi(Exception):
     def __init__(self, status=0):
         Exception.__init__(self, "status %s" % status)
@@ -40,6 +49,29 @@ class ErroApi(Exception):
 
 class SemResposta(Exception):
     pass
+
+
+def _codigo(e):
+    """Codigo que o fornecedor mandou, sem depender do formato do SDK."""
+    for campo in ("code", "type"):
+        v = getattr(e, campo, None)
+        if isinstance(v, str) and v:
+            return v.lower()
+    corpo = getattr(e, "body", None)
+    if isinstance(corpo, dict):
+        err = corpo.get("error") or {}
+        for campo in ("code", "type"):
+            v = err.get(campo)
+            if isinstance(v, str) and v:
+                return v.lower()
+    return str(e).lower()
+
+
+def _e_saldo(e):
+    marcas = ("insufficient_quota", "billing", "credit balance",
+              "credit_balance", "exceeded your current quota", "payment")
+    texto = (_codigo(e) + " " + str(e)).lower()
+    return any(m in texto for m in marcas)
 
 
 def estrito(esquema):
@@ -103,13 +135,15 @@ class Claude(object):
                 },
                 messages=mensagens,
             )
-        except self.sdk.RateLimitError:
-            raise Fila()
+        except self.sdk.RateLimitError as e:
+            raise SemSaldo() if _e_saldo(e) else Fila()
         except self.sdk.AuthenticationError:
             raise ChaveRuim()
         except self.sdk.APIConnectionError:
             raise SemResposta()
         except self.sdk.APIStatusError as e:
+            if _e_saldo(e):
+                raise SemSaldo()
             raise ErroApi(e.status_code)
         if r.stop_reason == "refusal":
             d = getattr(r, "stop_details", None)
@@ -180,13 +214,15 @@ class Gpt(object):
             corpo["reasoning_effort"] = self.esforco
         try:
             r = self._chama(corpo)
-        except self.sdk.RateLimitError:
-            raise Fila()
+        except self.sdk.RateLimitError as e:
+            raise SemSaldo() if _e_saldo(e) else Fila()
         except self.sdk.AuthenticationError:
             raise ChaveRuim()
         except self.sdk.APIConnectionError:
             raise SemResposta()
         except self.sdk.APIStatusError as e:
+            if _e_saldo(e):
+                raise SemSaldo()
             raise ErroApi(getattr(e, "status_code", 0))
         msg = r.choices[0].message
         if getattr(msg, "refusal", None):
