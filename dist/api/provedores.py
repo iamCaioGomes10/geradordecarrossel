@@ -43,9 +43,17 @@ class SemSaldo(Exception):
 
 
 class ErroApi(Exception):
-    def __init__(self, status=0):
-        Exception.__init__(self, "status %s" % status)
+    """Erro que o fornecedor nao classificou em nada que saibamos tratar.
+
+    Carrega o recado dele junto: um 502 com "status 503" e so um numero, e
+    quem esta olhando nao tem como saber se e modelo sobrecarregado, parametro
+    recusado ou nome de modelo que nao serve.
+    """
+
+    def __init__(self, status=0, detalhe=""):
+        Exception.__init__(self, "status %s %s" % (status, detalhe))
         self.status = status
+        self.detalhe = (detalhe or "")[:300]
 
 
 class SemResposta(Exception):
@@ -157,7 +165,7 @@ class Claude(object):
         except self.sdk.APIStatusError as e:
             if _e_saldo(e):
                 raise SemSaldo()
-            raise ErroApi(e.status_code)
+            raise ErroApi(e.status_code, str(e))
         if r.stop_reason == "refusal":
             d = getattr(r, "stop_details", None)
             raise Recusa(getattr(d, "category", None) or "sem categoria")
@@ -236,7 +244,7 @@ class Gpt(object):
         except self.sdk.APIStatusError as e:
             if _e_saldo(e):
                 raise SemSaldo()
-            raise ErroApi(getattr(e, "status_code", 0))
+            raise ErroApi(getattr(e, "status_code", 0), str(e))
         msg = r.choices[0].message
         if getattr(msg, "refusal", None):
             raise Recusa(str(msg.refusal)[:200])
@@ -270,7 +278,7 @@ class Gemini(object):
             return Fila()
         if codigo in (401, 403):
             return ChaveRuim()
-        return ErroApi(codigo)
+        return ErroApi(codigo, getattr(e, "message", "") or str(e))
 
     def gera(self, voz, regras, mensagens, esquema):
         # a voz e as regras vao como instrucao de sistema; o pedido, como conteudo

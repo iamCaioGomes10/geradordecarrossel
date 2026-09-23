@@ -186,7 +186,8 @@ class handler(BaseHTTPRequestHandler):
         except provedores.ChaveRuim:
             return self._responde(503, {"erro": "chave rejeitada"})
         except provedores.ErroApi as e:
-            return self._responde(502, {"erro": "api", "status": e.status})
+            return self._responde(502, {"erro": "api", "status": e.status,
+                                        "detalhe": e.detalhe})
         except provedores.SemResposta:
             return self._responde(504, {"erro": "sem resposta da api"})
         except ImportError as e:
