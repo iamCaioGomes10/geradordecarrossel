@@ -10,24 +10,29 @@ duplicar isso aqui criaria duas verdades que divergem no primeiro ajuste de
 layout. O que mora deste lado e o que nao pode viver numa pagina estatica: a
 chave da API e a voz das marcas.
 
+Quem escreve — Claude ou GPT — fica em provedores.py. Aqui esta o que nao muda
+com o fornecedor: o contrato do perfil, as regras de formato e a conferencia.
+
 Variaveis de ambiente:
-  ANTHROPIC_API_KEY  obrigatoria
-  SENHA_GERACAO      opcional; quando definida, exigida no header X-Senha
+  OPENAI_API_KEY ou ANTHROPIC_API_KEY   uma das duas
+  PROVEDOR       opcional; 'openai' ou 'anthropic' quando houver as duas chaves
+  SENHA_GERACAO  opcional; quando definida, exigida no header X-Senha
 """
 import json
 import os
 from http.server import BaseHTTPRequestHandler
 
-import anthropic
-
 try:
     from vozes import brief
+    import provedores
 except ImportError:                      # runtime que nao poe a pasta no path
     import sys
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from vozes import brief
+    import provedores
 
-MODELO = "claude-opus-5"
+Recusa = provedores.Recusa
+
 LIMITE_PEDIDO = 4000        # caracteres da frase da pessoa
 LIMITE_CORPO = 300_000      # bytes do POST
 
@@ -117,36 +122,13 @@ def monta_mensagens(dados):
 
 
 def gera(dados):
-    cliente = anthropic.Anthropic()
     contrato = dados["contrato"]
-    resposta = cliente.messages.create(
-        model=MODELO,
-        max_tokens=16000,
-        system=[
-            {
-                "type": "text",
-                "text": brief(contrato.get("marca", "suno")),
-                "cache_control": {"type": "ephemeral"},
-            },
-            {"type": "text", "text": instrucoes(contrato)},
-        ],
-        thinking={"type": "adaptive"},
-        output_config={
-            "effort": "medium",
-            "format": {"type": "json_schema", "schema": ESQUEMA},
-        },
-        messages=monta_mensagens(dados),
+    return provedores.escolhe().gera(
+        brief(contrato.get("marca", "suno")),
+        instrucoes(contrato),
+        monta_mensagens(dados),
+        ESQUEMA,
     )
-    if resposta.stop_reason == "refusal":
-        detalhe = getattr(resposta, "stop_details", None)
-        motivo = getattr(detalhe, "category", None) or "sem categoria"
-        raise Recusa(motivo)
-    texto = next(b.text for b in resposta.content if b.type == "text")
-    return json.loads(texto)
-
-
-class Recusa(Exception):
-    pass
 
 
 class handler(BaseHTTPRequestHandler):
@@ -190,29 +172,45 @@ class handler(BaseHTTPRequestHandler):
                 "mensagem": monta_mensagens(dados)[0]["content"],
             })
 
-        if not os.environ.get("ANTHROPIC_API_KEY"):
+        if not provedores.tem_chave():
             return self._responde(503, {"erro": "sem chave configurada"})
 
         try:
             return self._responde(200, gera(dados))
         except Recusa as e:
             return self._responde(422, {"erro": "recusado", "motivo": str(e)})
-        except anthropic.RateLimitError:
+        except provedores.Fila:
             return self._responde(429, {"erro": "fila"})
-        except anthropic.AuthenticationError:
+        except provedores.ChaveRuim:
             return self._responde(503, {"erro": "chave rejeitada"})
-        except anthropic.APIStatusError as e:
-            return self._responde(502, {"erro": "api", "status": e.status_code})
-        except anthropic.APIConnectionError:
+        except provedores.ErroApi as e:
+            return self._responde(502, {"erro": "api", "status": e.status})
+        except provedores.SemResposta:
             return self._responde(504, {"erro": "sem resposta da api"})
-        except (ValueError, StopIteration):
-            return self._responde(502, {"erro": "resposta ilegivel"})
+        except ImportError as e:
+            return self._responde(503, {"erro": "pacote do provedor ausente",
+                                        "detalhe": str(e)})
 
     def do_GET(self):
-        """Sonda de saude: diz se esta de pe e se a chave existe, nunca o valor."""
-        self._responde(200, {
+        """Sonda de saude: diz se esta de pe e se a chave existe, nunca o valor.
+
+        Com ?modelos=1 pergunta ao fornecedor quais modelos a chave enxerga.
+        Nome de modelo envelhece, e errar o identificador da erro obscuro na
+        primeira geracao: melhor ler a lista da propria API do que chutar.
+        """
+        nome = provedores.qual()
+        fora = {
             "ok": True,
-            "chave": bool(os.environ.get("ANTHROPIC_API_KEY")),
+            "provedor": nome or "nenhum",
+            "chave": provedores.tem_chave(),
             "senha": bool(os.environ.get("SENHA_GERACAO")),
-            "modelo": MODELO,
-        })
+        }
+        if nome:
+            fora["modelo"] = (os.environ.get(nome.upper() + "_MODELO")
+                              or provedores.TIPOS[nome].DEFAULT)
+        if "modelos=1" in (self.path or "") and provedores.tem_chave():
+            try:
+                fora["modelos"] = provedores.escolhe().modelos()
+            except Exception as e:
+                fora["modelos_erro"] = type(e).__name__
+        self._responde(200, fora)

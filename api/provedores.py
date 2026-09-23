@@ -1,0 +1,223 @@
+# -*- coding: utf-8 -*-
+"""Quem escreve a copy: Claude ou GPT, atras da mesma porta.
+
+O resto do app nao sabe qual dos dois respondeu. Contrato do perfil, vozes das
+marcas, orcamento de caracteres medido na arte e conferencia do que voltou sao
+iguais nos dois caminhos — o que muda e so a chamada e o nome dos erros.
+
+Escolha por variavel de ambiente:
+  PROVEDOR         'openai' ou 'anthropic'; sem ela, vale a chave que existir
+  OPENAI_API_KEY   / ANTHROPIC_API_KEY
+  OPENAI_MODELO    / ANTHROPIC_MODELO   (opcional; ver DEFAULT de cada um)
+  OPENAI_ESFORCO   'low' | 'medium' | 'high', so nos modelos que raciocinam
+
+Nome de modelo envelhece rapido e errar o identificador da um erro obscuro.
+Por isso o modelo e variavel, e a sonda de saude sabe listar os modelos que a
+chave enxerga: melhor perguntar a API do que chutar no codigo.
+"""
+import json
+import os
+
+
+# ---------- erros do app, sem marca de fornecedor ----------
+class Recusa(Exception):
+    """o modelo se negou a escrever a peca"""
+
+
+class Fila(Exception):
+    """limite de uso no fornecedor"""
+
+
+class ChaveRuim(Exception):
+    pass
+
+
+class ErroApi(Exception):
+    def __init__(self, status=0):
+        Exception.__init__(self, "status %s" % status)
+        self.status = status
+
+
+class SemResposta(Exception):
+    pass
+
+
+def estrito(esquema):
+    """Versao do esquema que o modo estrito da OpenAI aceita.
+
+    Ela exige que toda propriedade esteja em `required`, mas nossas laminas tem
+    campos opcionais de proposito: a lamina de corpo do Baroni nao tem titulo, a
+    capa do Notícias nao tem subtitulo. A saida e declarar todas obrigatorias e
+    deixar as opcionais aceitarem null, que o app ja trata como campo ausente.
+    """
+    if not isinstance(esquema, dict):
+        return esquema
+    novo = dict(esquema)
+    props = novo.get("properties")
+    if isinstance(props, dict):
+        obrigatorias = set(novo.get("required") or [])
+        saida = {}
+        for nome, sub in props.items():
+            sub = estrito(sub)
+            if nome not in obrigatorias:
+                tipo = sub.get("type")
+                if isinstance(tipo, str) and tipo != "null":
+                    sub = dict(sub, type=[tipo, "null"])
+            saida[nome] = sub
+        novo["properties"] = saida
+        novo["required"] = list(props.keys())
+        novo["additionalProperties"] = False
+    if isinstance(novo.get("items"), dict):
+        novo["items"] = estrito(novo["items"])
+    return novo
+
+
+class Claude(object):
+    nome = "anthropic"
+    env_chave = "ANTHROPIC_API_KEY"
+    DEFAULT = "claude-opus-5"
+
+    def __init__(self):
+        import anthropic
+        self.sdk = anthropic
+        self.cliente = anthropic.Anthropic()
+        self.modelo = os.environ.get("ANTHROPIC_MODELO") or self.DEFAULT
+
+    def modelos(self):
+        return [m.id for m in self.cliente.models.list(limit=40).data]
+
+    def gera(self, voz, regras, mensagens, esquema):
+        try:
+            r = self.cliente.messages.create(
+                model=self.modelo,
+                max_tokens=16000,
+                system=[
+                    {"type": "text", "text": voz,
+                     "cache_control": {"type": "ephemeral"}},
+                    {"type": "text", "text": regras},
+                ],
+                thinking={"type": "adaptive"},
+                output_config={
+                    "effort": "medium",
+                    "format": {"type": "json_schema", "schema": esquema},
+                },
+                messages=mensagens,
+            )
+        except self.sdk.RateLimitError:
+            raise Fila()
+        except self.sdk.AuthenticationError:
+            raise ChaveRuim()
+        except self.sdk.APIConnectionError:
+            raise SemResposta()
+        except self.sdk.APIStatusError as e:
+            raise ErroApi(e.status_code)
+        if r.stop_reason == "refusal":
+            d = getattr(r, "stop_details", None)
+            raise Recusa(getattr(d, "category", None) or "sem categoria")
+        try:
+            return json.loads(next(b.text for b in r.content if b.type == "text"))
+        except (ValueError, StopIteration):
+            raise SemResposta()
+
+
+class Gpt(object):
+    nome = "openai"
+    env_chave = "OPENAI_API_KEY"
+    DEFAULT = "gpt-5"
+
+    def __init__(self):
+        import openai
+        self.sdk = openai
+        self.cliente = openai.OpenAI()
+        self.modelo = os.environ.get("OPENAI_MODELO") or self.DEFAULT
+        self.esforco = os.environ.get("OPENAI_ESFORCO") or ""
+
+    def modelos(self):
+        return sorted(m.id for m in self.cliente.models.list().data)
+
+    # parametros que mudaram de nome ou de suporte entre familias de modelo
+    AJUSTAVEIS = ("max_completion_tokens", "max_tokens", "reasoning_effort")
+
+    def _chama(self, corpo):
+        """Tira o parametro que a propria API reclamar e tenta de novo.
+
+        A familia de modelos ja trocou de nome de parametro mais de uma vez, e
+        fixar a versao certa no codigo quebra na proxima troca de modelo. O
+        recado de erro diz qual parametro incomodou, entao nao ha o que
+        adivinhar: so se mexe no que foi citado, e o resto sobe como erro.
+        """
+        corpo = dict(corpo)
+        for _ in range(len(self.AJUSTAVEIS) + 1):
+            try:
+                return self.cliente.chat.completions.create(**corpo)
+            except self.sdk.BadRequestError as e:
+                recado = str(e)
+                alvo = None
+                for nome in self.AJUSTAVEIS:
+                    if nome in corpo and nome in recado:
+                        alvo = nome
+                        break
+                if alvo is None:
+                    raise
+                if alvo == "max_completion_tokens":
+                    corpo["max_tokens"] = corpo.pop(alvo)
+                else:
+                    corpo.pop(alvo)
+        return self.cliente.chat.completions.create(**corpo)
+
+    def gera(self, voz, regras, mensagens, esquema):
+        corpo = {
+            "model": self.modelo,
+            "max_completion_tokens": 16000,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {"name": "laminas", "strict": True,
+                                "schema": estrito(esquema)},
+            },
+            "messages": [{"role": "system", "content": voz + "\n\n" + regras}] + mensagens,
+        }
+        if self.esforco:
+            corpo["reasoning_effort"] = self.esforco
+        try:
+            r = self._chama(corpo)
+        except self.sdk.RateLimitError:
+            raise Fila()
+        except self.sdk.AuthenticationError:
+            raise ChaveRuim()
+        except self.sdk.APIConnectionError:
+            raise SemResposta()
+        except self.sdk.APIStatusError as e:
+            raise ErroApi(getattr(e, "status_code", 0))
+        msg = r.choices[0].message
+        if getattr(msg, "refusal", None):
+            raise Recusa(str(msg.refusal)[:200])
+        try:
+            return json.loads(msg.content)
+        except (ValueError, TypeError):
+            raise SemResposta()
+
+
+TIPOS = {"openai": Gpt, "anthropic": Claude}
+
+
+def qual():
+    """Nome do provedor configurado, sem construir cliente nem exigir pacote."""
+    pedido = (os.environ.get("PROVEDOR") or "").strip().lower()
+    if pedido in TIPOS:
+        return pedido
+    for nome, tipo in (("openai", Gpt), ("anthropic", Claude)):
+        if os.environ.get(tipo.env_chave):
+            return nome
+    return ""
+
+
+def tem_chave():
+    nome = qual()
+    return bool(nome and os.environ.get(TIPOS[nome].env_chave))
+
+
+def escolhe():
+    nome = qual()
+    if not nome:
+        raise ChaveRuim()
+    return TIPOS[nome]()

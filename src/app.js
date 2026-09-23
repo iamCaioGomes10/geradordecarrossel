@@ -3044,7 +3044,7 @@
 
   /* ---------- modo manual ----------
      Enquanto a chave nao existe, a pessoa faz o papel do transporte: leva o
-     pedido ao Claude e traz a resposta. Tudo o mais e o caminho de verdade —
+     pedido ao modelo e traz a resposta. Tudo o mais e o caminho de verdade —
      inclusive o texto do pedido, que e montado pela mesma funcao do servidor,
      e nao por uma copia aqui que sairia do lugar na primeira mudanca. */
   var manualFrase = '', manualMarca = null;
