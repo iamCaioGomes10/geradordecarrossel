@@ -6,9 +6,10 @@ marcas, orcamento de caracteres medido na arte e conferencia do que voltou sao
 iguais nos dois caminhos — o que muda e so a chamada e o nome dos erros.
 
 Escolha por variavel de ambiente:
-  PROVEDOR         'openai' ou 'anthropic'; sem ela, vale a chave que existir
-  OPENAI_API_KEY   / ANTHROPIC_API_KEY
-  OPENAI_MODELO    / ANTHROPIC_MODELO   (opcional; ver DEFAULT de cada um)
+  PROVEDOR         'gemini', 'openai' ou 'anthropic'; sem ela, vale a chave
+                   que existir — com mais de uma, defina esta explicitamente
+  GEMINI_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY
+  GEMINI_MODELO  / OPENAI_MODELO  / ANTHROPIC_MODELO  (opcional)
   OPENAI_ESFORCO   'low' | 'medium' | 'high', so nos modelos que raciocinam
 
 Nome de modelo envelhece rapido e errar o identificador da um erro obscuro.
@@ -72,6 +73,18 @@ def _e_saldo(e):
               "credit_balance", "exceeded your current quota", "payment")
     texto = (_codigo(e) + " " + str(e)).lower()
     return any(m in texto for m in marcas)
+
+
+def sem_extras(esquema):
+    """Copia do esquema sem `additionalProperties`, que nem todo validador aceita."""
+    if not isinstance(esquema, dict):
+        return esquema
+    novo = {k: v for k, v in esquema.items() if k != "additionalProperties"}
+    if isinstance(novo.get("properties"), dict):
+        novo["properties"] = {k: sem_extras(v) for k, v in novo["properties"].items()}
+    if isinstance(novo.get("items"), dict):
+        novo["items"] = sem_extras(novo["items"])
+    return novo
 
 
 def estrito(esquema):
@@ -233,7 +246,68 @@ class Gpt(object):
             raise SemResposta()
 
 
-TIPOS = {"openai": Gpt, "anthropic": Claude}
+class Gemini(object):
+    nome = "gemini"
+    env_chave = "GEMINI_API_KEY"
+    # alias que nao envelhece: nome fixo de versao quebra na proxima geracao
+    DEFAULT = "gemini-flash-latest"
+
+    def __init__(self):
+        from google import genai
+        from google.genai import errors, types
+        self.genai, self.erros, self.tipos = genai, errors, types
+        self.cliente = genai.Client()
+        self.modelo = os.environ.get("GEMINI_MODELO") or self.DEFAULT
+
+    def modelos(self):
+        return sorted(m.name.replace("models/", "") for m in self.cliente.models.list())
+
+    def _erro(self, e):
+        codigo = getattr(e, "code", 0) or 0
+        if _e_saldo(e):
+            return SemSaldo()
+        if codigo == 429:
+            return Fila()
+        if codigo in (401, 403):
+            return ChaveRuim()
+        return ErroApi(codigo)
+
+    def gera(self, voz, regras, mensagens, esquema):
+        # a voz e as regras vao como instrucao de sistema; o pedido, como conteudo
+        pedido = "\n\n".join(m["content"] for m in mensagens)
+        cfg = self.tipos.GenerateContentConfig(
+            system_instruction=voz + "\n\n" + regras,
+            response_mime_type="application/json",
+            # o suporte a JSON Schema aqui e parcial e additionalProperties nao
+            # e garantido; tirar e inofensivo, porque o cliente ja ignora campo
+            # que nao conhece ao montar a lamina
+            response_json_schema=sem_extras(esquema),
+        )
+        try:
+            r = self.cliente.models.generate_content(
+                model=self.modelo, contents=pedido, config=cfg)
+        except self.erros.APIError as e:
+            raise self._erro(e)
+        except (ConnectionError, TimeoutError, OSError):
+            raise SemResposta()
+
+        bloqueio = getattr(getattr(r, "prompt_feedback", None), "block_reason", None)
+        if bloqueio:
+            raise Recusa(str(bloqueio))
+        texto = getattr(r, "text", None)
+        if not texto:
+            cands = getattr(r, "candidates", None) or []
+            motivo = getattr(cands[0], "finish_reason", None) if cands else None
+            if motivo and "STOP" not in str(motivo).upper():
+                raise Recusa(str(motivo))
+            raise SemResposta()
+        try:
+            return json.loads(texto)
+        except (ValueError, TypeError):
+            raise SemResposta()
+
+
+TIPOS = {"gemini": Gemini, "openai": Gpt, "anthropic": Claude}
 
 
 def qual():
@@ -241,7 +315,7 @@ def qual():
     pedido = (os.environ.get("PROVEDOR") or "").strip().lower()
     if pedido in TIPOS:
         return pedido
-    for nome, tipo in (("openai", Gpt), ("anthropic", Claude)):
+    for nome, tipo in (("gemini", Gemini), ("openai", Gpt), ("anthropic", Claude)):
         if os.environ.get(tipo.env_chave):
             return nome
     return ""
