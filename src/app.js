@@ -3044,7 +3044,7 @@
   }
 
   /* ---------- modo manual ----------
-     Enquanto a chave nao existe, a pessoa faz o papel do transporte: leva o
+     Sem chave, ou com chave sem saldo, a pessoa faz o papel do transporte: leva o
      pedido ao modelo e traz a resposta. Tudo o mais e o caminho de verdade —
      inclusive o texto do pedido, que e montado pela mesma funcao do servidor,
      e nao por uma copia aqui que sairia do lugar na primeira mudanca. */
@@ -3189,7 +3189,8 @@
       }, function (e) {
         solta();
         if (e && e.message === 'acesso') { pedeSenha(frase); return; }
-        if (e && (e.message === 'semchave' || e.message === 'desligado')) {
+        if (e && (e.message === 'semchave' || e.message === 'desligado'
+                  || e.message === 'saldo')) {
           nota(RECADO[e.message], true);
           abreManual(frase, forcada);
           return;

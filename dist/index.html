@@ -687,13 +687,14 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
 
 <div class="cortina" id="cortina-manual" hidden>
   <div class="folha larga" role="dialog" aria-modal="true" aria-labelledby="tit-manual">
-    <h2 id="tit-manual">Gerar sem a chave, por enquanto</h2>
+    <h2 id="tit-manual">Gerar sem gastar na API</h2>
     <p class="dica">Mesmo pedido que o app mandaria sozinho, com a voz da marca e os limites
-      de caracteres medidos na arte. Leve at&eacute; o Claude ou o ChatGPT, traga a resposta de volta e o
-      restante do caminho roda igual: medi&ccedil;&atilde;o, montagem e biblioteca.</p>
+      de caracteres medidos na arte. Leve at&eacute; o Claude ou o ChatGPT que voc&ecirc; j&aacute; usa,
+      traga a resposta de volta e o restante do caminho roda igual: medi&ccedil;&atilde;o,
+      montagem e biblioteca. N&atilde;o consome nada da chave.</p>
 
     <div class="passo-manual">
-      <div class="rot mono">1 &middot; COPIE E LEVE AO CLAUDE</div>
+      <div class="rot mono">1 &middot; COPIE E LEVE AO MODELO</div>
       <textarea id="manual-pedido" rows="9" readonly></textarea>
       <div class="acoes"><button class="btn2" id="copiar-pedido">Copiar pedido</button></div>
     </div>
@@ -3787,7 +3788,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   }
 
   /* ---------- modo manual ----------
-     Enquanto a chave nao existe, a pessoa faz o papel do transporte: leva o
+     Sem chave, ou com chave sem saldo, a pessoa faz o papel do transporte: leva o
      pedido ao modelo e traz a resposta. Tudo o mais e o caminho de verdade —
      inclusive o texto do pedido, que e montado pela mesma funcao do servidor,
      e nao por uma copia aqui que sairia do lugar na primeira mudanca. */
@@ -3932,7 +3933,8 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       }, function (e) {
         solta();
         if (e && e.message === 'acesso') { pedeSenha(frase); return; }
-        if (e && (e.message === 'semchave' || e.message === 'desligado')) {
+        if (e && (e.message === 'semchave' || e.message === 'desligado'
+                  || e.message === 'saldo')) {
           nota(RECADO[e.message], true);
           abreManual(frase, forcada);
           return;
