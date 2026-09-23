@@ -262,9 +262,11 @@ class Gpt(object):
 class Gemini(object):
     nome = "gemini"
     env_chave = "GEMINI_API_KEY"
-    # O alias -latest aponta para o modelo mais disputado, e na camada gratuita
-    # ele responde 503 de imediato. Um nome concreto do nivel gratuito passa.
-    DEFAULT = "gemini-2.5-flash"
+    # O alias -latest apontava para o modelo mais disputado e respondia 503 na
+    # hora; o 2.5-flash a propria API recusa, dizendo que nao serve mais conta
+    # nova. Quando um nome parar de valer, o detalhe do erro diz o substituto e
+    # GEMINI_MODELO resolve sem mexer em codigo.
+    DEFAULT = "gemini-3.6-flash"
     ESPERAS = (2, 5, 9)          # segundos entre as tentativas quando lota
 
     def __init__(self):
