@@ -3006,6 +3006,7 @@
         if (r.status === 404) throw new Error('desligado');
         if (r.status === 401 || r.status === 403) throw new Error('acesso');
         if (r.status === 402) throw new Error('saldo');
+        if (r.status === 529) throw new Error('congestionado');
         if (r.status === 429) throw new Error('fila');
         if (r.status === 422) throw new Error('recusado');
         if (r.status === 503) throw new Error('semchave');
@@ -3114,6 +3115,7 @@
     desligado: 'A geração ainda não está ligada neste endereço. O gerador de carrossel continua funcionando.',
     semchave:  'O servidor está no ar, mas sem chave configurada. Quem cuida do ambiente precisa definir a chave.',
     fila:      'Muitos pedidos ao mesmo tempo. Tente de novo em alguns segundos.',
+    congestionado: 'O modelo gratuito está congestionado agora — já tentei algumas vezes. Isso costuma passar em alguns minutos. Enquanto isso, dá para montar por fora sem gastar nada.',
     saldo:     'A chave é válida, mas a conta do fornecedor está sem saldo ou no teto de gasto. Isso não passa esperando: precisa de crédito ou de limite maior no painel do fornecedor.',
     rede:      'Não consegui falar com o servidor. Verifique a conexão e tente de novo.',
     recusado:  'O modelo não escreveu esta peça. Reformule o pedido — pode ser algo que ele evita tratar.',
@@ -3190,7 +3192,7 @@
         solta();
         if (e && e.message === 'acesso') { pedeSenha(frase); return; }
         if (e && (e.message === 'semchave' || e.message === 'desligado'
-                  || e.message === 'saldo')) {
+                  || e.message === 'saldo' || e.message === 'congestionado')) {
           nota(RECADO[e.message], true);
           abreManual(frase, forcada);
           return;

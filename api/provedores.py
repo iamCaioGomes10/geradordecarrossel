@@ -18,6 +18,7 @@ chave enxerga: melhor perguntar a API do que chutar no codigo.
 """
 import json
 import os
+import time
 
 
 # ---------- erros do app, sem marca de fornecedor ----------
@@ -58,6 +59,10 @@ class ErroApi(Exception):
 
 class SemResposta(Exception):
     pass
+
+
+class SobreCarga(Exception):
+    """Modelo congestionado. Na camada gratuita isso e rotina, nao excecao."""
 
 
 def _codigo(e):
@@ -257,8 +262,10 @@ class Gpt(object):
 class Gemini(object):
     nome = "gemini"
     env_chave = "GEMINI_API_KEY"
-    # alias que nao envelhece: nome fixo de versao quebra na proxima geracao
-    DEFAULT = "gemini-flash-latest"
+    # O alias -latest aponta para o modelo mais disputado, e na camada gratuita
+    # ele responde 503 de imediato. Um nome concreto do nivel gratuito passa.
+    DEFAULT = "gemini-2.5-flash"
+    ESPERAS = (2, 5, 9)          # segundos entre as tentativas quando lota
 
     def __init__(self):
         from google import genai
@@ -274,6 +281,8 @@ class Gemini(object):
         codigo = getattr(e, "code", 0) or 0
         if _e_saldo(e):
             return SemSaldo()
+        if codigo == 503:
+            return SobreCarga()
         if codigo == 429:
             return Fila()
         if codigo in (401, 403):
@@ -291,13 +300,23 @@ class Gemini(object):
             # que nao conhece ao montar a lamina
             response_json_schema=sem_extras(esquema),
         )
-        try:
-            r = self.cliente.models.generate_content(
-                model=self.modelo, contents=pedido, config=cfg)
-        except self.erros.APIError as e:
-            raise self._erro(e)
-        except (ConnectionError, TimeoutError, OSError):
-            raise SemResposta()
+        # congestionamento e esperado aqui: insiste um pouco antes de desistir,
+        # em vez de mandar a pessoa apertar o botao de novo na mao
+        r = None
+        for i, espera in enumerate((0,) + self.ESPERAS):
+            if espera:
+                time.sleep(espera)
+            try:
+                r = self.cliente.models.generate_content(
+                    model=self.modelo, contents=pedido, config=cfg)
+                break
+            except self.erros.APIError as e:
+                problema = self._erro(e)
+                if isinstance(problema, SobreCarga) and i < len(self.ESPERAS):
+                    continue
+                raise problema
+            except (ConnectionError, TimeoutError, OSError):
+                raise SemResposta()
 
         bloqueio = getattr(getattr(r, "prompt_feedback", None), "block_reason", None)
         if bloqueio:
