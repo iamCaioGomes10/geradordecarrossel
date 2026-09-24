@@ -16,11 +16,23 @@ com o fornecedor: o contrato do perfil, as regras de formato e a conferencia.
 Variaveis de ambiente:
   OPENAI_API_KEY ou ANTHROPIC_API_KEY   uma das duas
   PROVEDOR       opcional; 'openai' ou 'anthropic' quando houver as duas chaves
+  GERACAO        opcional; 'off' pausa a geracao sem tirar a chave
   SENHA_GERACAO  opcional; quando definida, exigida no header X-Senha
 """
 import json
 import os
 from http.server import BaseHTTPRequestHandler
+
+DESLIGADO = ("off", "0", "false", "nao", "no")
+
+
+def pausada():
+    """A geracao esta desligada de proposito?
+
+    Bloquear so no navegador seria enfeite: o endereco e publico e quem chamar
+    a rota direto passa. O interruptor mora aqui, e a tela apenas obedece.
+    """
+    return (os.environ.get("GERACAO") or "").strip().lower() in DESLIGADO
 
 try:
     from vozes import brief
@@ -172,6 +184,11 @@ class handler(BaseHTTPRequestHandler):
                 "mensagem": monta_mensagens(dados)[0]["content"],
             })
 
+        # o modo manual passa acima desta linha de proposito: montar o pedido
+        # nao chama modelo, entao continua valendo com a geracao pausada
+        if pausada():
+            return self._responde(423, {"erro": "pausado"})
+
         if not provedores.tem_chave():
             return self._responde(503, {"erro": "sem chave configurada"})
 
@@ -206,6 +223,7 @@ class handler(BaseHTTPRequestHandler):
         nome = provedores.qual()
         fora = {
             "ok": True,
+            "geracao": not pausada(),
             "provedor": nome or "nenhum",
             "chave": provedores.tem_chave(),
             "senha": bool(os.environ.get("SENHA_GERACAO")),

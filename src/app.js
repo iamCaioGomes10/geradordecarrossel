@@ -3005,6 +3005,7 @@
       .then(function (r) {
         if (r.status === 404) throw new Error('desligado');
         if (r.status === 401 || r.status === 403) throw new Error('acesso');
+        if (r.status === 423) throw new Error('pausado');
         if (r.status === 402) throw new Error('saldo');
         if (r.status === 529) throw new Error('congestionado');
         if (r.status === 429) throw new Error('fila');
@@ -3116,6 +3117,7 @@
   /* ---------- a barra da home ---------- */
   var RECADO = {
     desligado: 'A geração ainda não está ligada neste endereço. O gerador de carrossel continua funcionando.',
+    pausado:   'A escrita automática está pausada. O gerador de carrossel continua inteiro, e dá para montar a copy por fora sem gastar nada.',
     semchave:  'O servidor está no ar, mas sem chave configurada. Quem cuida do ambiente precisa definir a chave.',
     fila:      'O fornecedor recusou por limite de uso. Na camada gratuita há um teto por minuto e outro por dia: se for o do minuto, passa em instantes; se for o do dia, só amanhã. Dá para montar por fora enquanto isso.',
     congestionado: 'O modelo gratuito está congestionado agora — já tentei algumas vezes. Isso costuma passar em alguns minutos. Enquanto isso, dá para montar por fora sem gastar nada.',
@@ -3164,10 +3166,31 @@
     });
   }
 
+  /* A barra pergunta ao servidor se a escrita esta ligada. Sem isso ela
+     aceita o pedido, espera meio minuto e so entao conta que estava pausada —
+     e quem digitou perde o tempo e a frase. */
+  function conferePausa() {
+    if (!forma) return;
+    fetch(ENDPOINT, { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && d.geracao === false) bloqueiaBarra(); },
+            function () {});
+  }
+
+  function bloqueiaBarra() {
+    var campo = $('prompt'); if (!campo || !forma) return;
+    forma.dataset.pausada = '1';
+    campo.disabled = true;
+    campo.placeholder = 'Escrita automática pausada';
+    var b = forma.querySelector('button[type="submit"]');
+    if (b) b.disabled = true;
+    nota(RECADO.pausado, false);
+  }
+
   var forma = $('forma-prompt');
   if (forma) forma.addEventListener('submit', function (ev) {
     ev.preventDefault();
-    if (forma.dataset.estado === 'indo') return;
+    if (forma.dataset.estado === 'indo' || forma.dataset.pausada === '1') return;
     var frase = $('prompt').value.trim();
     if (frase.length < 10) {
       nota('Diga o perfil e o assunto — algo como “um carrossel para o Baroni sobre carteira diversificada de FIIs”.', true);
@@ -3196,8 +3219,9 @@
         if (e && e.message === 'acesso') { pedeSenha(frase); return; }
         if (e && (e.message === 'semchave' || e.message === 'desligado'
                   || e.message === 'saldo' || e.message === 'congestionado'
-                  || e.message === 'fila')) {
+                  || e.message === 'fila' || e.message === 'pausado')) {
           nota(RECADO[e.message], true);
+          if (e.message === 'pausado' || e.message === 'desligado') bloqueiaBarra();
           abreManual(frase, forcada);
           return;
         }
@@ -3608,6 +3632,8 @@
     var usar = ev.target.closest('.usar');
     if (usar) usaPauta(parseInt(usar.dataset.pauta, 10));
   });
+
+  conferePausa();
 
   window.__abrir = abrir;
   window.__rascunho = { monta: montaRascunho, apara: aparaRascunho, confere: confere };
