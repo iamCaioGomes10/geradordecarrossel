@@ -59,6 +59,42 @@ FONTES = [
 # Nome de politico fica de fora de proposito: as pautas de politica entram por
 # termo institucional (governo, congresso, eleicoes, banco central), que pega
 # o fato sem arrastar disputa partidaria para dentro da ferramenta.
+# Vocabulario de "cenario fora do mercado": marca, esporte, tecnologia e
+# consumo. Nao saiu de palpite — saiu de ler o que os perfis publicam. O
+# Tiago deu BREAKING em Mbappe trocando a Nike pela On; o @suno explicou
+# por que BTG, Nubank e Itau se interessam pela arena do Palmeiras e quanta
+# energia um data center de IA consome; o Status Invest falou das dividas de
+# Sao Paulo, Corinthians e Santos. Nada disso casava com jargao de mercado.
+FORA_DO_MERCADO = [
+    "marca", "marcas", "patrocinio", "patrocinador", "contrato",
+    "futebol", "clube", "clubes", "estadio", "arena", "olimpiadas", "esporte",
+    # manchete de futebol costuma so nomear o time: "Sao Paulo, Corinthians e
+    # Santos ficam sem titulos" nao traz a palavra futebol em lugar nenhum.
+    # Ficam de fora os nomes que sao tambem cidade ou estado (Sao Paulo,
+    # Santos, Internacional, Bahia), que trariam ruido demais.
+    "flamengo", "corinthians", "palmeiras", "vasco", "gremio", "cruzeiro",
+    "botafogo", "fluminense", "athletico", "libertadores", "brasileirao",
+    "copa do mundo", "cbf", "fifa", "neymar", "mbappe",
+    "nike", "adidas", "apple", "iphone", "google", "amazon", "netflix",
+    "streaming", "inteligencia artificial", "data center", "chip", "chips",
+    "tecnologia", "startup", "unicornio", "ceo", "fundador", "aquisicao",
+    "fusao", "demissoes", "varejo", "consumo", "consumidor",
+    "luxo", "turismo", "viagem", "alimento", "alimentos", "energia",
+    "qualidade de vida", "salario minimo", "curiosidade"
+]
+
+# Boletim diario de cotacao. Nenhum dos oito perfis publica "Ibovespa fecha em
+# queda" — olhei os oito. Mas esse tipo de materia sai o dia inteiro e chega
+# sempre mais nova, entao ocupava as oito vagas e enterrava a pauta que presta.
+# Nao e descarte: e rebaixamento, para continuar disponivel num dia fraco.
+ROTINA = [
+    "ao vivo", "hoje ao vivo", "fecha em queda", "fecha em alta",
+    "fecha negativo", "fecha positivo", "fecha estavel", "abre em alta",
+    "abre em queda", "renda fixa hoje", "tesouro direto hoje", "dolar hoje",
+    "cambio hoje", "mercados hoje", "veja a cotacao", "confira a cotacao",
+    "fechamento do mercado", "resumo do mercado",
+]
+
 PERFIS = {
     "baroni": {
         "nome": "@ProfessorBaroni",
@@ -82,30 +118,38 @@ PERFIS = {
     },
     "suno": {
         "nome": "@suno",
-        "escopo": "Cenario nacional e internacional do mercado financeiro, "
-                  "noticias e acontecimentos que dao para explicar ou noticiar.",
+        "escopo": "Cenario nacional e internacional do mercado financeiro e "
+                  "acontecimentos que dao para explicar ou noticiar, inclusive "
+                  "fora do mercado: negocios, marcas, tecnologia e sociedade.",
         "forte": ["mercado", "acoes", "bolsa", "ibovespa", "b3", "investir",
                   "carteira", "renda fixa", "selic", "copom", "banco central",
                   "fed", "wall street", "nasdaq", "s&p", "estados unidos",
-                  "china", "europa", "juros"],
+                  "china", "europa", "juros", "eleicoes", "governo",
+                  "ranking"],
+        "cultura": FORA_DO_MERCADO,
         "fraco": ["economia", "cambio", "dolar", "inflacao", "petroleo",
-                  "commodities", "pib"],
+                  "commodities", "pib", "empresa", "empresas"],
         "fora": [],
     },
     "tiago": {
         "nome": "@tiagogreis",
-        "escopo": "Autoridade de mercado financeiro, graficos, rankings e "
-                  "opinioes sobre acontecimentos do mercado.",
+        "escopo": "Autoridade de mercado, graficos, rankings e opinioes sobre "
+                  "acontecimentos — inclusive de negocios e marcas fora do "
+                  "mercado, quando ha numero para comparar.",
         "forte": ["ranking", "maiores", "melhores", "top", "comparativo",
                   "valuation", "buffett", "longo prazo", "recorde",
                   "potencial de alta", "projecao", "analistas", "grafico",
                   "disparam", "desabam"],
-        # "graficos e rankings" dele sao DO mercado financeiro: sem isto,
-        # "lideres de IA discutem riscos" entrava por casar com ranking
+        "cultura": FORA_DO_MERCADO,
+        # o assunto precisa tocar o mundo dos negocios: sem isto, "formalizacao
+        # bate recorde" entrava so por casar com "recorde"
         "contexto": ["acao", "acoes", "bolsa", "ibovespa", "b3", "mercado",
-                     "empresa", "empresas", "investidor", "investidores",
-                     "papel", "papeis", "acionista", "lucro", "balanco",
-                     "dividendo", "dividendos", "fundo", "juros", "dolar"],
+                     "empresa", "empresas", "negocio", "negocios", "marca",
+                     "investidor", "investidores", "papel", "papeis",
+                     "acionista", "lucro", "balanco", "receita", "faturamento",
+                     "dividendo", "dividendos", "fundo", "juros", "dolar",
+                     "contrato", "patrocinio", "clube", "setor", "consumidor",
+                     "preco", "bilhao", "bilhoes", "milhoes"],
         "fraco": ["empresa", "acoes", "mercado", "negocios", "bolsa", "lucro",
                   "balanco", "resultado", "acionista", "dividendo", "investir"],
         "fora": [],
@@ -158,12 +202,15 @@ PERFIS = {
     },
     "status": {
         "nome": "@status.invest",
-        "escopo": "Mercado de acoes, politica e cenario do mercado financeiro "
-                  "bem amplo, com abertura para conteudo menos tecnico.",
+        "escopo": "Mercado de acoes, politica e cenario amplo, com abertura "
+                  "para conteudo menos tecnico e mais entretenimento: "
+                  "futebol, marcas, habitos e curiosidades com numero.",
         "forte": ["acoes", "bolsa", "ibovespa", "b3", "politica", "eleicoes",
                   "governo", "congresso", "senado", "camara", "stf",
                   "banco central", "copom", "ministro", "dividendos",
-                  "balanco", "resultado", "ranking"],
+                  "balanco", "resultado", "ranking", "ebitda",
+                  "dividend yield", "provento", "proventos"],
+        "cultura": FORA_DO_MERCADO,
         "fraco": ["mercado", "empresa", "economia", "dolar", "juros", "selic",
                   "lucro", "investir"],
         "fora": [],
@@ -262,10 +309,22 @@ def pontua(item, perfil):
     for palavra in p.get("fora", []):
         if tem(palavra, campo):
             return -1                   # assunto que nao e desse perfil
+    if any(tem(r, assunto) for r in ROTINA):
+        nota_rotina = -5                # rebaixa, nao descarta
+    else:
+        nota_rotina = 0
     ctx = p.get("contexto")
     if ctx and not any(tem(c, campo) for c in ctx):
         return -1                       # fora do terreno do perfil
     nota, centrais = 0, 0
+    # cenario fora do mercado — marca, esporte, tecnologia, consumo — pesa
+    # mais que tema central. Sem isso a pauta boa existe mas nunca aparece:
+    # boletim de Ibovespa sai o dia inteiro e sempre chega mais novo.
+    for palavra in p.get("cultura", []):
+        if tem(palavra, assunto):
+            nota += 6
+            centrais += 1
+            break
     for palavra in p["forte"]:
         if tem(palavra, assunto):
             nota += 3
@@ -282,6 +341,7 @@ def pontua(item, perfil):
         return -1
     if item["daCasa"]:
         nota += 2                       # material da propria casa vem antes
+    nota += nota_rotina
     # recencia: vale ate 4 pontos, caindo ao longo de dois dias
     if item["quando"]:
         # o feed do Valor marca a hora ~3h adiantada; data no futuro vira 0
