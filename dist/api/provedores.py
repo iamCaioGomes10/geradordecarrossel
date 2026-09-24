@@ -267,7 +267,11 @@ class Gemini(object):
     # nova. Quando um nome parar de valer, o detalhe do erro diz o substituto e
     # GEMINI_MODELO resolve sem mexer em codigo.
     DEFAULT = "gemini-3.6-flash"
-    ESPERAS = (2, 5, 9)          # segundos entre as tentativas quando lota
+    # Congestionamento e por modelo, nao da conta: quando o preferido lota, o
+    # vizinho costuma atender. Insistir so no mesmo e esperar a fila andar
+    # enquanto ha outro livre ao lado.
+    RESERVAS = ("gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash")
+    ESPERA = 3                   # segundos antes da segunda tentativa em cada um
 
     def __init__(self):
         from google import genai
@@ -302,23 +306,33 @@ class Gemini(object):
             # que nao conhece ao montar a lamina
             response_json_schema=sem_extras(esquema),
         )
-        # congestionamento e esperado aqui: insiste um pouco antes de desistir,
-        # em vez de mandar a pessoa apertar o botao de novo na mao
-        r = None
-        for i, espera in enumerate((0,) + self.ESPERAS):
+        # congestionamento e esperado aqui: tenta duas vezes em cada modelo e
+        # segue para o proximo, em vez de mandar a pessoa apertar de novo
+        fila = []
+        for modelo in [self.modelo] + [m for m in self.RESERVAS if m != self.modelo]:
+            fila.append((modelo, 0))
+            fila.append((modelo, self.ESPERA))
+        r, ocupado = None, None
+        for modelo, espera in fila:
             if espera:
                 time.sleep(espera)
             try:
                 r = self.cliente.models.generate_content(
-                    model=self.modelo, contents=pedido, config=cfg)
+                    model=modelo, contents=pedido, config=cfg)
                 break
             except self.erros.APIError as e:
                 problema = self._erro(e)
-                if isinstance(problema, SobreCarga) and i < len(self.ESPERAS):
+                # lotado, ou modelo que esta conta nao serve: tenta o proximo
+                if isinstance(problema, SobreCarga):
+                    ocupado = problema
+                    continue
+                if isinstance(problema, ErroApi) and problema.status == 404:
                     continue
                 raise problema
             except (ConnectionError, TimeoutError, OSError):
                 raise SemResposta()
+        if r is None:
+            raise ocupado or SobreCarga()
 
         bloqueio = getattr(getattr(r, "prompt_feedback", None), "block_reason", None)
         if bloqueio:
