@@ -42,10 +42,19 @@ FONTES = [
     # com o mercado. Veiculo de mercado sozinho nao cobre isso.
     ("G1 Economia",   "https://g1.globo.com/rss/g1/economia/", False),
     ("G1 Política",   "https://g1.globo.com/rss/g1/politica/", False),
+    # negocios, marca e tecnologia: os veiculos de mercado quase nao cobrem, e
+    # e disso que o Tiago, o @suno e o Status Invest vivem fora do pregao.
+    ("NeoFeed",        "https://neofeed.com.br/feed/", False),
+    ("Brazil Journal", "https://braziljournal.com/feed/", False),
+    ("Meio e Mensagem","https://www.meioemensagem.com.br/feed", False),
+    ("Forbes Brasil",  "https://forbes.com.br/feed/", False),
     # E-Investidor devolve 403 para agente identificado. Nao insistimos
     # disfarcando o pedido de navegador: quem bloqueia bot esta avisando.
     # G1 Brasil funciona mas e regional demais ("Batalha de Rap em Macapa"):
-    # nao e assunto do Brasil que influencia mercado.
+    # nao e assunto do Brasil que influencia mercado. Startups.com.br responde,
+    # mas e quase so troca de cargo em fundo pequeno — dentro demais do setor.
+    # Exame por secao, InfoMoney Negocios, Bloomberg Linea, Tecmundo e Valor
+    # Empresas respondem 200 com zero item: a URL existe, o feed nao.
 ]
 
 # O escopo de cada perfil, nas palavras de quem cuida deles. As listas abaixo
@@ -92,6 +101,7 @@ ROTINA = [
     "fecha negativo", "fecha positivo", "fecha estavel", "abre em alta",
     "abre em queda", "renda fixa hoje", "tesouro direto hoje", "dolar hoje",
     "cambio hoje", "mercados hoje", "veja a cotacao", "confira a cotacao",
+    "pre-mercado", "pre mercado", "antes da abertura", "giro do mercado",
     "fechamento do mercado", "resumo do mercado",
 ]
 
@@ -310,7 +320,10 @@ def pontua(item, perfil):
         if tem(palavra, campo):
             return -1                   # assunto que nao e desse perfil
     if any(tem(r, assunto) for r in ROTINA):
-        nota_rotina = -5                # rebaixa, nao descarta
+        # -8 e nao -5: o boletim casa com quatro temas de uma vez ("Ibovespa
+        # oscila com politica monetaria, eleicoes e exterior") e liderava
+        # mesmo penalizado. Ainda aparece num dia fraco, no fim da lista.
+        nota_rotina = -8                # rebaixa, nao descarta
     else:
         nota_rotina = 0
     ctx = p.get("contexto")
