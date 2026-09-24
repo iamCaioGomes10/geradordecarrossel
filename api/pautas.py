@@ -307,6 +307,123 @@ def tem(palavra, texto):
     return re.search(r"\b" + re.escape(palavra) + r"\b", texto) is not None
 
 
+# ---------- agrupamento por assunto ----------
+# Uma pauta nao e uma manchete: e um assunto. E o sinal de que um assunto esta
+# quente nao esta em nenhuma manchete isolada — esta na repeticao. Ontem a Meta
+# apresentou oculos novos e cinco materias em tres veiculos falaram disso; cada
+# uma, sozinha, pontuava como qualquer outra.
+VAZIAS = set("""
+para com que dos das nos nas pelo pela sobre como onde quando ainda apos
+mais menos muito pouco entre desde sem seu sua seus suas este esta esses essas
+aquele aquela isso aquilo tem tera teve sera sao foi fui era eram estao esta
+veja confira entenda saiba diz disse dizem anuncia pode podem deve quem qual
+quais quanto quantos porque porem entao assim ainda apenas tambem sobre contra
+nova novo apos antes durante segundo diante frente
+devem vai vao fica ficam bilhao bilhoes milhoes milhao mil ano anos mes meses
+dia dias semana hoje ontem agora novo nova novos novas maior menor primeiro
+""".split())
+MIN_LETRAS = 4          # palavra curta liga assunto que nao tem nada a ver
+TETO_COMUM = 9          # acima disso a palavra e generica, nao e assunto
+QUENTE = 3              # veiculos distintos a partir dos quais o assunto e quente
+
+
+def caixa_alta(titulo):
+    """Titulo escrito Todo Em Caixa Alta, como a Forbes faz sempre."""
+    ws = re.findall(r"[A-Za-z\u00c0-\u00ff]{2,}", titulo)
+    if len(ws) < 4:
+        return False
+    return sum(1 for w in ws if w[:1].isupper()) / float(len(ws)) > 0.6
+
+
+def proprios(titulo):
+    """Nomes proprios: maiuscula fora do inicio da frase.
+
+    Nao vale nos titulos em Caixa Alta, onde tudo e maiusculo e o sinal
+    desaparece. Por isso o vocabulario e aprendido nos veiculos que escrevem
+    normal e depois aplicado em todos — assim a Forbes tambem entra nos
+    assuntos, sem precisar de lista de marcas escrita a mao.
+    """
+    if caixa_alta(titulo):
+        return set()
+    achados = set()
+    for bruto in re.split(r"\s+", titulo):
+        palavra = re.sub(r"^[^\w\u00c0-\u00ff]+|[^\w\u00c0-\u00ff]+$", "", bruto)
+        # a primeira palavra entra tambem: o sujeito da manchete costuma ser
+        # justamente o nome que importa ("Meta lanca oculos", "Amazon barra").
+        # Descartar o inicio da frase custava o assunto principal do dia.
+        if palavra and palavra[:1].isupper() and len(palavra) >= 3:
+            achados.add(sem_acento(palavra))
+    return achados
+
+
+def tickers(titulo):
+    return {t.lower() for t in re.findall(r"\b[A-Z]{4}\d{1,2}\b", titulo)}
+
+
+def vocabulario(itens):
+    """O que conta como assunto: nome proprio visto em veiculo bem escrito."""
+    voc = set()
+    for it in itens:
+        voc |= proprios(it["titulo"]) | tickers(it["titulo"])
+    return {w for w in voc if w not in VAZIAS and len(w) >= MIN_LETRAS}
+
+
+def palavras(titulo, voc):
+    cru = set(re.findall(r"[a-z0-9]+", sem_acento(titulo)))
+    return cru & voc
+
+
+def agrupa(itens):
+    """Junta em assuntos os itens que compartilham uma palavra pouco comum.
+
+    Sem lista de nomes proprios e sem depender de maiuscula — a Forbes escreve
+    todo titulo em Caixa Alta e isso sozinho derrubaria qualquer heuristica de
+    nome proprio. O que sobra e frequencia: palavra que aparece em duas a nove
+    materias e especifica o bastante para ser assunto.
+    """
+    voc = vocabulario(itens)
+    for it in itens:
+        it["_p"] = palavras(it["titulo"], voc)
+    freq = {}
+    for it in itens:
+        for w in it["_p"]:
+            freq[w] = freq.get(w, 0) + 1
+    # palavra util: nem unica (nao liga nada) nem comum demais (liga tudo)
+    util = {w for w, n in freq.items() if 2 <= n <= TETO_COMUM}
+
+    ondes = {}
+    for w in util:
+        ondes[w] = [it for it in itens if w in it["_p"]]
+    # o assunto mais quente primeiro: quantos veiculos distintos falaram dele
+    ordem = sorted(ondes, key=lambda w: (-len(set(i["fonte"] for i in ondes[w])),
+                                         -len(ondes[w])))
+    # Um item pode pertencer a mais de um assunto: "Amazon barra agente da
+    # Meta" e das duas. Retirar o item do primeiro assunto que o pega partia a
+    # Meta em quatro materias soltas justamente no dia do evento dela. A
+    # repeticao se resolve depois, ao montar a lista.
+    grupos = []
+    for w in ordem:
+        if len(ondes[w]) < 2:
+            continue
+        grupos.append({"chave": w, "itens": list(ondes[w])})
+    cobertos = {id(i) for g in grupos for i in g["itens"]}
+    for it in itens:
+        if id(it) not in cobertos:
+            grupos.append({"chave": None, "itens": [it]})
+    for g in grupos:
+        g["itens"].sort(key=lambda i: -(i["quando"] or 0))
+        g["veiculos"] = len(set(i["fonte"] for i in g["itens"]))
+        g["quente"] = g["veiculos"] >= QUENTE
+    return grupos
+
+
+def marca_tipo(itens):
+    agora = time.time()
+    for it in itens:
+        it["tipo"] = ("dia" if it["quando"] and agora - it["quando"] < ATEMPORAL
+                      else "atemporal")
+
+
 def pontua(item, perfil):
     p = PERFIS[perfil]
     # So o TITULO decide do que a materia trata. A categoria de portal e
@@ -365,38 +482,117 @@ def pontua(item, perfil):
     return nota
 
 
+def eh_geral(item, perfil):
+    """A pauta entra pelo gancho de fora do mercado?"""
+    cult = PERFIS[perfil].get("cultura") or []
+    if not cult:
+        return False
+    assunto = sem_acento(item["titulo"])
+    return any(tem(c, assunto) for c in cult)
+
+
 def monta(perfis):
     tudo = coleta()
+    marca_tipo(tudo)
+    grupos = agrupa(tudo)
+    agora = time.time()
     saida = {}
     for perfil in perfis:
         if perfil not in PERFIS:
             continue
         exige = bool(PERFIS[perfil]["forte"])
         so_dia = bool(PERFIS[perfil].get("soDoDia"))
-        marcados = []
-        for it in tudo:
-            n = pontua(it, perfil)
-            # perfil com tema proprio so mostra o que casou com o tema;
-            # o de noticia aceita tudo e ordena por recencia
-            if exige and n < 3:
+        gerais, mercado, vistos = [], [], set()
+
+        # Assunto que varios veiculos cobriram no mesmo dia e pauta, com ou sem
+        # palavra conhecida. Lista escrita a mao so pega o que alguem pensou em
+        # escrever: o evento da Meta caiu fora com nota -1 porque "Meta" nao
+        # estava nela. O calor nao depende do meu vocabulario, e por isso pega
+        # o assunto de amanha que ninguem previu.
+        aceita_calor = bool(PERFIS[perfil].get("cultura"))
+
+        for g in grupos:
+            notas = []
+            por_calor = aceita_calor and g["quente"]
+            for it in g["itens"]:
+                n = pontua(it, perfil)
+                if n < 0 and por_calor:
+                    n = 2.0             # entra pelo calor, atras de quem casou
+                if exige and n < 3 and not por_calor:
+                    continue
+                if n < 0:
+                    continue
+                if so_dia and (not it["quando"] or agora - it["quando"] > ATEMPORAL):
+                    continue
+                notas.append((n, it))
+            if not notas:
                 continue
-            # perfil de noticia nao publica guia antigo como se fosse do dia
-            if so_dia and (not it["quando"] or
-                           time.time() - it["quando"] > ATEMPORAL):
-                continue
-            marcados.append((n, it))
-        # noticia do dia na frente; guia antigo entra como tema atemporal,
-        # que e bom carrossel mas nao pode se passar por novidade
-        agora = time.time()
-        for i, (n, it) in enumerate(marcados):
-            it["tipo"] = ("dia" if it["quando"] and agora - it["quando"] < ATEMPORAL
-                          else "atemporal")
-        marcados.sort(key=lambda x: (x[1]["tipo"] != "dia", -x[0], -x[1]["quando"]))
+            notas.sort(key=lambda x: (-x[0], -(x[1]["quando"] or 0)))
+            ordenadas = [it for _, it in notas]
+            melhor = notas[0][1]
+            # Calor: quantos veiculos distintos falaram do assunto. E o unico
+            # sinal honesto de "esta se falando disso agora" que da para ler
+            # de um feed — ninguem publica quanto engajou.
+            nota = notas[0][0] + min(g["veiculos"], 5) * 2.0
+            ligadas = [it for _, it in notas[1:] if it["link"] != melhor["link"]][:3]
+            alvo = gerais if eh_geral(melhor, perfil) else mercado
+            alvo.append((nota, g, melhor, ligadas, ordenadas))
+
+        for lista in (gerais, mercado):
+            lista.sort(key=lambda x: (-x[0], -(x[2]["quando"] or 0)))
+
+        # Mistura: um de cada lado, alternando. Sem isso o lado mais numeroso
+        # toma a lista inteira — foi o que aconteceu nos dois sentidos, primeiro
+        # so mercado, depois so marca.
+        def desembrulha(cand):
+            """Melhor materia ainda nao usada deste assunto.
+
+            Descartar o assunto inteiro porque a manchete principal ja saiu em
+            outro apagava a Meta da lista: a materia que a representava tinha
+            sido levada pelo assunto Amazon, e as outras quatro sumiam junto.
+            """
+            _, g, _, _, ordenadas = cand
+            livres = [x for x in ordenadas if x["link"] not in vistos]
+            if not livres:
+                return None
+            principal = livres[0]
+            lig = [x for x in ordenadas[:6]
+                   if x["link"] != principal["link"] and x["link"] not in vistos][:3]
+            return (g, principal, lig)
+
+        escolhidos, i, j = [], 0, 0
+        while len(escolhidos) < MAX_POR_PERFIL and (i < len(gerais) or j < len(mercado)):
+            avancou = False
+            for lado in ("geral", "mercado"):
+                lista = gerais if lado == "geral" else mercado
+                k = i if lado == "geral" else j
+                while k < len(lista) and len(escolhidos) < MAX_POR_PERFIL:
+                    pronto = desembrulha(lista[k])
+                    k += 1
+                    if not pronto:
+                        continue
+                    g, principal, lig = pronto
+                    escolhidos.append((g, principal, lig))
+                    vistos.add(principal["link"])
+                    for x in lig:
+                        vistos.add(x["link"])
+                    avancou = True
+                    break
+                if lado == "geral":
+                    i = k
+                else:
+                    j = k
+            if not avancou:
+                break
+
         saida[perfil] = [{
-            "titulo": it["titulo"], "link": it["link"], "fonte": it["fonte"],
-            "quando": it["quando"], "categorias": it["categorias"],
-            "tipo": it["tipo"], "casa": bool(it["daCasa"]),
-        } for _, it in marcados[:MAX_POR_PERFIL]]
+            "titulo": m["titulo"], "link": m["link"], "fonte": m["fonte"],
+            "quando": m["quando"], "categorias": m["categorias"],
+            "tipo": m.get("tipo", "dia"), "casa": bool(m["daCasa"]),
+            "quente": g["quente"], "veiculos": g["veiculos"],
+            "ligadas": [{"titulo": x["titulo"], "fonte": x["fonte"],
+                         "link": x["link"]} for x in lig],
+        } for g, m, lig in escolhidos]
     return saida
 
 

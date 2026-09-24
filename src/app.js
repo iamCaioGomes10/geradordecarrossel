@@ -3379,8 +3379,15 @@
 
       var selo = document.createElement('span');
       selo.className = 'selo-pauta';
-      selo.dataset.tipo = it.tipo || 'dia';
-      selo.textContent = it.tipo === 'atemporal' ? 'tema atemporal' : 'do dia';
+      /* assunto que varios veiculos cobriram hoje: e o unico sinal de "esta
+         se falando disso agora" que da para ler de um feed */
+      if (it.quente) {
+        selo.dataset.tipo = 'quente';
+        selo.textContent = 'quente \u00b7 ' + it.veiculos + ' ve\u00edculos';
+      } else {
+        selo.dataset.tipo = it.tipo || 'dia';
+        selo.textContent = it.tipo === 'atemporal' ? 'tema atemporal' : 'do dia';
+      }
       de.appendChild(selo);
 
       var fonte = document.createElement('span');
@@ -3402,6 +3409,31 @@
         de.appendChild(pt2); de.appendChild(a);
       }
       art.appendChild(de);
+
+      /* as outras materias do mesmo assunto: e nelas que costuma estar o
+         angulo de mercado por tras do gancho */
+      if (it.ligadas && it.ligadas.length) {
+        var mais = document.createElement('ul');
+        mais.className = 'ligadas';
+        it.ligadas.forEach(function (r) {
+          var li = document.createElement('li');
+          var v = document.createElement('span');
+          v.className = 'v'; v.textContent = r.fonte;
+          li.appendChild(v);
+          if (/^https?:\/\//i.test(r.link || '')) {
+            var a = document.createElement('a');
+            a.href = r.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+            a.textContent = r.titulo;
+            li.appendChild(a);
+          } else {
+            var t = document.createElement('span');
+            t.textContent = r.titulo;
+            li.appendChild(t);
+          }
+          mais.appendChild(li);
+        });
+        art.appendChild(mais);
+      }
 
       var acoes = document.createElement('div');
       acoes.className = 'acoes-pauta';
