@@ -3033,6 +3033,9 @@
   }
 
   function aplicaGeracao(m, laminas) {
+    /* o modo manual pode ter ficado aberto por uma tentativa anterior que
+       falhou: sem isso o carrossel novo nasce atras da cortina */
+    var cm = $('cortina-manual'); if (cm) cm.hidden = true;
     marcaVersao('antes de gerar outro carrossel');
     marca = m;
     slides = laminas.slice(0, 20).map(function (l, i) { return paraLamina(m, l, i); });
