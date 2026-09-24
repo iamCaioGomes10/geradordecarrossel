@@ -3239,7 +3239,7 @@
      investimento, manchete sem origem nao serve.
      ========================================================= */
   var PAUTAS_ENDPOINT = '/api/pautas';
-  var pautas = null, horaPautas = 0, perfilPauta = 'suno', estadoPautas = '';
+  var pautas = null, escoposPauta = {}, horaPautas = 0, perfilPauta = 'suno', estadoPautas = '';
   var VALIDADE_PAUTAS = 10 * 60 * 1000;
 
   function haQuanto(ts) {
@@ -3270,6 +3270,7 @@
       })
       .then(function (d) {
         pautas = (d && d.pautas) || {};
+        escoposPauta = (d && d.escopos) || {};
         horaPautas = Date.now();
         estadoPautas = (d && d.aviso) ? 'fontes' : 'ok';
         pintaPautas();
@@ -3343,6 +3344,20 @@
       return;
     }
 
+    /* limpa sempre, antes de qualquer coisa: deixar isso dentro de um if faz
+       a lista duplicar no caminho em que o if nao entra */
+    lista.innerHTML = '';
+
+    /* o escopo do perfil na tela: sem ele a lista parece arbitraria, e quem
+       usa nao tem como saber por que aquela pauta entrou e a outra nao */
+    var esc = escoposPauta[perfilPauta];
+    if (esc) {
+      var lin = document.createElement('p');
+      lin.className = 'escopo-perfil';
+      lin.textContent = esc;
+      lista.appendChild(lin);
+    }
+
     var itens = (pautas && pautas[perfilPauta]) || [];
     if (!itens.length) {
       recadoPautas('Nada casou com o assunto deste perfil nas fontes de hoje. ' +
@@ -3351,7 +3366,6 @@
     }
 
     /* titulo e link vem de site de fora: entram como texto, nunca como HTML */
-    lista.innerHTML = '';
     itens.forEach(function (it, i) {
       var art = document.createElement('article');
       art.className = 'pauta';

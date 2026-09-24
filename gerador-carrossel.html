@@ -246,6 +246,10 @@ body{background:#000}
 .chip-perfil[aria-pressed="true"] b{color:#9a9a9a}
 
 .lista-pautas{display:grid;gap:10px;max-width:78ch}
+.escopo-pauta,.escopo-perfil{
+  margin:-6px 0 6px;font-size:12.5px;line-height:1.6;color:#7e7e7e;
+  border-left:2px solid #333;padding-left:12px;
+}
 .pauta{
   display:grid;grid-template-columns:1fr auto;gap:6px 18px;align-items:start;
   border:1px solid #2c2c2c;border-radius:9px;background:#121212;padding:15px 16px;
@@ -3990,7 +3994,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
      investimento, manchete sem origem nao serve.
      ========================================================= */
   var PAUTAS_ENDPOINT = '/api/pautas';
-  var pautas = null, horaPautas = 0, perfilPauta = 'suno', estadoPautas = '';
+  var pautas = null, escoposPauta = {}, horaPautas = 0, perfilPauta = 'suno', estadoPautas = '';
   var VALIDADE_PAUTAS = 10 * 60 * 1000;
 
   function haQuanto(ts) {
@@ -4021,6 +4025,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       })
       .then(function (d) {
         pautas = (d && d.pautas) || {};
+        escoposPauta = (d && d.escopos) || {};
         horaPautas = Date.now();
         estadoPautas = (d && d.aviso) ? 'fontes' : 'ok';
         pintaPautas();
@@ -4094,6 +4099,20 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
       return;
     }
 
+    /* limpa sempre, antes de qualquer coisa: deixar isso dentro de um if faz
+       a lista duplicar no caminho em que o if nao entra */
+    lista.innerHTML = '';
+
+    /* o escopo do perfil na tela: sem ele a lista parece arbitraria, e quem
+       usa nao tem como saber por que aquela pauta entrou e a outra nao */
+    var esc = escoposPauta[perfilPauta];
+    if (esc) {
+      var lin = document.createElement('p');
+      lin.className = 'escopo-perfil';
+      lin.textContent = esc;
+      lista.appendChild(lin);
+    }
+
     var itens = (pautas && pautas[perfilPauta]) || [];
     if (!itens.length) {
       recadoPautas('Nada casou com o assunto deste perfil nas fontes de hoje. ' +
@@ -4102,7 +4121,6 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
     }
 
     /* titulo e link vem de site de fora: entram como texto, nunca como HTML */
-    lista.innerHTML = '';
     itens.forEach(function (it, i) {
       var art = document.createElement('article');
       art.className = 'pauta';

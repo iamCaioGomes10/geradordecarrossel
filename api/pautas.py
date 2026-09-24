@@ -12,6 +12,8 @@ mais tarde, escrever o angulo de cada pauta; o fato fica sendo do veiculo.
 
 Sem chave: esta rota nao chama a API da Anthropic.
 """
+import gzip
+import io
 import json
 import re
 import time
@@ -34,69 +36,137 @@ FONTES = [
     ("Money Times",   "https://www.moneytimes.com.br/feed/", False),
     ("InfoMoney",     "https://www.infomoney.com.br/feed/", False),
     ("Valor Investe", "https://valorinveste.globo.com/rss/valorinveste", False),
+    ("Exame",         "https://exame.com/feed/", False),
+    # politica e economia geral entram porque tres perfis pedem: Status Invest
+    # e Danielle citam politica, e ela pede assunto quente do Brasil que mexe
+    # com o mercado. Veiculo de mercado sozinho nao cobre isso.
+    ("G1 Economia",   "https://g1.globo.com/rss/g1/economia/", False),
+    ("G1 Política",   "https://g1.globo.com/rss/g1/politica/", False),
     # E-Investidor devolve 403 para agente identificado. Nao insistimos
     # disfarcando o pedido de navegador: quem bloqueia bot esta avisando.
+    # G1 Brasil funciona mas e regional demais ("Batalha de Rap em Macapa"):
+    # nao e assunto do Brasil que influencia mercado.
 ]
 
-# O que cada perfil fala. As palavras foram tiradas das categorias que os
-# proprios feeds usam, nao inventadas: FIIs, Negocios, Financas Pessoais...
+# O escopo de cada perfil, nas palavras de quem cuida deles. As listas abaixo
+# sao a traducao desse escopo em termos que aparecem nas manchetes — nao um
+# palpite sobre o que cada perfil deveria falar.
+#
+#   forte  casa com o tema central (3 pontos)
+#   fraco  tangencia o tema (1 ponto)
+#   fora   assunto que nao e daquele perfil, descarta
+#
+# Nome de politico fica de fora de proposito: as pautas de politica entram por
+# termo institucional (governo, congresso, eleicoes, banco central), que pega
+# o fato sem arrastar disputa partidaria para dentro da ferramenta.
 PERFIS = {
     "baroni": {
         "nome": "@ProfessorBaroni",
+        "escopo": "Fundos imobiliarios, noticias sobre FIIs, como funciona o "
+                  "mercado e curiosidades.",
         "forte": ["fii", "fiis", "fundo imobiliario", "fundos imobiliarios",
                   "dividendo", "renda passiva", "aluguel", "laje", "galpao",
-                  "cri", "tijolo", "papel"],
-        "fraco": ["renda fixa", "selic", "juros", "imovel"],
+                  "cri", "tijolo", "vacancia", "cota", "ifix", "imobiliario"],
+        "fraco": ["imovel", "renda fixa", "selic", "juros", "entenda",
+                  "como funciona", "saiba", "o que e"],
         "fora": [],
     },
     "funds": {
         "nome": "@fundsexplorer",
+        "escopo": "Focado em fundos imobiliarios.",
         "forte": ["fii", "fiis", "fundo imobiliario", "fundos imobiliarios",
                   "vacancia", "cri", "galpao", "laje", "shopping", "logistica",
-                  "dividendo"],
-        "fraco": ["imovel", "construcao", "ifix"],
+                  "dividendo", "ifix", "cota", "imobiliario"],
+        "fraco": ["imovel", "construcao", "aluguel", "renda passiva"],
         "fora": [],
     },
     "suno": {
         "nome": "@suno",
+        "escopo": "Cenario nacional e internacional do mercado financeiro, "
+                  "noticias e acontecimentos que dao para explicar ou noticiar.",
         "forte": ["mercado", "acoes", "bolsa", "ibovespa", "b3", "investir",
-                  "carteira", "renda fixa", "selic"],
-        "fraco": ["economia", "juros", "cambio", "dolar"],
+                  "carteira", "renda fixa", "selic", "copom", "banco central",
+                  "fed", "wall street", "nasdaq", "s&p", "estados unidos",
+                  "china", "europa", "juros"],
+        "fraco": ["economia", "cambio", "dolar", "inflacao", "petroleo",
+                  "commodities", "pib"],
         "fora": [],
     },
     "tiago": {
         "nome": "@tiagogreis",
-        "forte": ["empresa", "negocios", "lucro", "balanco", "resultado",
-                  "longo prazo", "buffett", "valuation", "acionista"],
-        "fraco": ["acoes", "dividendo", "mercado"],
-        "fora": ["fundo imobiliario", "fiis"],
+        "escopo": "Autoridade de mercado financeiro, graficos, rankings e "
+                  "opinioes sobre acontecimentos do mercado.",
+        "forte": ["ranking", "maiores", "melhores", "top", "comparativo",
+                  "valuation", "buffett", "longo prazo", "recorde",
+                  "potencial de alta", "projecao", "analistas", "grafico",
+                  "disparam", "desabam"],
+        # "graficos e rankings" dele sao DO mercado financeiro: sem isto,
+        # "lideres de IA discutem riscos" entrava por casar com ranking
+        "contexto": ["acao", "acoes", "bolsa", "ibovespa", "b3", "mercado",
+                     "empresa", "empresas", "investidor", "investidores",
+                     "papel", "papeis", "acionista", "lucro", "balanco",
+                     "dividendo", "dividendos", "fundo", "juros", "dolar"],
+        "fraco": ["empresa", "acoes", "mercado", "negocios", "bolsa", "lucro",
+                  "balanco", "resultado", "acionista", "dividendo", "investir"],
+        "fora": [],
     },
     "noticias": {
         "nome": "@sunonoticias",
-        "forte": [],          # perfil de noticia: vale o que for mais recente
+        "escopo": "Apenas noticias de fato, explicacoes mais profundas sobre "
+                  "as principais noticias do mercado.",
+        # sem tema proprio: o recorte e ser noticia, e do dia
+        "forte": [],
         "fraco": [],
-        "fora": [],
+        "fora": ["carteira recomendada", "vale a pena comprar",
+                 "melhores acoes para", "onde investir"],
+        "soDoDia": True,
     },
     "consultoria": {
         "nome": "@SunoConsultoria",
-        "forte": ["planejamento", "previdencia", "sucessao", "patrimonio",
-                  "aposentadoria", "financas pessoais", "imposto", "tributacao"],
-        "fraco": ["carteira", "investir", "renda fixa"],
-        "fora": ["fundo imobiliario", "fiis"],
+        "escopo": "Perfil premium: patrimonio, gestao de patrimonio, proteger "
+                  "o dinheiro da familia, pagar menos impostos e gestao "
+                  "financeira.",
+        "forte": ["patrimonio", "sucessao", "heranca", "holding", "testamento",
+                  "inventario", "usufruto", "doacao", "imposto", "impostos",
+                  "tributacao", "tributos", "imposto de renda", "isencao",
+                  "restituicao", "malha fina", "receita federal", "declaracao",
+                  "previdencia", "aposentadoria", "planejamento", "blindagem",
+                  "offshore", "reforma tributaria", "come-cotas",
+                  "reserva de emergencia", "seguro de vida", "juros compostos",
+                  "cdb", "lci", "lca", "tesouro direto", "fiagro", "fidc",
+                  "financas pessoais", "gestao financeira"],
+        "fraco": ["renda fixa", "investir", "protecao", "seguro", "juros",
+                  "familia", "longo prazo"],
+        # boletim diario de taxa nao e gestao de patrimonio: e cotacao, e
+        # entope a lista do perfil premium com a mesma materia de sempre
+        "fora": ["tesouro direto hoje", "taxas do tesouro direto",
+                 "rendimentos do tesouro direto"],
     },
     "danielle": {
         "nome": "@daniellelopesn",
-        "forte": ["financas pessoais", "orcamento", "divida", "consumo",
-                  "salario", "custo de vida", "poupar", "economia domestica"],
-        "fraco": ["economia", "inflacao", "credito"],
-        "fora": ["fundo imobiliario", "fiis", "ibovespa", "balanco"],
+        "escopo": "Mercado como um todo, com abertura para entretenimento e "
+                  "explicacao de topo de funil; assuntos quentes do Brasil "
+                  "que nao sao do mercado mas influenciam nele.",
+        "forte": ["pix", "divida", "salario", "inflacao", "gasolina",
+                  "combustivel", "energia", "conta de luz", "bolsa familia",
+                  "consumo", "custo de vida", "emprego", "desemprego", "golpe",
+                  "fraude", "eleicoes", "governo", "reforma", "preco",
+                  "imposto de renda", "financas pessoais", "aposentadoria"],
+        "fraco": ["economia", "mercado", "investir", "acoes", "juros",
+                  "selic", "dolar", "credito", "entenda", "o que e"],
+        "fora": [],
     },
     "status": {
         "nome": "@status.invest",
-        "forte": ["indicador", "balanco", "resultado", "lucro", "acoes",
-                  "dividend yield", "valuation", "comparar", "b3"],
-        "fraco": ["mercado", "bolsa", "empresa"],
-        "fora": ["fundo imobiliario"],
+        "escopo": "Mercado de acoes, politica e cenario do mercado financeiro "
+                  "bem amplo, com abertura para conteudo menos tecnico.",
+        "forte": ["acoes", "bolsa", "ibovespa", "b3", "politica", "eleicoes",
+                  "governo", "congresso", "senado", "camara", "stf",
+                  "banco central", "copom", "ministro", "dividendos",
+                  "balanco", "resultado", "ranking"],
+        "fraco": ["mercado", "empresa", "economia", "dolar", "juros", "selic",
+                  "lucro", "investir"],
+        "fora": [],
     },
 }
 
@@ -119,6 +189,11 @@ def busca(fonte):
         req = urllib.request.Request(url, headers={"User-Agent": AGENTE})
         with urllib.request.urlopen(req, timeout=TEMPO) as r:
             bruto = r.read()
+        # alguns servidores comprimem sem pedir licenca e o urllib nao
+        # descomprime sozinho: sem isto a fonte cai calada, como se estivesse
+        # fora do ar, e ninguem descobre que faltou meia lista
+        if bruto[:2] == b"\x1f\x8b":
+            bruto = gzip.GzipFile(fileobj=io.BytesIO(bruto)).read()
         raiz = ET.fromstring(bruto)
     except Exception:
         return []                       # fonte fora do ar nao derruba o resto
@@ -166,23 +241,44 @@ def coleta():
     return tudo
 
 
+def tem(palavra, texto):
+    """Casa palavra inteira, nao pedaco de outra.
+
+    Sem isto "lista" casa dentro de "analista" e "emprego" dentro de
+    "desemprego", e a pauta entra no perfil errado por acidente de grafia.
+    """
+    return re.search(r"\b" + re.escape(palavra) + r"\b", texto) is not None
+
+
 def pontua(item, perfil):
     p = PERFIS[perfil]
-    campo = sem_acento(item["titulo"] + " " + " ".join(item["categorias"]) +
-                       " " + item["resumo"])
+    # So o TITULO decide do que a materia trata. A categoria de portal e
+    # taxonomia larga — uma nota sobre verbas de ministerio vinha marcada
+    # "Previdencia" e virava pauta de gestao de patrimonio. Categoria e resumo
+    # somam ponto, mas nao definem assunto.
+    assunto = sem_acento(item["titulo"])
+    campo = assunto + " " + sem_acento(
+        " ".join(item["categorias"]) + " " + item["resumo"])
     for palavra in p.get("fora", []):
-        if palavra in campo:
+        if tem(palavra, campo):
             return -1                   # assunto que nao e desse perfil
-    nota = 0
+    ctx = p.get("contexto")
+    if ctx and not any(tem(c, campo) for c in ctx):
+        return -1                       # fora do terreno do perfil
+    nota, centrais = 0, 0
     for palavra in p["forte"]:
-        if palavra in campo:
+        if tem(palavra, assunto):
             nota += 3
+            centrais += 1
+        elif tem(palavra, campo):
+            nota += 1                   # citado de passagem, nao e o assunto
     for palavra in p["fraco"]:
-        if palavra in campo:
+        if tem(palavra, campo):
             nota += 1
-    # sem nenhum acerto de tema nao ha pauta: o bonus de casa mais o de
-    # recencia sozinhos passavam qualquer materia nova adiante
-    if p["forte"] and nota == 0:
+    # exige acerto no tema central. So com termos fracos passavam materias
+    # que tangenciam tudo e nao sao de ninguem: "Caixa aciona TST contra
+    # greve" entrava no perfil de patrimonio por juntar tres tangentes.
+    if p["forte"] and not centrais:
         return -1
     if item["daCasa"]:
         nota += 2                       # material da propria casa vem antes
@@ -203,12 +299,17 @@ def monta(perfis):
         if perfil not in PERFIS:
             continue
         exige = bool(PERFIS[perfil]["forte"])
+        so_dia = bool(PERFIS[perfil].get("soDoDia"))
         marcados = []
         for it in tudo:
             n = pontua(it, perfil)
             # perfil com tema proprio so mostra o que casou com o tema;
             # o de noticia aceita tudo e ordena por recencia
             if exige and n < 3:
+                continue
+            # perfil de noticia nao publica guia antigo como se fosse do dia
+            if so_dia and (not it["quando"] or
+                           time.time() - it["quando"] > ATEMPORAL):
                 continue
             marcados.append((n, it))
         # noticia do dia na frente; guia antigo entra como tema atemporal,
@@ -255,6 +356,7 @@ class handler(BaseHTTPRequestHandler):
         vazio = all(not v for v in dados.values())
         self._responde(200, {
             "pautas": dados,
+            "escopos": {k: PERFIS[k]["escopo"] for k in perfis},
             "fontes": [n for n, _, _ in FONTES],
             "gerado": int(time.time()),
             "aviso": "nenhuma fonte respondeu" if vazio else "",
