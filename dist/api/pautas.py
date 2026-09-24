@@ -588,7 +588,7 @@ def monta(perfis):
         saida[perfil] = [{
             "titulo": m["titulo"], "link": m["link"], "fonte": m["fonte"],
             "quando": m["quando"], "categorias": m["categorias"],
-            "tipo": m.get("tipo", "dia"), "casa": bool(m["daCasa"]),
+            "tipo": m.get("tipo", "dia"),
             "quente": g["quente"], "veiculos": g["veiculos"],
             "ligadas": [{"titulo": x["titulo"], "fonte": x["fonte"],
                          "link": x["link"]} for x in lig],
