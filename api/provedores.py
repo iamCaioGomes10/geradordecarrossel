@@ -271,7 +271,7 @@ class Gemini(object):
     # vizinho costuma atender. Insistir so no mesmo e esperar a fila andar
     # enquanto ha outro livre ao lado.
     RESERVAS = ("gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3.8-flash")
-    ESPERA = 3                   # segundos antes da segunda tentativa em cada um
+    ESPERA = 3                   # segundos antes da segunda tentativa no preferido
 
     def __init__(self):
         from google import genai
@@ -285,12 +285,19 @@ class Gemini(object):
 
     def _erro(self, e):
         codigo = getattr(e, "code", 0) or 0
-        if _e_saldo(e):
-            return SemSaldo()
         if codigo == 503:
             return SobreCarga()
         if codigo == 429:
+            # Aqui "quota" e teto de uso da camada gratuita, nao falta de
+            # credito: essa conta nao tem cobranca. Mandar a pessoa por
+            # dinheiro para destravar seria conselho errado — so e saldo
+            # quando o recado fala de cobranca.
+            texto = (_codigo(e) + " " + str(e)).lower()
+            if "billing" in texto or "credit" in texto or "payment" in texto:
+                return SemSaldo()
             return Fila()
+        if _e_saldo(e):
+            return SemSaldo()
         if codigo in (401, 403):
             return ChaveRuim()
         return ErroApi(codigo, getattr(e, "message", "") or str(e))
@@ -308,10 +315,12 @@ class Gemini(object):
         )
         # congestionamento e esperado aqui: tenta duas vezes em cada modelo e
         # segue para o proximo, em vez de mandar a pessoa apertar de novo
-        fila = []
-        for modelo in [self.modelo] + [m for m in self.RESERVAS if m != self.modelo]:
-            fila.append((modelo, 0))
-            fila.append((modelo, self.ESPERA))
+        # o preferido ganha duas chances; os reservas, uma cada. Cada chamada
+        # conta no teto diario da camada gratuita, entao insistir sai caro.
+        fila = [(self.modelo, 0), (self.modelo, self.ESPERA)]
+        for modelo in self.RESERVAS:
+            if modelo != self.modelo:
+                fila.append((modelo, 0))
         r, ocupado = None, None
         for modelo, espera in fila:
             if espera:

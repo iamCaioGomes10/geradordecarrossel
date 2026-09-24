@@ -3857,7 +3857,7 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
   var RECADO = {
     desligado: 'A geração ainda não está ligada neste endereço. O gerador de carrossel continua funcionando.',
     semchave:  'O servidor está no ar, mas sem chave configurada. Quem cuida do ambiente precisa definir a chave.',
-    fila:      'Muitos pedidos ao mesmo tempo. Tente de novo em alguns segundos.',
+    fila:      'O fornecedor recusou por limite de uso. Na camada gratuita há um teto por minuto e outro por dia: se for o do minuto, passa em instantes; se for o do dia, só amanhã. Dá para montar por fora enquanto isso.',
     congestionado: 'O modelo gratuito está congestionado agora — já tentei algumas vezes. Isso costuma passar em alguns minutos. Enquanto isso, dá para montar por fora sem gastar nada.',
     saldo:     'A chave é válida, mas a conta do fornecedor está sem saldo ou no teto de gasto. Isso não passa esperando: precisa de crédito ou de limite maior no painel do fornecedor.',
     rede:      'Não consegui falar com o servidor. Verifique a conexão e tente de novo.',
@@ -3935,7 +3935,8 @@ kbd{background:#2c323a;border-radius:3px;padding:1px 5px;font:600 11px ui-monosp
         solta();
         if (e && e.message === 'acesso') { pedeSenha(frase); return; }
         if (e && (e.message === 'semchave' || e.message === 'desligado'
-                  || e.message === 'saldo' || e.message === 'congestionado')) {
+                  || e.message === 'saldo' || e.message === 'congestionado'
+                  || e.message === 'fila')) {
           nota(RECADO[e.message], true);
           abreManual(frase, forcada);
           return;
