@@ -4,6 +4,8 @@
 set -e
 cd "$(dirname "$0")"
 
+python3 verifica-api.py || { echo "api quebrada; nada foi publicado."; exit 1; }
+
 python3 build.py          >/dev/null
 python3 build.py --static >/dev/null
 

@@ -22,6 +22,14 @@ import time
 
 
 # ---------- erros do app, sem marca de fornecedor ----------
+class ComRecado(Exception):
+    """Erro que carrega o recado do fornecedor, para nao virar adivinhacao."""
+
+    def __init__(self, detalhe=""):
+        Exception.__init__(self, detalhe)
+        self.detalhe = (detalhe or "")[:300]
+
+
 class Recusa(Exception):
     """o modelo se negou a escrever a peca"""
 
@@ -32,14 +40,6 @@ class Fila(ComRecado):
 
 class ChaveRuim(Exception):
     pass
-
-
-class ComRecado(Exception):
-    """Erro que carrega o recado do fornecedor, para nao virar adivinhacao."""
-
-    def __init__(self, detalhe=""):
-        Exception.__init__(self, detalhe)
-        self.detalhe = (detalhe or "")[:300]
 
 
 class SemSaldo(ComRecado):
