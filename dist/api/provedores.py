@@ -26,7 +26,7 @@ class Recusa(Exception):
     """o modelo se negou a escrever a peca"""
 
 
-class Fila(Exception):
+class Fila(ComRecado):
     """limite de uso no fornecedor"""
 
 
@@ -34,7 +34,15 @@ class ChaveRuim(Exception):
     pass
 
 
-class SemSaldo(Exception):
+class ComRecado(Exception):
+    """Erro que carrega o recado do fornecedor, para nao virar adivinhacao."""
+
+    def __init__(self, detalhe=""):
+        Exception.__init__(self, detalhe)
+        self.detalhe = (detalhe or "")[:300]
+
+
+class SemSaldo(ComRecado):
     """Chave valida, conta sem credito ou no teto de gasto.
 
     Os dois fornecedores devolvem isso junto com limite de taxa — a OpenAI
@@ -162,14 +170,14 @@ class Claude(object):
                 messages=mensagens,
             )
         except self.sdk.RateLimitError as e:
-            raise SemSaldo() if _e_saldo(e) else Fila()
+            raise (SemSaldo(str(e)) if _e_saldo(e) else Fila(str(e)))
         except self.sdk.AuthenticationError:
             raise ChaveRuim()
         except self.sdk.APIConnectionError:
             raise SemResposta()
         except self.sdk.APIStatusError as e:
             if _e_saldo(e):
-                raise SemSaldo()
+                raise SemSaldo(str(e))
             raise ErroApi(e.status_code, str(e))
         if r.stop_reason == "refusal":
             d = getattr(r, "stop_details", None)
@@ -241,14 +249,14 @@ class Gpt(object):
         try:
             r = self._chama(corpo)
         except self.sdk.RateLimitError as e:
-            raise SemSaldo() if _e_saldo(e) else Fila()
+            raise (SemSaldo(str(e)) if _e_saldo(e) else Fila(str(e)))
         except self.sdk.AuthenticationError:
             raise ChaveRuim()
         except self.sdk.APIConnectionError:
             raise SemResposta()
         except self.sdk.APIStatusError as e:
             if _e_saldo(e):
-                raise SemSaldo()
+                raise SemSaldo(str(e))
             raise ErroApi(getattr(e, "status_code", 0), str(e))
         msg = r.choices[0].message
         if getattr(msg, "refusal", None):
@@ -288,16 +296,13 @@ class Gemini(object):
         if codigo == 503:
             return SobreCarga()
         if codigo == 429:
-            # Aqui "quota" e teto de uso da camada gratuita, nao falta de
-            # credito: essa conta nao tem cobranca. Mandar a pessoa por
-            # dinheiro para destravar seria conselho errado — so e saldo
-            # quando o recado fala de cobranca.
-            texto = (_codigo(e) + " " + str(e)).lower()
-            if "billing" in texto or "credit" in texto or "payment" in texto:
-                return SemSaldo()
-            return Fila()
+            # Aqui 429 e SEMPRE teto de uso. O recado generico do Google cita
+            # "billing" mesmo na camada gratuita, que nao tem cobranca nenhuma
+            # — procurar essa palavra fazia o app mandar a pessoa por dinheiro
+            # para destravar um limite que so o relogio destrava.
+            return Fila(getattr(e, "message", "") or str(e))
         if _e_saldo(e):
-            return SemSaldo()
+            return SemSaldo(getattr(e, "message", "") or str(e))
         if codigo in (401, 403):
             return ChaveRuim()
         return ErroApi(codigo, getattr(e, "message", "") or str(e))
