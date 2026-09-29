@@ -47,6 +47,7 @@ assets = {
     "coGlow":      b64("co-glow.svg"),
     "afacad":      b64("afacad.woff2"),
     "instrument":  b64("instrument-sans.woff2"),
+    "archivo":     b64("archivo.woff2"),
     "instrSerif":  b64("instrument-serif.woff2"),
     "dnAvatar":    b64("dn-avatar.png"),
     "dnBadge":     b64("dn-badge.png"),

@@ -46,6 +46,7 @@
       new FontFace('Montserrat', b64ToBuf(A.montserrat), { weight: '100 900' }),
       new FontFace('Afacad', b64ToBuf(A.afacad), { weight: '100 900' }),
       new FontFace('Instrument Sans', b64ToBuf(A.instrument), { weight: '100 900' }),
+      new FontFace('Archivo', b64ToBuf(A.archivo), { weight: '100 900' }),
       new FontFace('Instrument Serif', b64ToBuf(A.instrSerif), { weight: '400' })
     ];
     fonts.forEach(function (f) { document.fonts.add(f); });
@@ -235,7 +236,10 @@
     funds:       { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
     danielle:    { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
     status:      { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
-    gian:        { capa: 'escuro', texto: 'escuro', imagem: 'escuro' }
+    gian:        { capa: 'escuro', texto: 'escuro', imagem: 'escuro',
+                   capaB: 'escuro', fotoB: 'escuro', claroTexto: 'claro',
+                   claroFotoTopo: 'claro', claroFotoBaixo: 'claro',
+                   claroFotoMeio: 'claro' }
   };
 
   var TEMA = null, TEMA_MARCA = null, TEMA_TIPO = null;
@@ -1487,6 +1491,100 @@
     ctx.fillRect(0, 0, W, H);
   }
 
+  /* ---------- sistema B: Archivo Bold ----------
+     As seis laminas novas do arquivo formam um segundo sistema dentro da mesma
+     marca: Archivo Bold 90 com entrelinha 0,92 e espacamento -5,4, no lugar da
+     Instrument Sans 0,87/-8. O destaque tambem muda — laranja nas de foto,
+     azul nas claras — e nao ha segundo peso, so cor.
+
+     As caixas de texto do Figma tem 334 de altura para um texto de tres linhas
+     que ocupa 248: o texto e centrado numa caixa maior. Por isso os numeros
+     abaixo sao vao entre blocos, calculados a partir do centro declarado, e nao
+     a posicao da caixa. Deu 36,45 entre perfil e titulo e 42,8 entre titulo e
+     apoio em todas as claras — consistente, o que confirma a leitura. */
+  var GK_HEAD_MINI = { av: 67.004, nameDx: 78.657, nameDy: 11.652,
+                       nameW: 158.770, nameH: 24.761,
+                       hDx: 78.657, hDy: 39.326, hW: 101.963, hH: 16.023,
+                       bDx: 243.254, bDy: 13.109, bW: 18.935 };
+
+  var GK_LARANJA = '#fd592b', GK_AZUL = '#0459fb';
+  function titB(cor, em) {
+    return { font: 'Archivo', size: 90, lh: 0.92, ls: -5.4, w: 938,
+             weight: 700, color: cor, emColor: em };
+  }
+  function subB(cor, larg) {
+    return { font: 'Inter', size: 40, lh: 1.23, ls: -2, w: larg || 309,
+             weight: 400, color: cor };
+  }
+
+  function gkFundoClaro(ctx) {
+    ctx.fillStyle = cssGrad(ctx, 154.4523392216068, 0, 0, W, H,
+      [[0.084259, 'rgb(255,255,255)'], [0.95185, 'rgb(229,229,229)']]);
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  /* Uma funcao para as seis. O que muda entre elas: o fundo, onde a foto entra,
+     e se o bloco nasce no topo ou pendurado pelo pe do titulo. */
+  function gkCorpoB(ctx, s, cfg, t) {
+    var of = false, metrica = t.headMini ? GK_HEAD_MINI : GK_HEAD;
+    var ts = Object.assign({}, t.title), tb, sb, alturaBloco;
+    var temSub = !!t.sub;
+
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts, 'titulo');
+      sb = temSub ? layout(ctx, s.sub || '', t.sub, 'sub') : null;
+      alturaBloco = metrica.av + t.gapHeadTitle + tb.height +
+                    (temSub && s.sub ? t.gapTitleSub + sb.height : 0);
+      if (alturaBloco <= H - 150 || !cfg.autofit || ts.size < 44) break;
+      ts.size = Math.round(ts.size * 0.94);
+      ts.ls = t.title.ls * (ts.size / t.title.size);
+    }
+    if (alturaBloco > H - 150) of = true, ESTOUROU = 'titulo';
+
+    /* ancoras, antes de desenhar: o degrade depende de onde o titulo comeca */
+    var tituloTop = (t.titleBottom != null)
+      ? t.titleBottom - tb.height
+      : t.topo + metrica.av + t.gapHeadTitle;
+    if (tituloTop < 30) tituloTop = 30;
+    var headTop = (t.headFixo != null)
+      ? t.headFixo
+      : tituloTop - t.gapHeadTitle - metrica.av;
+
+    if (t.fundo === 'foto') {
+      ctx.fillStyle = baseCapa('#141414'); ctx.fillRect(0, 0, W, H);
+      regiao('imagem', 0, 0, W, H);
+      if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
+      shade(ctx, Math.min(t.shadeTop, tituloTop - 40), 2, 'rgba(0,0,0,0)');
+    } else if (t.fundo === 'branco') {
+      pintaFundo(ctx, function () { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H); });
+    } else {
+      pintaFundo(ctx, function () { gkFundoClaro(ctx); });
+    }
+    gkMonograma(ctx, t.monoDy || 0);
+
+    /* foto em area propria, quando o layout reserva uma */
+    if (t.img) {
+      var r = t.img;
+      regiao('imagem', r.x, r.y, r.w, r.h);
+      ctx.save();
+      if (r.raio) { roundRect(ctx, r.x, r.y, r.w, r.h, r.raio); ctx.clip(); }
+      if (s.img) drawCover(ctx, s.img, r.x, r.y, r.w, r.h, s);
+      else { ctx.fillStyle = tema() === 'claro' ? '#e4e4e4' : '#242424';
+             ctx.fillRect(r.x, r.y, r.w, r.h); }
+      ctx.restore();
+    }
+
+    gkHeader(ctx, t.headCentro != null ? t.headCentro : t.x, headTop,
+             cab(t.cab || 'dark'), metrica);
+    paintSolid(ctx, tb, t.centrado ? (W - ts.w) / 2 : t.x, tituloTop, 'titulo');
+    if (temSub) {
+      paintSolid(ctx, sb, t.x,
+                 tituloTop + tb.height + (s.sub ? t.gapTitleSub : 0), 'sub');
+    }
+    gkTextura(ctx, t.textura || 0.20);
+    return of;
+  }
+
   var G = {
     capa: { label: 'Capa', campos: ['title', 'img'],
       shadeTop: 616, minTop: 40,
@@ -1609,6 +1707,50 @@
     else gkTextura(ctx, 0.20);
     return of;
   }
+
+  /* As seis do arquivo novo. Numeros do Figma, com os vaos calculados a partir
+     do centro de cada caixa — ver a nota acima sobre a caixa de 334. */
+  var GB = {
+    capaB: { label: 'Capa manchete', campos: ['title', 'img'],
+      fundo: 'foto', shadeTop: 616, monoDy: -41, centrado: true, headMini: true,
+      headCentro: 409, headFixo: 1201, titleBottom: 1129.2,
+      gapHeadTitle: 71.8, x: 71, textura: 0.20,
+      title: titB('#f1f1f1', GK_LARANJA) },
+
+    fotoB: { label: 'Foto + manchete', campos: ['title', 'sub', 'img'],
+      fundo: 'foto', shadeTop: 598, x: 87, titleBottom: 1170.2,
+      gapHeadTitle: 51.45, gapTitleSub: 43.8, textura: 0.30,
+      title: titB('#f1f1f1', GK_LARANJA), sub: subB('#cacaca', 341) },
+
+    claroTexto: { label: 'Claro &middot; s&oacute; texto', campos: ['title', 'sub'],
+      fundo: 'claro', x: 91, topo: 121, cab: 'light',
+      gapHeadTitle: 36.45, gapTitleSub: 42.8,
+      title: titB('#2b2b2b', GK_AZUL), sub: subB('#4a4a4a') },
+
+    claroFotoMeio: { label: 'Claro &middot; foto no meio', campos: ['title', 'sub', 'img'],
+      fundo: 'claro', x: 91, topo: 121, cab: 'light',
+      gapHeadTitle: 36.45, gapTitleSub: 42.8,
+      img: { x: 91, y: 675, w: 881, h: 578, raio: 37 },
+      title: titB('#2b2b2b', GK_AZUL), sub: subB('#4a4a4a') },
+
+    claroFotoBaixo: { label: 'Claro &middot; foto embaixo', campos: ['title', 'sub', 'img'],
+      fundo: 'branco', x: 71, topo: 101, cab: 'light',
+      gapHeadTitle: 36.45, gapTitleSub: 42.8,
+      img: { x: 0, y: 642, w: 1080, h: 708 },
+      title: titB('#2b2b2b', GK_AZUL), sub: subB('#4a4a4a') },
+
+    claroFotoTopo: { label: 'Claro &middot; foto em cima', campos: ['title', 'sub', 'img'],
+      fundo: 'claro', x: 71, topo: 779, cab: 'light',
+      gapHeadTitle: 36.45, gapTitleSub: 42.8,
+      img: { x: 0, y: 0, w: 1080, h: 708 },
+      title: titB('#2b2b2b', GK_AZUL), sub: subB('#4a4a4a') }
+  };
+  Object.keys(GB).forEach(function (k) { G[k] = GB[k]; });
+
+  function gkB(chave) {
+    return function (ctx, s, cfg) { return gkCorpoB(ctx, s, cfg, G[chave]); };
+  }
+
   function gkTexto(ctx, s, cfg) { return gkCorpo(ctx, s, cfg, false); }
   function gkImagem(ctx, s, cfg) { return gkCorpo(ctx, s, cfg, true); }
 
@@ -1648,8 +1790,15 @@
     gian: { nome: 'Gian Kojikovski', arroba: '@giankojikovski', cor: '#cab580',
       disclaimer: false, topAlign: false,
       dica: '<kbd>**dourado**</kbd> pinta o trecho &middot; <kbd>__grosso__</kbd> engrossa',
-      tipos: { capa: G.capa, texto: G.texto, imagem: G.imagem },
-      render: { capa: gkCapa, texto: gkTexto, imagem: gkImagem } },
+      tipos: { capa: G.capa, texto: G.texto, imagem: G.imagem,
+               capaB: G.capaB, fotoB: G.fotoB, claroTexto: G.claroTexto,
+               claroFotoTopo: G.claroFotoTopo, claroFotoBaixo: G.claroFotoBaixo,
+               claroFotoMeio: G.claroFotoMeio },
+      render: { capa: gkCapa, texto: gkTexto, imagem: gkImagem,
+                capaB: gkB('capaB'), fotoB: gkB('fotoB'),
+                claroTexto: gkB('claroTexto'), claroFotoTopo: gkB('claroFotoTopo'),
+                claroFotoBaixo: gkB('claroFotoBaixo'),
+                claroFotoMeio: gkB('claroFotoMeio') } },
     status: { nome: 'Status Invest', arroba: '@status.invest', cor: '#00ab93',
       disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica verde no t&iacute;tulo e escuro no texto',
