@@ -2082,15 +2082,10 @@
     return lam;
   }
 
-  var modPend = null;
-  function pintaModelos() {
-    clearTimeout(modPend);
-    modPend = setTimeout(desenhaModelos, 120);
-  }
   function desenhaModelos() {
     var el = $('mlista'); if (!el) return;
     el.innerHTML = '';
-    var larg = celular() ? 76 : 104, t = tipos();
+    var t = tipos(), minis = [];
     Object.keys(t).forEach(function (k) {
       var b = document.createElement('button');
       b.className = 'modelo'; b.dataset.tipo = k;
@@ -2098,13 +2093,16 @@
       b.title = 'Clique para trocar o layout, ou arraste at\u00e9 a tela';
       var cx = document.createElement('div'); cx.className = 'mini';
       var cv = document.createElement('canvas');
-      cv.style.transform = 'scale(' + (larg / W) + ')';
       render(cv, marca, amostraDe(k), cfg());
-      cx.appendChild(cv); b.appendChild(cx);
+      cx.appendChild(cv); b.appendChild(cx); minis.push(cx);
       var r = document.createElement('div'); r.className = 'mrot';
       r.textContent = labelDe(k);
       b.appendChild(r);
       el.appendChild(b);
+    });
+    /* a coluna e fluida: a escala so da para ser medida com a grade ja no ar */
+    minis.forEach(function (cx) {
+      cx.firstChild.style.transform = 'scale(' + (cx.clientWidth / W) + ')';
     });
     ligaArrasto();
   }
@@ -2248,6 +2246,11 @@
       '<div class="v">' + txtDe(NOME[sel] || 'Lâmina') + '</div></div>');
 
     h.push('<div class="pbloco">');
+
+    h.push('<div><div class="rot mono">LAYOUT</div><div class="mlista" id="mlista"></div>' +
+      '<div class="mdica">Clique para trocar o layout desta l\u00e2mina. ' +
+      'Arraste at\u00e9 a tela para somar uma nova.</div></div>');
+
     var tm = lam.tema || '';
     h.push('<div><div class="rot mono">FUNDO DESTA LÂMINA</div><div class="segmento">' +
       '<button class="seg' + (tm === '' ? ' on' : '') + '" data-tema="">Do layout</button>' +
@@ -2313,6 +2316,7 @@
     h.push('</div>');
 
     el.innerHTML = h.join('');
+    desenhaModelos();
     pintaRecorte();
     marcaEstouro();
   }
@@ -2348,7 +2352,6 @@
     $('conta').textContent = slides.length + ' / 20 lâminas';
     $('rot-exportar').textContent = slides.length > 1 ? 'Exportar' : 'Exportar';
     pintaPerfis(); pintaPalco(); pintaEsteira(); pintaPainel();
-    pintaModelos();
   }
   /* durante o arrasto o palco nao pode ser reconstruido: o elemento que esta
      sendo arrastado sumiria no meio do gesto. Aqui so a arte e redesenhada e
