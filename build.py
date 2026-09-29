@@ -52,6 +52,10 @@ assets = {
     "dnBadge":     b64("dn-badge.png"),
     "dnNomeSvg":   b64("dn-nome.svg"),      # fill="black"   -> recolorido
     "dnHandleSvg": b64("dn-handle.svg"),    # fill="#868686" -> recolorido
+    "gkAvatar":    b64("gk-avatar.png"),
+    "gkBadge":     b64("gk-badge.png"),
+    "gkNomeSvg":   b64("gk-nome.svg"),      # fill="#E3E3E3" -> recolorido
+    "gkHandleSvg": b64("gk-handle.svg"),    # fill="#868686" -> recolorido
     "stMarca":     b64("st-marca.png"),     # anel da marca, usado como marca d'agua
     "stLogo":      b64("st-logo.png"),
     "stBadge":     b64("st-badge.png"),

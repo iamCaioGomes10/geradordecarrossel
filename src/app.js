@@ -54,6 +54,7 @@
     var snNome = atob(A.snNomeSvg), snHandle = atob(A.snHandleSvg);
     var dnNome = atob(A.dnNomeSvg), dnHandle = atob(A.dnHandleSvg);
     var stAnel = atob(A.stAnelSvg), stNome = atob(A.stNomeSvg), stHandle = atob(A.stHandleSvg);
+    var gkNome = atob(A.gkNomeSvg), gkHandle = atob(A.gkHandleSvg);
     return Promise.all([
       Promise.all(fonts.map(function (f) { return f.load(); })),
       loadImage('data:image/png;base64,' + A.avatar).then(function (i) { IMG.avatar = i; }),
@@ -96,6 +97,12 @@
       loadImage(svgFill(snNome, 'black', '#000000')).then(function (i) { IMG.snNomeLight = i; }),
       loadImage(svgFill(snHandle, '#6F7377', '#B6B6B6')).then(function (i) { IMG.snHandleDark = i; }),
       loadImage(svgFill(snHandle, '#6F7377', '#6F7377')).then(function (i) { IMG.snHandleLight = i; }),
+      loadImage('data:image/png;base64,' + A.gkAvatar).then(function (i) { IMG.gkAvatar = i; }),
+      loadImage('data:image/png;base64,' + A.gkBadge).then(function (i) { IMG.gkBadge = i; }),
+      loadImage(svgFill(gkNome, '#E3E3E3', '#ededed')).then(function (i) { IMG.gkNomeDark = i; }),
+      loadImage(svgFill(gkNome, '#E3E3E3', '#1b1b1b')).then(function (i) { IMG.gkNomeLight = i; }),
+      loadImage(svgFill(gkHandle, '#868686', '#868686')).then(function (i) { IMG.gkHandleDark = i; }),
+      loadImage(svgFill(gkHandle, '#868686', '#6f6f6f')).then(function (i) { IMG.gkHandleLight = i; }),
       loadImage('data:image/png;base64,' + A.dnAvatar).then(function (i) { IMG.dnAvatar = i; }),
       loadImage('data:image/png;base64,' + A.dnBadge).then(function (i) { IMG.dnBadge = i; }),
       loadImage(svgFill(dnNome, 'black', '#ffffff')).then(function (i) { IMG.dnNomeDark = i; }),
@@ -121,7 +128,12 @@
   var HAS_LS = ('letterSpacing' in probe);
 
   function fontStr(spec, run) {
-    var w = (run && run.em && spec.emWeight) ? spec.emWeight : spec.weight;
+    /* __assim__ tambem pode mudar o peso, e nao so sublinhar: o titulo do
+       @giankojikovski usa os dois marcadores no mesmo texto — ** pinta de
+       dourado e __ engrossa — e sem isto o segundo destaque nao existiria */
+    var w = spec.weight;
+    if (run && run.em && spec.emWeight) w = spec.emWeight;
+    else if (run && run.alt && spec.altWeight) w = spec.altWeight;
     return w + ' ' + spec.size + 'px "' + spec.font + '", "Apple Color Emoji", sans-serif';
   }
   function applyFont(ctx, spec, run) {
@@ -197,6 +209,9 @@
                 cab: 'dark' },
       claro:  { fundo: 'TR_BG', titulo: '#1b1b1b', sub: '#1b1b1b', corpo: '#000000',
                 cab: 'light' } },
+    gian: {
+      escuro: { fundo: 'GK_BG', titulo: '#ededed', sub: '#8a8a8a', cab: 'dark' },
+      claro:  { fundo: '#ffffff', titulo: '#1b1b1b', sub: '#6f6f6f', cab: 'light' } },
     danielle: {
       escuro: { fundo: '#141414', titulo: '#fffbd2', corpo: '#ececec', cab: 'dark' },
       claro:  { fundo: 'DN_BG', titulo: '#1b1b1b', corpo: '#242424', cab: 'light' } },
@@ -215,7 +230,8 @@
     consultoria: { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
     funds:       { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
     danielle:    { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
-    status:      { capa: 'escuro', texto: 'claro',  imagem: 'claro' }
+    status:      { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
+    gian:        { capa: 'escuro', texto: 'escuro', imagem: 'escuro' }
   };
 
   var TEMA = null, TEMA_MARCA = null, TEMA_TIPO = null;
@@ -237,6 +253,7 @@
     else if (f === 'DN_BG') return dnFundo(ctx);
     else if (f === 'PAPEL') return snPapel(ctx);
     else if (f === 'ST_BG') return stFundo(ctx);
+    else if (f === 'GK_BG') return gkFundo(ctx);
     else                    ctx.fillStyle = f;
     ctx.fillRect(0, 0, W, H);
   }
@@ -1417,6 +1434,154 @@
   function stImagem(ctx, s, cfg) { return stCorpo(ctx, s, cfg, true); }
 
   /* =========================================================
+     9d. MARCA: @giankojikovski
+     Figma 3006:50 (capa), 3025:48 (so texto), 3025:15 (texto + imagem).
+
+     Instrument Sans com entrelinha 0,87 — menor que 1 — e espacamento -8. E
+     isso que da o bloco compacto, com as linhas quase encostando. O titulo usa
+     DOIS destaques ao mesmo tempo: ** pinta de dourado e __ engrossa para
+     Medium, que foi o que levou o altWeight ao motor de texto.
+     ========================================================= */
+  var GK_HEAD = { av: 87.35, nameDx: 101.68, nameDy: 12.24, nameW: 207.126, nameH: 32.774,
+                  hDx: 103.56, hDy: 48.96, hW: 168.543, hH: 26.019,
+                  bDx: 316.34, bDy: 14.12, bW: 24.662 };
+  /* na capa o bloco vem menor, e nome e arroba foram reduzidos em proporcoes
+     diferentes no arquivo (0,63 e 0,50). Numeros do Figma, nao derivados da
+     escala do avatar — derivar erraria a arroba em 22px. */
+  var GK_HEAD_CAPA = { av: 55.0, nameDx: 64.57, nameDy: 9.57, nameW: 130.331, nameH: 20.326,
+                       hDx: 64.57, hDy: 32.28, hW: 83.699, hH: 13.153,
+                       bDx: 199.68, bDy: 10.76, bW: 15.544 };
+
+  function gkHeader(ctx, x, y, theme, metrica) {
+    tweetHeader(ctx, metrica || GK_HEAD, { avatar: IMG.gkAvatar, badge: IMG.gkBadge,
+      nameLight: IMG.gkNomeLight, nameDark: IMG.gkNomeDark,
+      handleLight: IMG.gkHandleLight, handleDark: IMG.gkHandleDark }, x, y, theme);
+  }
+
+  function gkFundo(ctx) {
+    ctx.fillStyle = cssGrad(ctx, 154.4523392216068, 0, 0, W, H,
+      [[0.084259, 'rgb(0,0,0)'], [0.95185, 'rgb(16,16,16)']]);
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  var G = {
+    capa: { label: 'Capa', campos: ['title', 'sub', 'img'],
+      shadeTop: 616, borrao: 3.4, minTop: 40,
+      /* 1132 e nao os 1125 da caixa do Figma: a caixa de texto de la reporta
+         246 de altura para tres linhas que, na entrelinha 0,87, ocupam 261. A
+         referencia foi a tinta medida no render do proprio Figma (878..1144),
+         nao o retangulo declarado. */
+      titleBottom: 1132, headX: 431.84, headY: 1236,
+      tagY: 1262.5, tagEsqCx: 137, tagDirCx: 928.5,
+      title: { font: 'Instrument Sans', size: 100, lh: 0.87, ls: -8, w: 938,
+               weight: 400, color: '#f1f1f1', emColor: '#cab580', altWeight: 500,
+               align: 'center' },
+      tag: { font: 'Instrument Sans', size: 24, lh: 0.87, ls: -1.68, w: 320,
+             weight: 600, color: 'rgba(255,255,255,0.7)', align: 'center' } },
+    texto: { label: 'S&oacute; texto', campos: ['title', 'sub'],
+      x: 71, topo: 121, gapHeadTitle: 48.65, gapTitleSub: 49,
+      title: { font: 'Instrument Sans', size: 90, lh: 0.87, ls: -7.2, w: 831,
+               weight: 400, color: '#ededed', emColor: '#cab580', altWeight: 500 },
+      sub: { font: 'Inter', size: 40, lh: 1.23, ls: -2, w: 309,
+             weight: 500, color: '#434343' } },
+    imagem: { label: 'Texto + imagem', campos: ['title', 'sub', 'img'],
+      /* ancorado pelo pe do titulo, e nao pelo pe do bloco: a caixa de texto
+         do Figma reporta 246 para tres linhas que na entrelinha 0,87 ocupam
+         261, entao ancorar embaixo subia o cabecalho 20px. 1171 e o valor que
+         faz a tinta cair onde ela cai no render do proprio Figma (918..1185). */
+      x: 87, titleBottom: 1171, shadeTop: 598, gapHeadTitle: 48.65, gapTitleSub: 49,
+      title: { font: 'Instrument Sans', size: 100, lh: 0.87, ls: -8, w: 938,
+               weight: 400, color: '#f1f1f1', emColor: '#cab580', altWeight: 500 },
+      sub: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 341,
+             weight: 500, color: '#ececec' } }
+  };
+
+  /* as duas etiquetas do rodape da capa vem do subtitulo, separadas por barra:
+     "GESTAO | NEGOCIOS". A da esquerda e SemiBold e a da direita Regular, como
+     no arquivo. Sem barra, so a da esquerda e escrita. */
+  function gkTags(ctx, s, t) {
+    var partes = String(s.sub || '').split('|');
+    var esq = (partes[0] || '').trim(), dir = (partes[1] || '').trim();
+    var pinta = function (txt, cx, weight) {
+      var spec = Object.assign({}, t.tag, { weight: weight });
+      var b = layout(ctx, txt, spec, 'sub');
+      paintSolid(ctx, b, cx - spec.w / 2, t.tagY - b.height / 2, 'sub');
+    };
+    /* a da esquerda e desenhada mesmo vazia: a lista de campos editaveis nasce
+       do que foi desenhado, entao pular o vazio esconde o campo para sempre */
+    pinta(esq, t.tagEsqCx, 600);
+    if (dir) pinta(dir, t.tagDirCx, 400);
+  }
+
+  function gkCapa(ctx, s, cfg) {
+    var t = G.capa, of = false;
+    var ts = Object.assign({}, t.title), tb, topo;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts, 'titulo');
+      topo = t.titleBottom - tb.height;
+      if (topo >= t.minTop || !cfg.autofit || ts.size < 44) break;
+      ts.size = Math.round(ts.size * 0.94); ts.ls = t.title.ls * (ts.size / t.title.size);
+    }
+    if (topo < t.minTop) of = true, ESTOUROU = 'titulo';
+
+    ctx.fillStyle = baseCapa('#141414'); ctx.fillRect(0, 0, W, H);
+    regiao('imagem', 0, 0, W, H);
+    if (s.img) {
+      /* o desfoque e do layout, nao da foto: e ele que deixa a manchete de
+         100px legivel por cima de qualquer imagem que a pessoa subir */
+      ctx.save();
+      if (t.borrao && ('filter' in ctx)) ctx.filter = 'blur(' + t.borrao + 'px)';
+      drawCover(ctx, s.img, 0, 0, W, H, s);
+      ctx.restore();
+    }
+    shade(ctx, Math.min(t.shadeTop, topo - 40), 2, 'rgba(0,0,0,0)');
+    paintSolid(ctx, tb, (W - ts.w) / 2, topo, 'titulo');
+    gkTags(ctx, s, t);
+    gkHeader(ctx, t.headX, t.headY, cab('dark'), GK_HEAD_CAPA);
+    return of;
+  }
+
+  /* texto e imagem tem a mesma pilha — perfil, titulo, subtitulo. O que muda e
+     a ancora: so texto nasce no topo, texto+imagem encosta o bloco no pe da
+     lamina, sobre a foto. */
+  function gkCorpo(ctx, s, cfg, comImagem) {
+    var t = comImagem ? G.imagem : G.texto, of = false;
+    var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, total;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts, 'titulo');
+      sb = layout(ctx, s.sub || '', ss, 'sub');
+      total = GK_HEAD.av + t.gapHeadTitle + tb.height + (s.sub ? t.gapTitleSub + sb.height : 0);
+      if (total <= H - 160 || !cfg.autofit || ts.size < 44) break;
+      ts.size = Math.round(ts.size * 0.94); ts.ls = t.title.ls * (ts.size / t.title.size);
+      ss.size = Math.round(ss.size * 0.96);
+    }
+    if (total > H - 160) of = true, ESTOUROU = 'titulo';
+
+    if (comImagem) {
+      ctx.fillStyle = baseCapa('#141414'); ctx.fillRect(0, 0, W, H);
+      regiao('imagem', 0, 0, W, H);
+      if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
+    } else {
+      pintaFundo(ctx, function () { gkFundo(ctx); });
+    }
+
+    /* so texto nasce no topo; texto+imagem pendura o bloco pelo pe do titulo,
+       entao um titulo mais longo empurra o cabecalho para cima e o subtitulo
+       fica onde esta */
+    var y = comImagem ? (t.titleBottom - tb.height - t.gapHeadTitle - GK_HEAD.av) : t.topo;
+    if (y < 40) y = 40;
+    if (comImagem) shade(ctx, Math.min(t.shadeTop, y - 40), 2, 'rgba(0,0,0,0)');
+    gkHeader(ctx, t.x, y, cab('dark'));
+    y += GK_HEAD.av + t.gapHeadTitle;
+    paintSolid(ctx, tb, t.x, y, 'titulo');
+    /* mesmo vazio o subtitulo e desenhado, senao o campo some da interface */
+    paintSolid(ctx, sb, t.x, y + tb.height + (s.sub ? t.gapTitleSub : 0), 'sub');
+    return of;
+  }
+  function gkTexto(ctx, s, cfg) { return gkCorpo(ctx, s, cfg, false); }
+  function gkImagem(ctx, s, cfg) { return gkCorpo(ctx, s, cfg, true); }
+
+  /* =========================================================
      10. Registro de marcas
      ========================================================= */
   var MARCAS = {
@@ -1449,6 +1614,11 @@
       dica: '<kbd>**destaque**</kbd> deixa o trecho em negrito no texto',
       tipos: { capa: D.capa, texto: D.texto, imagem: D.imagem },
       render: { capa: dnCapa, texto: dnTexto, imagem: dnImagem } },
+    gian: { nome: 'Gian Kojikovski', arroba: '@giankojikovski', cor: '#cab580',
+      disclaimer: false, topAlign: false,
+      dica: '<kbd>**dourado**</kbd> <kbd>__grosso__</kbd> &middot; na capa, o subt&iacute;tulo vira as etiquetas do rodap&eacute;: <kbd>GEST&Atilde;O | NEG&Oacute;CIOS</kbd>',
+      tipos: { capa: G.capa, texto: G.texto, imagem: G.imagem },
+      render: { capa: gkCapa, texto: gkTexto, imagem: gkImagem } },
     status: { nome: 'Status Invest', arroba: '@status.invest', cor: '#00ab93',
       disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica verde no t&iacute;tulo e escuro no texto',
