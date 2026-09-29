@@ -2056,12 +2056,12 @@
   }
 
 
-  /* ---------- gaveta de modelos ----------
+  /* ---------- coluna de modelos ----------
      Menu de texto nao serve para escolher layout: "Claro - foto no meio" nao
      diz nada a quem monta carrossel. Aqui a pessoa ve a tela desenhada, com o
-     proprio texto dela dentro, clica para somar uma pagina ou arrasta ate a
-     fita para inserir no lugar que quiser. */
-  var modelosAberto = false;
+     proprio texto dela dentro. Clicar troca o layout da lamina em foco (era o
+     que o menu suspenso fazia); arrastar ate o palco soma uma lamina nova no
+     ponto onde soltar. */
   var EXEMPLO = { title: 'Assim fica a manchete nesta tela',
                   sub: 'E o texto de apoio',
                   body: 'Assim fica o corpo do texto nesta tela, com algumas linhas para dar ideia do espaco.' };
@@ -2084,19 +2084,18 @@
 
   var modPend = null;
   function pintaModelos() {
-    if (!modelosAberto) return;
     clearTimeout(modPend);
     modPend = setTimeout(desenhaModelos, 120);
   }
   function desenhaModelos() {
-    var el = $('mlista'); if (!el || !modelosAberto) return;
+    var el = $('mlista'); if (!el) return;
     el.innerHTML = '';
     var larg = celular() ? 76 : 104, t = tipos();
     Object.keys(t).forEach(function (k) {
       var b = document.createElement('button');
       b.className = 'modelo'; b.dataset.tipo = k;
       b.dataset.atual = (slides[foco] && slides[foco].type === k) ? '1' : '0';
-      b.title = 'Clique para somar uma página, ou arraste até a fita';
+      b.title = 'Clique para trocar o layout, ou arraste at\u00e9 a tela';
       var cx = document.createElement('div'); cx.className = 'mini';
       var cv = document.createElement('canvas');
       cv.style.transform = 'scale(' + (larg / W) + ')';
@@ -2107,45 +2106,60 @@
       b.appendChild(r);
       el.appendChild(b);
     });
+    ligaArrasto();
   }
 
-  function abreModelos(v) {
-    modelosAberto = (v == null) ? !modelosAberto : !!v;
-    $('modelos').hidden = !modelosAberto;
-    if (modelosAberto) desenhaModelos();
+  /* clique: troca o layout da lamina em foco. Sem lamina nenhuma, cria a primeira */
+  function usaModelo(tipo) {
+    if (!slides.length) { slides.push(blank(tipo)); foco = 0; sel = null; pinta(); return; }
+    if (slides[foco].type === tipo) return;
+    marcaVersao('antes de trocar o layout');
+    slides[foco].type = tipo; sel = null; pinta();
   }
 
   function insereModelo(tipo, onde) {
-    if (slides.length >= 20) { toast('O limite e 20 laminas.'); return; }
+    if (slides.length >= 20) { toast('O limite \u00e9 20 l\u00e2minas.'); return; }
     marcaVersao('antes de somar lamina');
     var i = (onde == null) ? foco + 1 : onde;
     if (i < 0) i = 0; if (i > slides.length) i = slides.length;
     slides.splice(i, 0, blank(tipo));
     foco = i; sel = null; pinta();
-    toast(txtDe(labelDe(tipo)) + ' adicionada.');
+    toast(txtDe(labelDe(tipo)) + ' somada como l\u00e2mina ' + pad(i + 1) + '.');
   }
 
-  /* ---------- arrastar o modelo ate a fita ----------
+  /* ---------- arrastar o modelo ate a tela ----------
      Com ponteiro em vez do arrasto nativo do HTML: o nativo nao existe em
      tela de toque, e aqui o carrossel tambem e montado no celular. */
   var arr = null;
 
-  function alvoNaFita(x) {
-    var fita = $('esteira'), quadros = fita.querySelectorAll('.quadro');
-    for (var i = 0; i < quadros.length; i++) {
-      var r = quadros[i].getBoundingClientRect();
-      if (x < r.left + r.width / 2) return { i: i, antes: quadros[i] };
+  /* onde entra a lamina nova, comparando o x do ponteiro com o meio de cada
+     peca ja desenhada. No palco as pecas sao .lam (que trazem o indice real);
+     na esteira sao .quadro, em ordem. */
+  function alvoEm(caixa) {
+    var pecas = caixa.querySelectorAll('.lam, .quadro');
+    for (var i = 0; i < pecas.length; i++) {
+      var r = pecas[i].getBoundingClientRect(), n = +pecas[i].dataset.i;
+      if (arr.x < r.left + r.width / 2) return { i: n, antes: pecas[i] };
     }
-    return { i: quadros.length, antes: fita.querySelector('#add') };
+    if (!pecas.length) return { i: slides.length, antes: null };
+    var ult = +pecas[pecas.length - 1].dataset.i;
+    return { i: ult + 1, antes: caixa.querySelector('#add') };
   }
   function limpaAlvo() {
-    var fita = $('esteira');
-    fita.dataset.solto = '0';
-    var m = fita.querySelector('.marca-solta'); if (m) m.remove();
+    ['palco', 'esteira'].forEach(function (k) {
+      var c = $(k); if (!c) return;
+      c.dataset.solto = '0';
+      var m = c.querySelector('.marca-solta'); if (m) m.remove();
+    });
   }
-  function sobreFita(x, y) {
-    var r = $('esteira').getBoundingClientRect();
-    return x >= r.left - 24 && x <= r.right + 24 && y >= r.top - 24 && y <= r.bottom + 24;
+  function caixaSob(x, y) {
+    var c = [$('palco'), $('esteira')];
+    for (var i = 0; i < c.length; i++) {
+      if (!c[i]) continue;
+      var r = c[i].getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return c[i];
+    }
+    return null;
   }
 
   function ligaArrasto() {
@@ -2157,12 +2171,13 @@
       var b = ev.target.closest('.modelo');
       if (!b || ev.button > 0) return;
       arr = { tipo: b.dataset.tipo, x0: ev.clientX, y0: ev.clientY,
-              alvo: b, vale: false, idx: null };
-      b.setPointerCapture(ev.pointerId);
+              x: ev.clientX, alvo: b, vale: false, idx: null };
+      try { b.setPointerCapture(ev.pointerId); } catch (e) {}
     });
 
     lista.addEventListener('pointermove', function (ev) {
       if (!arr) return;
+      arr.x = ev.clientX;
       if (!arr.vale) {
         if (Math.abs(ev.clientX - arr.x0) + Math.abs(ev.clientY - arr.y0) < 8) return;
         arr.vale = true;
@@ -2173,14 +2188,14 @@
       }
       arr.ghost.style.left = (ev.clientX - 26) + 'px';
       arr.ghost.style.top = (ev.clientY - 32) + 'px';
-      if (sobreFita(ev.clientX, ev.clientY)) {
-        var fita = $('esteira'), a = alvoNaFita(ev.clientX);
-        arr.idx = a.i;
-        fita.dataset.solto = '1';
-        var m = fita.querySelector('.marca-solta');
-        if (!m) { m = document.createElement('div'); m.className = 'marca-solta'; }
-        fita.insertBefore(m, a.antes);
-      } else { arr.idx = null; limpaAlvo(); }
+      limpaAlvo();
+      var caixa = caixaSob(ev.clientX, ev.clientY);
+      if (!caixa) { arr.idx = null; return; }
+      var a = alvoEm(caixa);
+      arr.idx = a.i;
+      caixa.dataset.solto = '1';
+      var m = document.createElement('div'); m.className = 'marca-solta';
+      caixa.insertBefore(m, a.antes);
     });
 
     lista.addEventListener('pointerup', function (ev) {
@@ -2233,11 +2248,6 @@
       '<div class="v">' + txtDe(NOME[sel] || 'Lâmina') + '</div></div>');
 
     h.push('<div class="pbloco">');
-    h.push('<div><div class="rot mono">LAYOUT</div><select class="campo" id="tipo">' +
-      Object.keys(tipos()).map(function (k) {
-        return '<option value="' + k + '"' + (k === lam.type ? ' selected' : '') + '>' + txtDe(labelDe(k)) + '</option>';
-      }).join('') + '</select></div>');
-
     var tm = lam.tema || '';
     h.push('<div><div class="rot mono">FUNDO DESTA LÂMINA</div><div class="segmento">' +
       '<button class="seg' + (tm === '' ? ' on' : '') + '" data-tema="">Do layout</button>' +
@@ -2338,7 +2348,7 @@
     $('conta').textContent = slides.length + ' / 20 lâminas';
     $('rot-exportar').textContent = slides.length > 1 ? 'Exportar' : 'Exportar';
     pintaPerfis(); pintaPalco(); pintaEsteira(); pintaPainel();
-    pintaModelos(); ligaArrasto();
+    pintaModelos();
   }
   /* durante o arrasto o palco nao pode ser reconstruido: o elemento que esta
      sendo arrastado sumiria no meio do gesto. Aqui so a arte e redesenhada e
@@ -2491,10 +2501,11 @@
     var q = ev.target.closest('.quadro');
     if (q) { foco = +q.dataset.i; pinta(); return; }
 
-    if (ev.target.closest('#add')) { abreModelos(); return; }
-    if (ev.target.closest('#fecha-modelos')) { abreModelos(false); return; }
+    if (ev.target.closest('#add')) {
+      slides.push(blank()); foco = slides.length - 1; sel = null; pinta(); return;
+    }
     var mod = ev.target.closest('.modelo');
-    if (mod) { if (!mod.dataset.soltou) insereModelo(mod.dataset.tipo); return; }
+    if (mod) { if (!mod.dataset.soltou) usaModelo(mod.dataset.tipo); return; }
     if (ev.target.closest('#dup')) {
       slides.splice(foco + 1, 0, clonaLamina(slides[foco])); foco++; pinta(); return;
     }
@@ -2586,7 +2597,6 @@
 
   document.addEventListener('change', function (ev) {
     var id = ev.target.id;
-    if (id === 'tipo') { slides[foco].type = ev.target.value; sel = null; pinta(); return; }
 
     if (id === 'autofit') { opts.autofit = ev.target.checked; pinta(); return; }
     if (id === 'topalign') { opts.topAlign = ev.target.checked; pinta(); return; }
