@@ -71,6 +71,44 @@ do @ProfessorBaroni o corpo é um bloco de texto corrido.
 | Funds | Só texto | `2:51` | gradiente claro |
 | Funds | Texto + imagem | `2:119` | gradiente claro, imagem 831×414 |
 
+### Telas extras derivadas da propria marca
+
+Os layouts acima saem do Figma, medidos pixel a pixel. Alem deles, cada perfil
+ganhou telas de composicao **derivadas da propria lamina de imagem da marca** —
+mesma fonte, cor, margem, cabecalho e fundo; muda so onde a foto entra e se
+existe corpo de texto. Nao ha identidade nova em nenhuma delas.
+
+| Perfil | Telas extras |
+|---|---|
+| Baroni | Foto em cima · Frase solta |
+| Suno | Foto em cima · Foto no meio · So a manchete |
+| Tiago | Foto em cima · Foto no meio · So a manchete |
+| Noticias | Foto em cima · Frase solta |
+| Consultoria | Foto em cima · Foto embaixo · So a manchete |
+| Funds | Foto em cima · Frase solta |
+| Danielle | Foto em cima · Foto no meio · So a manchete |
+| Status | Foto em cima · Foto no meio · So a manchete |
+
+*Frase solta* existe onde a marca nao tem titulo nas laminas de texto (Baroni,
+Noticias e Funds trabalham com corpo corrido): e o proprio corpo maior, sozinho.
+*So a manchete* e o titulo grande sem corpo.
+
+Dois motores atendem essas telas. `corpoTweet` serve @tiagogreis,
+@daniellelopesn e @status.invest, cujas tres laminas originais tinham a mesma
+forma (cabecalho, titulo, corpo, foto) e passaram a consultar o tipo em vez de
+um booleano — as tres continuam **pixel a pixel** iguais, conferido por
+assinatura de imagem. `corpoVar` atende os outros cinco perfis, que tem
+ancoragem propria: ali as funcoes originais nao foram tocadas e so as telas
+novas passam pelo motor.
+
+Com a foto no alto, o grupo de texto se centra no que sobrou abaixo dela, nao
+colado nela: com texto curto ficava um vao no pe da lamina. A excecao e a
+@SunoConsultoria, onde o selo numerado e o logo estao amarrados ao titulo.
+
+**A seta vermelha da @SunoConsultoria e cromo fixo em x 920..980.** As telas
+novas dela tem a coluna de texto estreitada para 790 — no arquivo do Figma quem
+garantia que o texto nao cruzava a seta era o comprimento do texto de exemplo.
+
 Arquivos no Figma: PROF-BARONI `u2sVJDaj8RkhpcL0hIYpfG` · SUNO `fsm3eOqBWcd7TqjCnVpRY2`
 · TIAGO REIS `kFDh5RPJoMBI4FUqOdW8JH` · SUNO NOTÍCIAS `JRfQEu6t4kO3NaDOUudfE9`
 · CONSULTORIA `DWXmSiS60Ew0iKrnikKqXG` · FUNDS `cFgsSWjIgoIajpxo9fIuK8`.
@@ -114,7 +152,7 @@ centralizado; o controle serve para reproduzir enquadramentos assim.
 ## Fidelidade ao Figma
 
 Medidas extraídas via Figma MCP e conferidas por diff de pixel contra os renders do
-Figma. Nos **dezoito layouts**, todas as linhas de texto caem dentro de **0–3 px** do
+Figma. Nos **dezoito layouts vindos do Figma**, todas as linhas de texto caem dentro de **0–3 px** do
 original, com a mesma quebra de linha.
 
 **O CSS exportado pelo Figma mente sobre entrelinha — duas vezes já.** No

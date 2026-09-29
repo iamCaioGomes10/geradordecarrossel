@@ -745,6 +745,97 @@
     return of;
   }
 
+  /* ---------- variantes de composicao ----------
+     As telas extras de cada perfil nao inventam identidade: nascem da propria
+     lamina de imagem da marca, com a mesma fonte, cor, margem, cabecalho e
+     fundo. O que muda e onde a foto entra e se existe corpo de texto. */
+
+  /* foto de borda a borda no alto da lamina, com o grupo de texto embaixo */
+  function vFotoTopo(base, gapImgHead, alt) {
+    var t = Object.assign({}, base, { label: 'Foto em cima', ordem: 'fotoTopo',
+                                      gapImgHead: gapImgHead });
+    t.img = Object.assign({}, base.img, { x: 0, w: W, r: 0 });
+    if (alt) t.img.h = alt;
+    delete t.topo;
+    return t;
+  }
+  /* foto entre o titulo e o corpo, como a lamina da @SunoConsultoria */
+  function vFotoMeio(base) {
+    return Object.assign({}, base, { label: 'Foto no meio', ordem: 'fotoMeio' });
+  }
+  /* so a manchete, sem corpo: serve de abertura, virada e remate */
+  function vDestaque(base, fator) {
+    var t = Object.assign({}, base, { label: 'Só a manchete',
+                                      campos: ['title'], semCorpo: true });
+    t.title = Object.assign({}, base.title, { size: Math.round(base.title.size * (fator || 1.4)) });
+    delete t.img; delete t.topo;
+    return t;
+  }
+
+  function fotoEm(ctx, s, box, x, y, cor) {
+    regiao('imagem', x, y, box.w, box.h);
+    ctx.save(); roundRect(ctx, x, y, box.w, box.h, box.r); ctx.clip();
+    if (s.img) drawCover(ctx, s.img, x, y, box.w, box.h, s);
+    else { ctx.fillStyle = cor; ctx.fillRect(x, y, box.w, box.h); }
+    ctx.restore();
+  }
+
+  /* motor comum das marcas em formato de tweet (@tiagogreis, @daniellelopesn,
+     @status.invest): cabecalho, titulo e corpo, com a foto entrando no ponto
+     que o layout pedir. As tres laminas originais passam por aqui com o mesmo
+     resultado de antes — o que era `comImagem ? A : B` virou consulta por tipo. */
+  function corpoTweet(ctx, s, cfg, m) {
+    var t = m.tipos[s.type] || m.tipos[m.padrao], of = false;
+    /* pintaFundo chama o padrao sem argumento: o ctx vem por fechamento */
+    pintaFundo(ctx, function () { m.fundo(ctx); });
+    var ordem = t.ordem || (t.img ? 'fotoFim' : 'semFoto');
+    var semCorpo = !!t.semCorpo, noTopo = ordem === 'fotoTopo';
+    var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body || {});
+    var tb, bb, grupo;
+    var extra = (t.img && !noTopo) ? (t.gapBodyImg + t.img.h) : 0;
+    var teto = noTopo ? (t.img.h + t.gapImgHead) : 0;
+    var limite = H - m.folga - teto;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts, 'titulo');
+      bb = semCorpo ? { height: 0, runs: [] } : layout(ctx, s.body || '', bs, 'corpo');
+      grupo = m.headAv + t.gapHeadTitle + tb.height +
+              (semCorpo ? 0 : t.gapTitleBody + bb.height) + extra;
+      if (grupo <= limite || !cfg.autofit) break;
+      if (semCorpo) { if (ts.size < 40) break; }
+      else { if (bs.size < 24) break; bs.size = Math.round(bs.size * 0.94); }
+      ts.size = Math.round(ts.size * 0.96);
+    }
+    if (grupo > limite) { of = true; ESTOUROU = semCorpo ? 'titulo' : 'corpo'; }
+
+    if (noTopo) fotoEm(ctx, s, t.img, 0, 0, m.placeholder);
+
+    /* com a foto no alto, o texto se centra na sobra em vez de ficar colado
+       nela: texto curto deixava um vao enorme no pe da lamina */
+    var y = noTopo ? teto + Math.max(0, (H - (m.rodape || 60) - teto - grupo) / 2)
+          : (t.topo != null ? t.topo : (H - grupo) / 2 + (t.bias || 0));
+    var chao = H - 40;
+    if (y + grupo > chao) y = Math.max(noTopo ? teto : 50, chao - grupo);
+    if (!noTopo && y < 50) y = 50;
+
+    m.header(ctx, t.x, y);
+    y += m.headAv + t.gapHeadTitle;
+    paintSolid(ctx, tb, t.x, y, 'titulo');
+    y += tb.height;
+    var ix = (t.img && t.img.x != null) ? t.img.x : m.imgX;
+    if (ordem === 'fotoMeio') {
+      y += t.gapTitleBody;
+      fotoEm(ctx, s, t.img, ix, y, m.placeholder);
+      y += t.img.h + t.gapBodyImg;
+      paintSolid(ctx, bb, t.bodyX || t.x, y, 'corpo');
+    } else if (!semCorpo) {
+      y += t.gapTitleBody;
+      paintSolid(ctx, bb, t.bodyX || t.x, y, 'corpo');
+      y += bb.height;
+      if (ordem === 'fotoFim') fotoEm(ctx, s, t.img, ix, y + t.gapBodyImg, m.placeholder);
+    }
+    return of;
+  }
+
   /* =========================================================
      6. MARCA: @tiagogreis
      ========================================================= */
@@ -808,39 +899,15 @@
   }
 
   /* nos dois layouts de corpo o conjunto inteiro e centralizado na vertical */
-  function trCorpo(ctx, s, cfg, comFoto) {
-    var t = comFoto ? T.foto : T.texto, of = false;
-    pintaFundo(ctx, function () { trFundo(ctx); });
-    var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
-    var extra = comFoto ? (t.gapBodyImg + t.img.h) : 0;
-    for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts, 'titulo'); bb = layout(ctx, s.body || '', bs, 'corpo');
-      total = TR_HEAD.av + t.gapHeadTitle + tb.height + t.gapTitleBody + bb.height + extra;
-      if (total <= H - 120 || !cfg.autofit || bs.size < 24) break;
-      bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
-    }
-    if (total > H - 120) of = true, ESTOUROU = "corpo";
+  T.fotoTopo = vFotoTopo(T.foto, 56);
+  T.fotoMeio = vFotoMeio(T.foto);
+  T.destaque = vDestaque(T.texto);
 
-    var y = (H - total) / 2;
-    if (y < 50) y = 50;
-    trHeader(ctx, t.x, y, cab('light'));
-    y += TR_HEAD.av + t.gapHeadTitle;
-    paintSolid(ctx, tb, t.x, y, "titulo");
-    y += tb.height + t.gapTitleBody;
-    paintSolid(ctx, bb, t.x, y, "corpo");
-
-    if (comFoto) {
-      y += bb.height + t.gapBodyImg;
-      regiao("imagem", 85, y, t.img.w, t.img.h);
-      ctx.save(); roundRect(ctx, 85, y, t.img.w, t.img.h, t.img.r); ctx.clip();
-      if (s.img) drawCover(ctx, s.img, 85, y, t.img.w, t.img.h, s);
-      else { ctx.fillStyle = '#e2e2e2'; ctx.fillRect(85, y, t.img.w, t.img.h); }
-      ctx.restore();
-    }
-    return of;
-  }
-  function trTexto(ctx, s, cfg) { return trCorpo(ctx, s, cfg, false); }
-  function trFoto(ctx, s, cfg) { return trCorpo(ctx, s, cfg, true); }
+  var TR = { tipos: T, padrao: 'texto', headAv: TR_HEAD.av, folga: 120, imgX: 85,
+             placeholder: '#e2e2e2',
+             fundo: function (c) { trFundo(c); },
+             header: function (c, x, y) { trHeader(c, x, y, cab('light')); } };
+  function trCorpo(ctx, s, cfg) { return corpoTweet(ctx, s, cfg, TR); }
 
   /* =========================================================
      7. MARCA: @sunonoticias
@@ -1260,40 +1327,15 @@
   /* texto e imagem compartilham a composicao: o grupo inteiro — perfil, titulo,
      corpo e, quando existe, a foto — fica centrado na lamina, que e como o
      Figma posiciona os dois (margens de topo e base iguais no arquivo). */
-  function dnCorpo(ctx, s, cfg, comImagem) {
-    var t = comImagem ? D.imagem : D.texto, of = false;
-    pintaFundo(ctx, function () { dnFundo(ctx); });
-    var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
-    var extra = comImagem ? (t.gapBodyImg + t.img.h) : 0;
-    for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts, 'titulo');
-      bb = layout(ctx, s.body || '', bs, 'corpo');
-      total = DN_HEAD.av + t.gapHeadTitle + tb.height + t.gapTitleBody + bb.height + extra;
-      if (total <= H - 120 || !cfg.autofit || bs.size < 24) break;
-      bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
-    }
-    if (total > H - 120) of = true, ESTOUROU = 'corpo';
+  D.fotoTopo = vFotoTopo(D.imagem, 56);
+  D.fotoMeio = vFotoMeio(D.imagem);
+  D.destaque = vDestaque(D.texto, 1.3);
 
-    var y = (H - total) / 2;
-    if (y < 50) y = 50;
-    dnHeader(ctx, t.x, y, cab('light'));
-    y += DN_HEAD.av + t.gapHeadTitle;
-    paintSolid(ctx, tb, t.x, y, 'titulo');
-    y += tb.height + t.gapTitleBody;
-    paintSolid(ctx, bb, t.x, y, 'corpo');
-
-    if (comImagem) {
-      y += bb.height + t.gapBodyImg;
-      regiao('imagem', t.img.x, y, t.img.w, t.img.h);
-      ctx.save(); roundRect(ctx, t.img.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
-      if (s.img) drawCover(ctx, s.img, t.img.x, y, t.img.w, t.img.h, s);
-      else { ctx.fillStyle = '#e4e4e4'; ctx.fillRect(t.img.x, y, t.img.w, t.img.h); }
-      ctx.restore();
-    }
-    return of;
-  }
-  function dnTexto(ctx, s, cfg) { return dnCorpo(ctx, s, cfg, false); }
-  function dnImagem(ctx, s, cfg) { return dnCorpo(ctx, s, cfg, true); }
+  var DN = { tipos: D, padrao: 'texto', headAv: DN_HEAD.av, folga: 120, imgX: 124,
+             placeholder: '#e4e4e4',
+             fundo: function (c) { dnFundo(c); },
+             header: function (c, x, y) { dnHeader(c, x, y, cab('light')); } };
+  function dnCorpo(ctx, s, cfg) { return corpoTweet(ctx, s, cfg, DN); }
 
   /* =========================================================
      9c. MARCA: @status.invest
@@ -1406,40 +1448,15 @@
 
   /* so texto centra o grupo na lamina; texto + imagem ancora no topo, porque
      a foto entra depois do corpo e fecha a composicao embaixo */
-  function stCorpo(ctx, s, cfg, comImagem) {
-    var t = comImagem ? ST.imagem : ST.texto, of = false;
-    pintaFundo(ctx, function () { stFundo(ctx); });
-    var ts = Object.assign({}, t.title), bs = Object.assign({}, t.body), tb, bb, total;
-    var extra = comImagem ? (t.gapBodyImg + t.img.h) : 0;
-    for (var p = 0; p < 14; p++) {
-      tb = layout(ctx, s.title || '', ts, 'titulo');
-      bb = layout(ctx, s.body || '', bs, 'corpo');
-      total = ST_HEAD.av + t.gapHeadTitle + tb.height + t.gapTitleBody + bb.height + extra;
-      if (total <= H - 160 || !cfg.autofit || bs.size < 24) break;
-      bs.size = Math.round(bs.size * 0.94); ts.size = Math.round(ts.size * 0.96);
-    }
-    if (total > H - 160) of = true, ESTOUROU = 'corpo';
+  ST.fotoTopo = vFotoTopo(ST.imagem, 56);
+  ST.fotoMeio = vFotoMeio(ST.imagem);
+  ST.destaque = vDestaque(ST.texto);
 
-    var y = comImagem ? t.topo : (H - total) / 2 + (t.bias || 0);
-    if (y < 50) y = 50;
-    stHeader(ctx, ST_HEAD, t.x, y, cab('light'));
-    y += ST_HEAD.av + t.gapHeadTitle;
-    paintSolid(ctx, tb, t.x, y, 'titulo');
-    y += tb.height + t.gapTitleBody;
-    paintSolid(ctx, bb, t.bodyX || t.x, y, 'corpo');
-
-    if (comImagem) {
-      y += bb.height + t.gapBodyImg;
-      regiao('imagem', t.img.x, y, t.img.w, t.img.h);
-      ctx.save(); roundRect(ctx, t.img.x, y, t.img.w, t.img.h, t.img.r); ctx.clip();
-      if (s.img) drawCover(ctx, s.img, t.img.x, y, t.img.w, t.img.h, s);
-      else { ctx.fillStyle = '#e4e4e4'; ctx.fillRect(t.img.x, y, t.img.w, t.img.h); }
-      ctx.restore();
-    }
-    return of;
-  }
-  function stTexto(ctx, s, cfg) { return stCorpo(ctx, s, cfg, false); }
-  function stImagem(ctx, s, cfg) { return stCorpo(ctx, s, cfg, true); }
+  var STM = { tipos: ST, padrao: 'texto', headAv: ST_HEAD.av, folga: 160, imgX: 114,
+              placeholder: '#e4e4e4',
+              fundo: function (c) { stFundo(c); },
+              header: function (c, x, y) { stHeader(c, ST_HEAD, x, y, cab('light')); } };
+  function stCorpo(ctx, s, cfg) { return corpoTweet(ctx, s, cfg, STM); }
 
   /* =========================================================
      9d. MARCA: @giankojikovski
@@ -1757,36 +1774,223 @@
   /* =========================================================
      10. Registro de marcas
      ========================================================= */
+
+  /* ---------- motor das telas extras ----------
+     Serve as marcas cujas laminas originais tem ancoragem propria: elas
+     continuam com a funcao de render de sempre, intocada, e as telas novas
+     passam por aqui. A pilha e montada na ordem que o layout pedir. */
+  function corpoVar(ctx, s, cfg, m) {
+    var t = m.spec[s.type], of = false;
+    pintaFundo(ctx, function () { (t.fundo || m.fundo)(ctx); });
+    var ts = t.title ? Object.assign({}, t.title) : null;
+    var bs = t.body ? Object.assign({}, t.body) : null;
+    var noTopo = t.ordem === 'fotoTopo', v = t.vaos;
+    var teto = noTopo ? t.img.h + v.imgCab : 0;
+    var limite = H - m.folga - teto;
+    var tb, bb, pecas, grupo;
+    for (var p = 0; p < 14; p++) {
+      tb = ts ? layout(ctx, s.title || '', ts, 'titulo') : null;
+      bb = bs ? layout(ctx, s.body || '', bs, 'corpo') : null;
+      pecas = [];
+      if (m.headAv) pecas.push({ o: 'cab', h: m.headAv, v: 0 });
+      if (tb) pecas.push({ o: 'tit', h: tb.height, v: m.headAv ? v.cabTit : 0 });
+      if (t.ordem === 'fotoMeio') pecas.push({ o: 'img', h: t.img.h, v: v.titImg });
+      if (bb) pecas.push({ o: 'cor', h: bb.height,
+                           v: t.ordem === 'fotoMeio' ? v.imgCor : (tb ? v.titCor : (m.headAv ? v.cabTit : 0)) });
+      if (t.ordem === 'fotoFim') pecas.push({ o: 'img', h: t.img.h, v: v.corImg });
+      grupo = 0;
+      pecas.forEach(function (q) { grupo += q.v + q.h; });
+      if (grupo <= limite || !cfg.autofit) break;
+      var pode = (bs && bs.size > 24) || (ts && ts.size > 36);
+      if (!pode) break;
+      if (bs && bs.size > 24) bs.size = Math.round(bs.size * 0.94);
+      if (ts && ts.size > 36) ts.size = Math.round(ts.size * 0.96);
+    }
+    if (grupo > limite) { of = true; ESTOUROU = bb ? 'corpo' : 'titulo'; }
+
+    if (noTopo) fotoEm(ctx, s, t.img, 0, 0, m.placeholder);
+    if (m.antes) m.antes(ctx, t, s);
+
+    var piso = noTopo ? teto : (m.minTop || 50);
+    /* idem: o grupo se centra no que sobrou abaixo da foto, a nao ser que o
+       cromo da marca esteja amarrado ao texto (o caso da @SunoConsultoria) */
+    var y = noTopo
+      ? (t.fixo ? teto : teto + Math.max(0, (H - (m.rodape || 60) - teto - grupo) / 2))
+      : (H - grupo) / 2 + (t.bias || 0);
+    if (y < piso) y = piso;
+    if (y + grupo > H - 40) y = Math.max(piso, H - 40 - grupo);
+
+    pecas.forEach(function (q) {
+      y += q.v;
+      if (q.o === 'cab') m.header(ctx, t.x, y);
+      else if (q.o === 'tit') (m.pintaTit || paintSolid)(ctx, tb, t.x, y, 'titulo');
+      else if (q.o === 'cor') (m.pintaCor || paintSolid)(ctx, bb, t.bodyX || t.x, y, 'corpo');
+      else fotoEm(ctx, s, t.img, t.img.x != null ? t.img.x : m.imgX, y, m.placeholder);
+      y += q.h;
+    });
+    if (m.depois) m.depois(ctx, t, cfg, s);
+    return of;
+  }
+
+  /* ---------- telas extras por perfil ----------
+     Cada variante sai da lamina de imagem da propria marca: mesma fonte, cor,
+     margem, cabecalho e fundo. Muda onde a foto entra e se ha corpo. */
+  function tituloMaior(base, fator) {
+    return Object.assign({}, base, { size: Math.round(base.size * (fator || 1.4)) });
+  }
+
+  /* @suno */
+  S.fotoTopo = { label: 'Foto em cima', campos: ['title', 'body', 'img'],
+    ordem: 'fotoTopo', x: 127,
+    title: S.corpoImg.title, body: S.corpoImg.body,
+    img: { x: 0, w: W, h: 430, r: 0 },
+    vaos: { imgCab: 72, cabTit: 0, titCor: S.corpoImg.gapTitleBody } };
+  S.fotoMeio = { label: 'Foto no meio', campos: ['title', 'body', 'img'],
+    ordem: 'fotoMeio', x: 127,
+    title: S.corpoImg.title, body: S.corpoImg.body,
+    img: { x: 130, w: 825, h: 422, r: 27 },
+    vaos: { titImg: 52, imgCor: 56 } };
+  S.destaque = { label: 'Só a manchete', campos: ['title'], x: 127, bias: -16,
+    title: tituloMaior(S.texto.title), vaos: {} };
+
+  var SUM = { spec: S, folga: 160, minTop: 60, imgX: 130, placeholder: '#ececec',
+    headAv: 0,
+    fundo: function (c) { c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H); },
+    pintaTit: function (c, b, x, y, k) { paintGrad(c, b, x, y, { grad: GRAD_TITLE, emGrad: GRAD_EM }, k); },
+    pintaCor: function (c, b, x, y, k) { paintGrad(c, b, x, y, { grad: GRAD_BODY, emGrad: GRAD_EM }, k); } };
+  function sunoVar(ctx, s, cfg) { return corpoVar(ctx, s, cfg, SUM); }
+
+  /* @ProfessorBaroni — as laminas de texto da marca nao tem titulo, so corpo */
+  B.fotoTopo = { label: 'Foto em cima', campos: ['body', 'img'],
+    ordem: 'fotoTopo', x: 156, discX: 153, discY: 1076,
+    body: B.corpoImg.body, img: { x: 0, w: W, h: 420, r: 0 },
+    vaos: { imgCab: 68, cabTit: B.corpoImg.gapHeadText },
+    fundo: function (c) { c.fillStyle = '#050505'; c.fillRect(0, 0, W, H); } };
+  B.destaque = { label: 'Frase solta', campos: ['body'], x: 125, discX: 124, discY: 1139,
+    body: tituloMaior(B.corpo.body, 1.55), vaos: { cabTit: 52 } };
+
+  var BAM = { spec: B, folga: 200, minTop: 90, rodape: 310, imgX: 0, placeholder: '#15181c',
+    headAv: HEAD.av,
+    fundo: function (c) { c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H); },
+    header: function (c, x, y) { baroniHeader(c, x, y, cab(BAM._cab || 'light')); },
+    antes: function (c, t) { BAM._cab = t.fundo ? 'dark' : 'light'; },
+    depois: function (c, t, cfg) { baroniDisc(c, t, cfg); } };
+  function baroniVar(ctx, s, cfg) { return corpoVar(ctx, s, cfg, BAM); }
+
+  /* @sunonoticias */
+  N.fotoTopo = { label: 'Foto em cima', campos: ['body', 'img'],
+    ordem: 'fotoTopo', x: 138,
+    body: N.imagem.body, img: { x: 0, w: W, h: 430, r: 0 },
+    vaos: { imgCab: 64, cabTit: N.imagem.gapHeadText } };
+  N.destaque = { label: 'Frase solta', campos: ['body'], x: 115,
+    body: tituloMaior(N.texto.body, 1.5), vaos: { cabTit: 76 } };
+
+  var NOM = { spec: N, folga: 150, minTop: 60, imgX: 0, placeholder: '#e2e2e2',
+    headAv: SN_HEAD.av,
+    fundo: function (c) { snPapel(c); },
+    header: function (c, x, y) { snHeader(c, x, y, cab('light')); } };
+  function snVar(ctx, s, cfg) { return corpoVar(ctx, s, cfg, NOM); }
+
+  /* @fundsexplorer */
+  F.fotoTopo = { label: 'Foto em cima', campos: ['body', 'img'],
+    ordem: 'fotoTopo', x: 95, k: 0.93947,
+    body: F.imagem.body, img: { x: 0, w: W, h: 430, r: 0 },
+    vaos: { imgCab: 60, cabTit: F.imagem.gap } };
+  F.destaque = { label: 'Frase solta', campos: ['body'], x: 117, k: 1,
+    body: tituloMaior(F.texto.body, 1.5), vaos: { cabTit: 46 } };
+
+  var FEM = { spec: F, folga: 130, minTop: 50, imgX: 0, placeholder: '#e2e2e2',
+    headAv: FE_HEAD.av,
+    fundo: function (c) { feFundo(c); },
+    header: function (c, x, y) { feHeader(c, x, y, cab('light'), FEM._k || 1); } };
+  function feVar(ctx, s, cfg) {
+    FEM._k = (F[s.type] || {}).k || 1;
+    FEM.headAv = FE_HEAD.av * FEM._k;
+    return corpoVar(ctx, s, cfg, FEM);
+  }
+
+  /* @SunoConsultoria — a lamina de imagem da marca ja tem a foto no meio,
+     entao aqui as extras sao a foto em cima e a foto no fim */
+  /* a seta vermelha e cromo fixo da marca, em x 920..980. As telas novas tem a
+     coluna estreitada para 790 para nao cruzar com ela — no arquivo do Figma
+     quem garantia isso era o comprimento do texto de exemplo. */
+  var CO_W = 790;
+  function coEstreito(f, fator) {
+    return Object.assign({}, f, { w: CO_W, size: Math.round(f.size * (fator || 1)) });
+  }
+  C.fotoTopo = { label: 'Foto em cima', campos: ['numero', 'title', 'body', 'img'],
+    ordem: 'fotoTopo', x: 85,
+    badge: { x: 84, y: 500, d: 80 }, logo: { x: 190, y: 521, w: 109, h: 44 },
+    arrow: { x: 920, y: 648, s: 60 },
+    title: coEstreito(C.imagem.title), body: coEstreito(C.imagem.body),
+    img: { x: 0, w: W, h: 430, r: 0 }, fixo: true,
+    vaos: { imgCab: 176, cabTit: 0, titCor: 48 } };
+  C.fotoFim = { label: 'Foto embaixo', campos: ['numero', 'title', 'body', 'img'],
+    ordem: 'fotoFim', x: 85,
+    badge: { x: 84, y: 71, d: 80 }, logo: { x: 190, y: 92, w: 109, h: 44 },
+    arrow: { x: 920, y: 648, s: 60 },
+    title: coEstreito(C.imagem.title), body: coEstreito(C.imagem.body),
+    img: { x: 85, w: 705, h: 328, r: 22 },
+    vaos: { cabTit: 0, titCor: 44, corImg: 54 }, bias: 66 };
+  C.destaque = { label: 'Só a manchete', campos: ['numero', 'title'], x: 101,
+    badge: { x: 100, y: 303, d: 80 }, logo: { x: 206, y: 324, w: 109, h: 44 },
+    arrow: { x: 920, y: 648, s: 60 },
+    title: coEstreito(C.texto.title, 1.4), vaos: {} };
+
+  var COM = { spec: C, folga: 200, minTop: 240, imgX: 85, placeholder: '#e2e2e2',
+    headAv: 0,
+    fundo: function (c) { c.fillStyle = '#f7f7f7'; c.fillRect(0, 0, W, H); },
+    antes: function (c, t, s) {
+      coBadge(c, t.badge, s.numero);
+      c.drawImage(IMG.coLogoRed, t.logo.x, t.logo.y, t.logo.w, t.logo.h);
+      coArrow(c, t.arrow);
+    } };
+  function coVar(ctx, s, cfg) { return corpoVar(ctx, s, cfg, COM); }
+
   var MARCAS = {
     baroni: { nome: 'Professor Baroni', arroba: '@ProfessorBaroni', cor: '#3fbf68', disclaimer: true, topAlign: true,
       dica: '<kbd>**negrito**</kbd> <kbd>__sublinhado__</kbd>',
-      tipos: { capa: B.capa, corpo: B.corpo, corpoImg: B.corpoImg },
-      render: { capa: baroniCapa, corpo: baroniCorpo, corpoImg: baroniCorpoImg } },
+      tipos: { capa: B.capa, corpo: B.corpo, corpoImg: B.corpoImg,
+               fotoTopo: B.fotoTopo, destaque: B.destaque },
+      render: { capa: baroniCapa, corpo: baroniCorpo, corpoImg: baroniCorpoImg,
+                fotoTopo: baroniVar, destaque: baroniVar } },
     suno: { nome: 'Suno', arroba: '@suno', cor: '#ff2020', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> pinta o trecho em vermelho',
-      tipos: { capa: S.capa, corpoImg: S.corpoImg, texto: S.texto },
-      render: { capa: sunoCapa, corpoImg: sunoCorpoImg, texto: sunoTexto } },
+      tipos: { capa: S.capa, corpoImg: S.corpoImg, texto: S.texto,
+               fotoTopo: S.fotoTopo, fotoMeio: S.fotoMeio, destaque: S.destaque },
+      render: { capa: sunoCapa, corpoImg: sunoCorpoImg, texto: sunoTexto,
+                fotoTopo: sunoVar, fotoMeio: sunoVar, destaque: sunoVar } },
     tiago: { nome: 'Tiago Reis', arroba: '@tiagogreis', cor: '#42aff3', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica azul no t&iacute;tulo e negrito no texto',
-      tipos: { capa: T.capa, texto: T.texto, foto: T.foto },
-      render: { capa: trCapa, texto: trTexto, foto: trFoto } },
+      tipos: { capa: T.capa, texto: T.texto, foto: T.foto,
+               fotoTopo: T.fotoTopo, fotoMeio: T.fotoMeio, destaque: T.destaque },
+      render: { capa: trCapa, texto: trCorpo, foto: trCorpo,
+                fotoTopo: trCorpo, fotoMeio: trCorpo, destaque: trCorpo } },
     noticias: { nome: 'Suno Not&iacute;cias', arroba: '@sunonoticias', cor: '#c9c2b4', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> deixa o trecho em negrito',
-      tipos: { capa: N.capa, texto: N.texto, imagem: N.imagem },
-      render: { capa: snCapa, texto: snTexto, imagem: snImagem } },
+      tipos: { capa: N.capa, texto: N.texto, imagem: N.imagem,
+               fotoTopo: N.fotoTopo, destaque: N.destaque },
+      render: { capa: snCapa, texto: snTexto, imagem: snImagem,
+                fotoTopo: snVar, destaque: snVar } },
     consultoria: { nome: 'Suno Consultoria', arroba: '@SunoConsultoria', cor: '#d42126', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica vermelho na capa e negrito no texto',
-      tipos: { capa: C.capa, texto: C.texto, imagem: C.imagem },
-      render: { capa: coCapa, texto: coTexto, imagem: coImagem } },
+      tipos: { capa: C.capa, texto: C.texto, imagem: C.imagem,
+               fotoTopo: C.fotoTopo, fotoFim: C.fotoFim, destaque: C.destaque },
+      render: { capa: coCapa, texto: coTexto, imagem: coImagem,
+                fotoTopo: coVar, fotoFim: coVar, destaque: coVar } },
     funds: { nome: 'Funds Explorer', arroba: '@fundsexplorer', cor: '#00c0f5', disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica azul na capa e negrito no texto &middot; <kbd>__sublinhado__</kbd>',
-      tipos: { capa: F.capa, texto: F.texto, imagem: F.imagem },
-      render: { capa: feCapa, texto: feTexto, imagem: feImagem } },
+      tipos: { capa: F.capa, texto: F.texto, imagem: F.imagem,
+               fotoTopo: F.fotoTopo, destaque: F.destaque },
+      render: { capa: feCapa, texto: feTexto, imagem: feImagem,
+                fotoTopo: feVar, destaque: feVar } },
     danielle: { nome: 'Danielle Lopes', arroba: '@daniellelopesn', cor: '#289aff',
       disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> deixa o trecho em negrito no texto',
-      tipos: { capa: D.capa, texto: D.texto, imagem: D.imagem },
-      render: { capa: dnCapa, texto: dnTexto, imagem: dnImagem } },
+      tipos: { capa: D.capa, texto: D.texto, imagem: D.imagem,
+               fotoTopo: D.fotoTopo, fotoMeio: D.fotoMeio, destaque: D.destaque },
+      render: { capa: dnCapa, texto: dnCorpo, imagem: dnCorpo,
+                fotoTopo: dnCorpo, fotoMeio: dnCorpo, destaque: dnCorpo } },
     gian: { nome: 'Gian Kojikovski', arroba: '@giankojikovski', cor: '#cab580',
       disclaimer: false, topAlign: false,
       dica: '<kbd>**dourado**</kbd> pinta o trecho &middot; <kbd>__grosso__</kbd> engrossa',
@@ -1802,8 +2006,10 @@
     status: { nome: 'Status Invest', arroba: '@status.invest', cor: '#00ab93',
       disclaimer: false, topAlign: false,
       dica: '<kbd>**destaque**</kbd> fica verde no t&iacute;tulo e escuro no texto',
-      tipos: { capa: ST.capa, texto: ST.texto, imagem: ST.imagem },
-      render: { capa: stCapa, texto: stTexto, imagem: stImagem } }
+      tipos: { capa: ST.capa, texto: ST.texto, imagem: ST.imagem,
+               fotoTopo: ST.fotoTopo, fotoMeio: ST.fotoMeio, destaque: ST.destaque },
+      render: { capa: stCapa, texto: stCorpo, imagem: stCorpo,
+                fotoTopo: stCorpo, fotoMeio: stCorpo, destaque: stCorpo } }
   };
 
   function render(canvas, marca, s, cfg) {
