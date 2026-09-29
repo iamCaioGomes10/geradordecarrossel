@@ -225,6 +225,37 @@ PERFIS = {
                   "lucro", "investir"],
         "fora": [],
     },
+    "gian": {
+        "nome": "@giankojikovski",
+        "escopo": "CEO da Suno. Negocios, IA, gestao, cultura e "
+                  "empreendedorismo. Qualquer acontecimento, materia ou case "
+                  "de negocios serve, principalmente os quentes.",
+        "forte": [
+            # negocios e o caso da empresa
+            "negocio", "negocios", "empresa", "empresas", "ceo", "fundador",
+            "fundadora", "socio", "aquisicao", "fusao", "ipo", "rodada",
+            "faturamento", "receita", "expansao", "franquia", "concorrencia",
+            "falencia", "recuperacao judicial", "demissoes", "contratacao",
+            # IA e tecnologia
+            "inteligencia artificial", "ia", "openai", "anthropic", "chatgpt",
+            "gemini", "algoritmo", "automacao", "agente", "data center",
+            "chip", "chips", "tecnologia", "software", "plataforma",
+            # gestao e cultura
+            "gestao", "lideranca", "produtividade", "cultura", "equipe",
+            "time", "processo", "estrategia", "governanca", "conselho",
+            "home office", "jornada", "talento", "carreira",
+            # empreendedorismo
+            "empreendedor", "empreendedorismo", "startup", "startups",
+            "unicornio", "pme", "inovacao", "venture", "aporte",
+        ],
+        "cultura": FORA_DO_MERCADO,
+        # CEO fala do caso, nao do pregao: cotacao e indicador tangenciam
+        "fraco": ["mercado", "investidor", "lucro", "balanco", "acoes",
+                  "economia", "setor", "consumidor", "cliente"],
+        "fora": [],
+        # "principalmente as quentes": o calor pesa mais aqui que nos outros
+        "pesoCalor": 3.5,
+    },
 }
 
 
@@ -503,6 +534,10 @@ def monta(perfis):
         exige = bool(PERFIS[perfil]["forte"])
         so_dia = bool(PERFIS[perfil].get("soDoDia"))
         gerais, mercado, vistos = [], [], set()
+        # nomes proprios ja usados: dois agrupamentos podem falar da mesma
+        # coisa sem dividir nenhuma materia — a aquisicao do Nubank saiu duas
+        # vezes assim. Repetir o nome e repetir a pauta.
+        nomes_usados = set()
 
         # Assunto que varios veiculos cobriram no mesmo dia e pauta, com ou sem
         # palavra conhecida. Lista escrita a mao so pega o que alguem pensou em
@@ -510,6 +545,7 @@ def monta(perfis):
         # estava nela. O calor nao depende do meu vocabulario, e por isso pega
         # o assunto de amanha que ninguem previu.
         aceita_calor = bool(PERFIS[perfil].get("cultura"))
+        peso_calor = PERFIS[perfil].get("pesoCalor", 2.0)
 
         for g in grupos:
             notas = []
@@ -533,7 +569,7 @@ def monta(perfis):
             # Calor: quantos veiculos distintos falaram do assunto. E o unico
             # sinal honesto de "esta se falando disso agora" que da para ler
             # de um feed — ninguem publica quanto engajou.
-            nota = notas[0][0] + min(g["veiculos"], 5) * 2.0
+            nota = notas[0][0] + min(g["veiculos"], 5) * peso_calor
             ligadas = [it for _, it in notas[1:] if it["link"] != melhor["link"]][:3]
             alvo = gerais if eh_geral(melhor, perfil) else mercado
             alvo.append((nota, g, melhor, ligadas, ordenadas))
@@ -553,6 +589,7 @@ def monta(perfis):
             """
             _, g, _, _, ordenadas = cand
             livres = [x for x in ordenadas if x["link"] not in vistos]
+            livres = [x for x in livres if not (x.get("_p") or set()) & nomes_usados]
             if not livres:
                 return None
             principal = livres[0]
@@ -573,9 +610,12 @@ def monta(perfis):
                         continue
                     g, principal, lig = pronto
                     escolhidos.append((g, principal, lig))
-                    vistos.add(principal["link"])
-                    for x in lig:
+                    # marca o assunto INTEIRO, nao so o que vai aparecer: a
+                    # aquisicao do Nubank saia duas vezes, como dois assuntos,
+                    # porque as materias que sobraram semeavam um segundo grupo
+                    for x in lista[k - 1][4]:
                         vistos.add(x["link"])
+                    nomes_usados.update(principal.get("_p") or set())
                     avancou = True
                     break
                 if lado == "geral":
