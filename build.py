@@ -55,6 +55,10 @@ assets = {
     "gkAvatar":    b64("gk-avatar.png"),
     "gkBadge":     b64("gk-badge.png"),
     "gkNomeSvg":   b64("gk-nome.svg"),      # fill="#E3E3E3" -> recolorido
+    "gkMonoSvg":   b64("gk-mono.svg"),      # monograma a 2% de opacidade
+    # textura de grao: o PNG do Figma tem 2,4 MB e e cinza. A 20-30% em screen
+    # a versao de 896px em JPEG difere menos de 1 nivel em 255 na arte final.
+    "gkTextura":   b64("gk-textura.jpg"),
     "gkHandleSvg": b64("gk-handle.svg"),    # fill="#868686" -> recolorido
     "stMarca":     b64("st-marca.png"),     # anel da marca, usado como marca d'agua
     "stLogo":      b64("st-logo.png"),

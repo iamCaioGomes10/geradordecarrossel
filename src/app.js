@@ -55,6 +55,7 @@
     var dnNome = atob(A.dnNomeSvg), dnHandle = atob(A.dnHandleSvg);
     var stAnel = atob(A.stAnelSvg), stNome = atob(A.stNomeSvg), stHandle = atob(A.stHandleSvg);
     var gkNome = atob(A.gkNomeSvg), gkHandle = atob(A.gkHandleSvg);
+    var gkMono = atob(A.gkMonoSvg);
     return Promise.all([
       Promise.all(fonts.map(function (f) { return f.load(); })),
       loadImage('data:image/png;base64,' + A.avatar).then(function (i) { IMG.avatar = i; }),
@@ -98,6 +99,9 @@
       loadImage(svgFill(snHandle, '#6F7377', '#B6B6B6')).then(function (i) { IMG.snHandleDark = i; }),
       loadImage(svgFill(snHandle, '#6F7377', '#6F7377')).then(function (i) { IMG.snHandleLight = i; }),
       loadImage('data:image/png;base64,' + A.gkAvatar).then(function (i) { IMG.gkAvatar = i; }),
+      loadImage('data:image/jpeg;base64,' + A.gkTextura).then(function (i) { IMG.gkTextura = i; }),
+      loadImage(svgUri(gkMono)).then(function (i) { IMG.gkMono = i; }),
+      loadImage(svgFill(gkMono, 'white', 'black')).then(function (i) { IMG.gkMonoEscuro = i; }),
       loadImage('data:image/png;base64,' + A.gkBadge).then(function (i) { IMG.gkBadge = i; }),
       loadImage(svgFill(gkNome, '#E3E3E3', '#ededed')).then(function (i) { IMG.gkNomeDark = i; }),
       loadImage(svgFill(gkNome, '#E3E3E3', '#1b1b1b')).then(function (i) { IMG.gkNomeLight = i; }),
@@ -1458,6 +1462,25 @@
       handleLight: IMG.gkHandleLight, handleDark: IMG.gkHandleDark }, x, y, theme);
   }
 
+  /* Monograma gk gigante, branco a 2% de opacidade — ja vem no proprio SVG.
+     Em tema claro ele vira preto, senao branco sobre branco some. */
+  function gkMonograma(ctx, dy) {
+    var im = tema() === 'claro' ? IMG.gkMonoEscuro : IMG.gkMono;
+    if (im) ctx.drawImage(im, -191, dy || 0, 1406.49, 1350);
+  }
+
+  /* Grao de concreto por cima de tudo. No arquivo e screen, que sobre fundo
+     claro nao faz nada — ali vira multiply, para a textura seguir existindo
+     quando a pessoa troca o fundo da lamina. */
+  function gkTextura(ctx, alfa) {
+    if (!IMG.gkTextura) return;
+    var a = ctx.globalAlpha, op = ctx.globalCompositeOperation;
+    ctx.globalAlpha = alfa;
+    ctx.globalCompositeOperation = tema() === 'claro' ? 'multiply' : 'screen';
+    ctx.drawImage(IMG.gkTextura, -730, 0, 1810, 1350);
+    ctx.globalAlpha = a; ctx.globalCompositeOperation = op;
+  }
+
   function gkFundo(ctx) {
     ctx.fillStyle = cssGrad(ctx, 154.4523392216068, 0, 0, W, H,
       [[0.084259, 'rgb(0,0,0)'], [0.95185, 'rgb(16,16,16)']]);
@@ -1479,17 +1502,25 @@
       tag: { font: 'Instrument Sans', size: 24, lh: 0.87, ls: -1.68, w: 320,
              weight: 600, color: 'rgba(255,255,255,0.7)', align: 'center' } },
     texto: { label: 'S&oacute; texto', campos: ['title', 'sub'],
-      x: 71, topo: 121, gapHeadTitle: 48.65, gapTitleSub: 49,
+      /* 44,1 e nao os 33 que a distancia entre as caixas do Figma sugere: a
+         caixa do titulo la reporta 246 e as tres linhas ocupam 234,9, entao
+         medir de caixa a caixa deixaria o subtitulo 11px alto. O valor poe a
+         caixa do subtitulo exatamente no 536 do arquivo. */
+      x: 124, topo: 121, gapHeadTitle: 48.65, gapTitleSub: 44.1,
       title: { font: 'Instrument Sans', size: 90, lh: 0.87, ls: -7.2, w: 831,
                weight: 400, color: '#ededed', emColor: '#cab580', altWeight: 500 },
       sub: { font: 'Inter', size: 40, lh: 1.23, ls: -2, w: 309,
-             weight: 500, color: '#434343' } },
+             weight: 400, color: '#cacaca' } },
     imagem: { label: 'Texto + imagem', campos: ['title', 'sub', 'img'],
       /* ancorado pelo pe do titulo, e nao pelo pe do bloco: a caixa de texto
          do Figma reporta 246 para tres linhas que na entrelinha 0,87 ocupam
          261, entao ancorar embaixo subia o cabecalho 20px. 1171 e o valor que
          faz a tinta cair onde ela cai no render do proprio Figma (918..1185). */
-      x: 87, titleBottom: 1171, shadeTop: 598, gapHeadTitle: 48.65, gapTitleSub: 49,
+      /* 39,75 e nao os 48,65 do arquivo: como a ancora e o pe do titulo e meu
+         bloco de tres linhas e 15px mais alto que a caixa declarada, o vao do
+         arquivo deixaria o cabecalho 9px alto. Assim as duas pontas — perfil
+         em 783 e pe do titulo em 1171 — caem onde o Figma poe. */
+      x: 87, titleBottom: 1171, shadeTop: 598, gapHeadTitle: 39.75, gapTitleSub: 43,
       title: { font: 'Instrument Sans', size: 100, lh: 0.87, ls: -8, w: 938,
                weight: 400, color: '#f1f1f1', emColor: '#cab580', altWeight: 500 },
       sub: { font: 'Inter', size: 45, lh: 1.23, ls: -2.25, w: 341,
@@ -1538,6 +1569,9 @@
     paintSolid(ctx, tb, (W - ts.w) / 2, topo, 'titulo');
     gkTags(ctx, s, t);
     gkHeader(ctx, t.headX, t.headY, cab('dark'), GK_HEAD_CAPA);
+    /* na capa o monograma fica ACIMA do texto no arquivo, e desce 41px */
+    gkMonograma(ctx, -41);
+    gkTextura(ctx, 0.20);
     return of;
   }
 
@@ -1563,6 +1597,8 @@
       if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     } else {
       pintaFundo(ctx, function () { gkFundo(ctx); });
+      /* so texto e o unico em que o monograma fica ATRAS do texto */
+      gkMonograma(ctx, 0);
     }
 
     /* so texto nasce no topo; texto+imagem pendura o bloco pelo pe do titulo,
@@ -1576,6 +1612,10 @@
     paintSolid(ctx, tb, t.x, y, 'titulo');
     /* mesmo vazio o subtitulo e desenhado, senao o campo some da interface */
     paintSolid(ctx, sb, t.x, y + tb.height + (s.sub ? t.gapTitleSub : 0), 'sub');
+    /* ordens do arquivo: no texto+imagem a textura entra antes do monograma e
+       com 30% em vez de 20%; no so texto o monograma ja foi, antes do texto */
+    if (comImagem) { gkTextura(ctx, 0.30); gkMonograma(ctx, 0); }
+    else gkTextura(ctx, 0.20);
     return of;
   }
   function gkTexto(ctx, s, cfg) { return gkCorpo(ctx, s, cfg, false); }
