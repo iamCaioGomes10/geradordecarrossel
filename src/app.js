@@ -2055,6 +2055,152 @@
     el.appendChild(mais);
   }
 
+
+  /* ---------- gaveta de modelos ----------
+     Menu de texto nao serve para escolher layout: "Claro - foto no meio" nao
+     diz nada a quem monta carrossel. Aqui a pessoa ve a tela desenhada, com o
+     proprio texto dela dentro, clica para somar uma pagina ou arrasta ate a
+     fita para inserir no lugar que quiser. */
+  var modelosAberto = false;
+  var EXEMPLO = { title: 'Assim fica a manchete nesta tela',
+                  sub: 'E o texto de apoio',
+                  body: 'Assim fica o corpo do texto nesta tela, com algumas linhas para dar ideia do espaco.' };
+
+  /* a amostra usa o conteudo da lamina em foco: a pergunta de quem escolhe nao
+     e "como e esse layout" e sim "como o MEU texto fica nele" */
+  function amostraDe(tipo) {
+    var lam = blank(tipo); lam.type = tipo;
+    var base = slides[foco] || {};
+    camposDoTipo(marca, tipo).forEach(function (c) {
+      var v = base[c];
+      lam[c] = (v && String(v).trim()) ? v : (EXEMPLO[c] || '');
+    });
+    if ((tipos()[tipo].campos || []).indexOf('numero') >= 0) lam.numero = base.numero || '01';
+    if (base.img) {
+      lam.img = base.img; lam.zoom = base.zoom; lam.fx = base.fx; lam.fy = base.fy;
+    }
+    return lam;
+  }
+
+  var modPend = null;
+  function pintaModelos() {
+    if (!modelosAberto) return;
+    clearTimeout(modPend);
+    modPend = setTimeout(desenhaModelos, 120);
+  }
+  function desenhaModelos() {
+    var el = $('mlista'); if (!el || !modelosAberto) return;
+    el.innerHTML = '';
+    var larg = celular() ? 76 : 104, t = tipos();
+    Object.keys(t).forEach(function (k) {
+      var b = document.createElement('button');
+      b.className = 'modelo'; b.dataset.tipo = k;
+      b.dataset.atual = (slides[foco] && slides[foco].type === k) ? '1' : '0';
+      b.title = 'Clique para somar uma página, ou arraste até a fita';
+      var cx = document.createElement('div'); cx.className = 'mini';
+      var cv = document.createElement('canvas');
+      cv.style.transform = 'scale(' + (larg / W) + ')';
+      render(cv, marca, amostraDe(k), cfg());
+      cx.appendChild(cv); b.appendChild(cx);
+      var r = document.createElement('div'); r.className = 'mrot';
+      r.textContent = labelDe(k);
+      b.appendChild(r);
+      el.appendChild(b);
+    });
+  }
+
+  function abreModelos(v) {
+    modelosAberto = (v == null) ? !modelosAberto : !!v;
+    $('modelos').hidden = !modelosAberto;
+    if (modelosAberto) desenhaModelos();
+  }
+
+  function insereModelo(tipo, onde) {
+    if (slides.length >= 20) { toast('O limite e 20 laminas.'); return; }
+    marcaVersao('antes de somar lamina');
+    var i = (onde == null) ? foco + 1 : onde;
+    if (i < 0) i = 0; if (i > slides.length) i = slides.length;
+    slides.splice(i, 0, blank(tipo));
+    foco = i; sel = null; pinta();
+    toast(txtDe(labelDe(tipo)) + ' adicionada.');
+  }
+
+  /* ---------- arrastar o modelo ate a fita ----------
+     Com ponteiro em vez do arrasto nativo do HTML: o nativo nao existe em
+     tela de toque, e aqui o carrossel tambem e montado no celular. */
+  var arr = null;
+
+  function alvoNaFita(x) {
+    var fita = $('esteira'), quadros = fita.querySelectorAll('.quadro');
+    for (var i = 0; i < quadros.length; i++) {
+      var r = quadros[i].getBoundingClientRect();
+      if (x < r.left + r.width / 2) return { i: i, antes: quadros[i] };
+    }
+    return { i: quadros.length, antes: fita.querySelector('#add') };
+  }
+  function limpaAlvo() {
+    var fita = $('esteira');
+    fita.dataset.solto = '0';
+    var m = fita.querySelector('.marca-solta'); if (m) m.remove();
+  }
+  function sobreFita(x, y) {
+    var r = $('esteira').getBoundingClientRect();
+    return x >= r.left - 24 && x <= r.right + 24 && y >= r.top - 24 && y <= r.bottom + 24;
+  }
+
+  function ligaArrasto() {
+    var lista = $('mlista');
+    if (!lista || lista.dataset.pronto === '1') return;
+    lista.dataset.pronto = '1';
+
+    lista.addEventListener('pointerdown', function (ev) {
+      var b = ev.target.closest('.modelo');
+      if (!b || ev.button > 0) return;
+      arr = { tipo: b.dataset.tipo, x0: ev.clientX, y0: ev.clientY,
+              alvo: b, vale: false, idx: null };
+      b.setPointerCapture(ev.pointerId);
+    });
+
+    lista.addEventListener('pointermove', function (ev) {
+      if (!arr) return;
+      if (!arr.vale) {
+        if (Math.abs(ev.clientX - arr.x0) + Math.abs(ev.clientY - arr.y0) < 8) return;
+        arr.vale = true;
+        var g = arr.alvo.querySelector('.mini').cloneNode(true);
+        g.className = 'fantasma';
+        document.body.appendChild(g); arr.ghost = g;
+        document.body.classList.add('arrastando');
+      }
+      arr.ghost.style.left = (ev.clientX - 26) + 'px';
+      arr.ghost.style.top = (ev.clientY - 32) + 'px';
+      if (sobreFita(ev.clientX, ev.clientY)) {
+        var fita = $('esteira'), a = alvoNaFita(ev.clientX);
+        arr.idx = a.i;
+        fita.dataset.solto = '1';
+        var m = fita.querySelector('.marca-solta');
+        if (!m) { m = document.createElement('div'); m.className = 'marca-solta'; }
+        fita.insertBefore(m, a.antes);
+      } else { arr.idx = null; limpaAlvo(); }
+    });
+
+    lista.addEventListener('pointerup', function (ev) {
+      if (!arr) return;
+      var a = arr; arr = null;
+      if (a.ghost) a.ghost.remove();
+      document.body.classList.remove('arrastando');
+      limpaAlvo();
+      if (!a.vale) return;                 /* nao arrastou: o clique resolve */
+      a.alvo.dataset.soltou = '1';         /* segura o clique que vem depois */
+      setTimeout(function () { delete a.alvo.dataset.soltou; }, 0);
+      if (a.idx != null) insereModelo(a.tipo, a.idx);
+    });
+
+    lista.addEventListener('pointercancel', function () {
+      if (arr && arr.ghost) arr.ghost.remove();
+      arr = null; document.body.classList.remove('arrastando'); limpaAlvo();
+    });
+  }
+
   /* ---------- recorte da imagem, desenhado como sai na lamina ---------- */
   function caixaImg(lam) {
     var t = tipos()[lam.type] || {};
@@ -2192,6 +2338,7 @@
     $('conta').textContent = slides.length + ' / 20 lâminas';
     $('rot-exportar').textContent = slides.length > 1 ? 'Exportar' : 'Exportar';
     pintaPerfis(); pintaPalco(); pintaEsteira(); pintaPainel();
+    pintaModelos(); ligaArrasto();
   }
   /* durante o arrasto o palco nao pode ser reconstruido: o elemento que esta
      sendo arrastado sumiria no meio do gesto. Aqui so a arte e redesenhada e
@@ -2344,9 +2491,10 @@
     var q = ev.target.closest('.quadro');
     if (q) { foco = +q.dataset.i; pinta(); return; }
 
-    if (ev.target.closest('#add')) {
-      slides.push(blank()); foco = slides.length - 1; sel = null; pinta(); return;
-    }
+    if (ev.target.closest('#add')) { abreModelos(); return; }
+    if (ev.target.closest('#fecha-modelos')) { abreModelos(false); return; }
+    var mod = ev.target.closest('.modelo');
+    if (mod) { if (!mod.dataset.soltou) insereModelo(mod.dataset.tipo); return; }
     if (ev.target.closest('#dup')) {
       slides.splice(foco + 1, 0, clonaLamina(slides[foco])); foco++; pinta(); return;
     }
