@@ -1488,8 +1488,8 @@
   }
 
   var G = {
-    capa: { label: 'Capa', campos: ['title', 'sub', 'img'],
-      shadeTop: 616, borrao: 3.4, minTop: 40,
+    capa: { label: 'Capa', campos: ['title', 'img'],
+      shadeTop: 616, minTop: 40,
       /* 1132 e nao os 1125 da caixa do Figma: a caixa de texto de la reporta
          246 de altura para tres linhas que, na entrelinha 0,87, ocupam 261. A
          referencia foi a tinta medida no render do proprio Figma (878..1144),
@@ -1527,21 +1527,16 @@
              weight: 500, color: '#ececec' } }
   };
 
-  /* as duas etiquetas do rodape da capa vem do subtitulo, separadas por barra:
-     "GESTAO | NEGOCIOS". A da esquerda e SemiBold e a da direita Regular, como
-     no arquivo. Sem barra, so a da esquerda e escrita. */
-  function gkTags(ctx, s, t) {
-    var partes = String(s.sub || '').split('|');
-    var esq = (partes[0] || '').trim(), dir = (partes[1] || '').trim();
+  /* GESTAO e NEGOCIOS sao chapa fixa da marca, como o nome e a arroba do
+     perfil: nao entram como campo editavel nem como subtitulo. */
+  function gkRodape(ctx, t) {
     var pinta = function (txt, cx, weight) {
       var spec = Object.assign({}, t.tag, { weight: weight });
-      var b = layout(ctx, txt, spec, 'sub');
-      paintSolid(ctx, b, cx - spec.w / 2, t.tagY - b.height / 2, 'sub');
+      var b = layout(ctx, txt, spec);
+      paintSolid(ctx, b, cx - spec.w / 2, t.tagY - b.height / 2);
     };
-    /* a da esquerda e desenhada mesmo vazia: a lista de campos editaveis nasce
-       do que foi desenhado, entao pular o vazio esconde o campo para sempre */
-    pinta(esq, t.tagEsqCx, 600);
-    if (dir) pinta(dir, t.tagDirCx, 400);
+    pinta('GEST\u00c3O', t.tagEsqCx, 600);
+    pinta('NEG\u00d3CIOS', t.tagDirCx, 400);
   }
 
   function gkCapa(ctx, s, cfg) {
@@ -1557,17 +1552,13 @@
 
     ctx.fillStyle = baseCapa('#141414'); ctx.fillRect(0, 0, W, H);
     regiao('imagem', 0, 0, W, H);
-    if (s.img) {
-      /* o desfoque e do layout, nao da foto: e ele que deixa a manchete de
-         100px legivel por cima de qualquer imagem que a pessoa subir */
-      ctx.save();
-      if (t.borrao && ('filter' in ctx)) ctx.filter = 'blur(' + t.borrao + 'px)';
-      drawCover(ctx, s.img, 0, 0, W, H, s);
-      ctx.restore();
-    }
+    /* sem desfoque: o arquivo do Figma traz 3,4px de blur, mas aquilo e do
+       mock. A foto que a pessoa sobe tem de sair nitida — quem da leitura a
+       manchete e o degrade do pe, nao o borrao. */
+    if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
     shade(ctx, Math.min(t.shadeTop, topo - 40), 2, 'rgba(0,0,0,0)');
     paintSolid(ctx, tb, (W - ts.w) / 2, topo, 'titulo');
-    gkTags(ctx, s, t);
+    gkRodape(ctx, t);
     gkHeader(ctx, t.headX, t.headY, cab('dark'), GK_HEAD_CAPA);
     /* na capa o monograma fica ACIMA do texto no arquivo, e desce 41px */
     gkMonograma(ctx, -41);
@@ -1656,7 +1647,7 @@
       render: { capa: dnCapa, texto: dnTexto, imagem: dnImagem } },
     gian: { nome: 'Gian Kojikovski', arroba: '@giankojikovski', cor: '#cab580',
       disclaimer: false, topAlign: false,
-      dica: '<kbd>**dourado**</kbd> <kbd>__grosso__</kbd> &middot; na capa, o subt&iacute;tulo vira as etiquetas do rodap&eacute;: <kbd>GEST&Atilde;O | NEG&Oacute;CIOS</kbd>',
+      dica: '<kbd>**dourado**</kbd> pinta o trecho &middot; <kbd>__grosso__</kbd> engrossa',
       tipos: { capa: G.capa, texto: G.texto, imagem: G.imagem },
       render: { capa: gkCapa, texto: gkTexto, imagem: gkImagem } },
     status: { nome: 'Status Invest', arroba: '@status.invest', cor: '#00ab93',
