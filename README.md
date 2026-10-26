@@ -70,6 +70,9 @@ do @ProfessorBaroni o corpo é um bloco de texto corrido.
 | Funds | Capa | `1:2` | imagem + gradiente, setas decorativas |
 | Funds | Só texto | `2:51` | gradiente claro |
 | Funds | Texto + imagem | `2:119` | gradiente claro, imagem 831×414 |
+| FIIs | Capa | `81:75` | foto + duas sombras, manchete em caixa-alta |
+| FIIs | Só texto | `82:161` | gradiente claro + marca d'água, texto centrado em 784 |
+| FIIs | Texto + imagem | `81:121` | idem, imagem sangrada 1080×446 no pé |
 
 ### Telas extras derivadas da propria marca
 
@@ -86,6 +89,7 @@ existe corpo de texto. Nao ha identidade nova em nenhuma delas.
 | Noticias | Foto em cima · Frase solta |
 | Consultoria | Foto em cima · Foto embaixo · So a manchete |
 | Funds | Foto em cima · Frase solta |
+| FIIs | Foto em cima · Frase solta |
 | Danielle | Foto em cima · Foto no meio · So a manchete |
 | Status | Foto em cima · Foto no meio · So a manchete |
 
@@ -109,9 +113,39 @@ colado nela: com texto curto ficava um vao no pe da lamina. A excecao e a
 novas dela tem a coluna de texto estreitada para 790 — no arquivo do Figma quem
 garantia que o texto nao cruzava a seta era o comprimento do texto de exemplo.
 
+### @fiis.com.br
+
+As três telas vieram dos nós que o Caio deixou selecionados no arquivo FIIS
+(`l5STSAd8nHho8LzEpEclGB`). O cabeçalho é o mesmo nas três: as distâncias do
+nome, da arroba e do selo até o avatar batem número a número nos três frames.
+O gradiente de fundo é **o mesmo do @tiagogreis**, ângulo e paradas idênticos.
+
+A marca d'água de prédios é a mesma forma nas duas escalas — preto a 2% nas
+lâminas de texto, branco a 40% em *soft-light* na capa. As porcentagens de
+inset do Figma batem com o tamanho natural do SVG, por isso as posições estão
+em pixels absolutos.
+
+**Impact não pode ser embutida.** A capa foi desenhada em Impact, que é fonte
+de sistema e não se redistribui. Entrou **Anton**, a substituta livre mais
+próxima, a 88 em vez de 96: medido em canvas, a caixa-alta do Impact a 96 tem
+75,9px e a da Anton a 88 tem 75,6px. A entrelinha subiu para 1,1236 para o
+passo de linha continuar 98,88, e o espaçamento acompanhou o corpo (−0,04em).
+Anton é ~5% mais estreita que Impact no mesmo texto, então manchetes longas
+podem quebrar uma palavra depois do que quebram no mock.
+
+**O arquivo tem duas fontes diferentes no corpo.** O nó 82:161 está em Inter e
+o 81:121 em Arial. Vale o Inter, que é o do frame mais novo: aferido contra o
+render do Figma, o só-texto bate em **12 de 12 faixas de tinta dentro de 2px**.
+O texto + imagem destoa até 8px porque ali o mock é Arial, que é mais estreita
+e quebra as linhas em outro ponto.
+
+A âncora das duas lâminas de texto é o **centro vertical do bloco** — 784 no só
+texto, 579,5 no texto + imagem — com o cabeçalho parado. Os dois centros foram
+conferidos contra a tinta medida no render do Figma e batem exatos.
+
 Arquivos no Figma: PROF-BARONI `u2sVJDaj8RkhpcL0hIYpfG` · SUNO `fsm3eOqBWcd7TqjCnVpRY2`
 · TIAGO REIS `kFDh5RPJoMBI4FUqOdW8JH` · SUNO NOTÍCIAS `JRfQEu6t4kO3NaDOUudfE9`
-· CONSULTORIA `DWXmSiS60Ew0iKrnikKqXG` · FUNDS `cFgsSWjIgoIajpxo9fIuK8`.
+· CONSULTORIA `DWXmSiS60Ew0iKrnikKqXG` · FUNDS `cFgsSWjIgoIajpxo9fIuK8` · FIIS `l5STSAd8nHho8LzEpEclGB`.
 
 ## Formatação no texto
 

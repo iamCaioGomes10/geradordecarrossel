@@ -47,7 +47,12 @@
       new FontFace('Afacad', b64ToBuf(A.afacad), { weight: '100 900' }),
       new FontFace('Instrument Sans', b64ToBuf(A.instrument), { weight: '100 900' }),
       new FontFace('Archivo', b64ToBuf(A.archivo), { weight: '100 900' }),
-      new FontFace('Instrument Serif', b64ToBuf(A.instrSerif), { weight: '400' })
+      new FontFace('Instrument Serif', b64ToBuf(A.instrSerif), { weight: '400' }),
+      /* a capa do @fiis.com.br foi desenhada em Impact, que e fonte de sistema
+         e nao pode ser embutida nem redistribuida. Anton e a substituta livre
+         mais proxima — mesma familia de grotesca condensada pesada. */
+      new FontFace('Anton', b64ToBuf(A.anton), { weight: '400' }),
+      new FontFace('Adamina', b64ToBuf(A.adamina), { weight: '400' })
     ];
     fonts.forEach(function (f) { document.fonts.add(f); });
     var svgName = atob(A.nameSvg), svgHandle = atob(A.handleSvg);
@@ -57,6 +62,13 @@
     var stAnel = atob(A.stAnelSvg), stNome = atob(A.stNomeSvg), stHandle = atob(A.stHandleSvg);
     var gkNome = atob(A.gkNomeSvg), gkHandle = atob(A.gkHandleSvg);
     var gkMono = atob(A.gkMonoSvg);
+    var fiNome = atob(A.fiNomeSvg), fiHandle = atob(A.fiHandleSvg);
+    var fiMarcaSvg = atob(A.fiMarcaSvg);
+    /* a marca d'agua e a mesma forma nas tres telas: muda a cor e a opacidade */
+    function fiTinta(cor, op) {
+      return fiMarcaSvg.replace(/fill="black"/g, 'fill="' + cor + '"')
+                       .replace(/fill-opacity="0.02"/g, 'fill-opacity="' + op + '"');
+    }
     return Promise.all([
       Promise.all(fonts.map(function (f) { return f.load(); })),
       loadImage('data:image/png;base64,' + A.avatar).then(function (i) { IMG.avatar = i; }),
@@ -122,7 +134,15 @@
       loadImage(svgFill(stNome, '#202020', '#ffffff')).then(function (i) { IMG.stNomeDark = i; }),
       loadImage(svgFill(stNome, '#202020', '#202020')).then(function (i) { IMG.stNomeLight = i; }),
       loadImage(svgFill(stHandle, '#B6B6B6', '#cfcfcf')).then(function (i) { IMG.stHandleDark = i; }),
-      loadImage(svgFill(stHandle, '#B6B6B6', '#B6B6B6')).then(function (i) { IMG.stHandleLight = i; })
+      loadImage(svgFill(stHandle, '#B6B6B6', '#B6B6B6')).then(function (i) { IMG.stHandleLight = i; }),
+      loadImage(svgUri(atob(A.fiLogo))).then(function (i) { IMG.fiLogo = i; }),
+      loadImage('data:image/png;base64,' + A.fiBadge).then(function (i) { IMG.fiBadge = i; }),
+      loadImage(svgFill(fiNome, '#202020', '#202020')).then(function (i) { IMG.fiNomeLight = i; }),
+      loadImage(svgFill(fiNome, '#202020', '#ffffff')).then(function (i) { IMG.fiNomeDark = i; }),
+      loadImage(svgFill(fiHandle, '#B6B6B6', '#B6B6B6')).then(function (i) { IMG.fiHandleLight = i; }),
+      loadImage(svgFill(fiHandle, '#B6B6B6', '#cfcfcf')).then(function (i) { IMG.fiHandleDark = i; }),
+      loadImage(svgUri(fiTinta('black', '0.02'))).then(function (i) { IMG.fiMarcaEscura = i; }),
+      loadImage(svgUri(fiTinta('white', '0.4'))).then(function (i) { IMG.fiMarcaCapa = i; })
     ]).then(function () { return document.fonts.ready; });
   }
 
@@ -224,6 +244,11 @@
       escuro: { fundo: '#111111', titulo: '#efefef', sub: '#efefef', corpo: '#d2d2d2',
                 cab: 'dark' },
       claro:  { fundo: 'ST_BG', titulo: '#1b1b1b', sub: '#3a3a3a', corpo: '#787878',
+                cab: 'light' } },
+    fiis: {
+      escuro: { fundo: '#111111', titulo: '#ffffff', sub: '#ececec', corpo: '#ececec',
+                cab: 'dark' },
+      claro:  { fundo: 'TR_BG', titulo: '#1b1b1b', sub: '#3a3a3a', corpo: '#000000',
                 cab: 'light' } }
   };
   /* qual tema o Figma desenhou para cada layout */
@@ -236,6 +261,8 @@
     funds:       { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
     danielle:    { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
     status:      { capa: 'escuro', texto: 'claro',  imagem: 'claro' },
+    fiis:        { capa: 'escuro', texto: 'claro',  imagem: 'claro',
+                   fotoTopo: 'claro', destaque: 'claro' },
     gian:        { capa: 'escuro', texto: 'escuro', imagem: 'escuro',
                    capaB: 'escuro', fotoB: 'escuro', claroTexto: 'claro',
                    claroFotoTopo: 'claro', claroFotoBaixo: 'claro',
@@ -1775,6 +1802,141 @@
      10. Registro de marcas
      ========================================================= */
 
+  /* =========================================================
+     9f. MARCA: @fiis.com.br
+     Medidas dos nos 81:75 (capa), 81:121 (texto + imagem) e 82:161 (so texto)
+     do arquivo FIIS. As tres telas usam o mesmo cabecalho: as distancias do
+     nome, da arroba e do selo ate o avatar batem numero a numero nos tres.
+     ========================================================= */
+  var FI_HEAD = { av: 72.028, avH: 72.6106, nameDx: 98, nameDy: 8,
+                  nameW: 155.175, nameH: 25.491, hDx: 97, hDy: 42,
+                  hW: 163, hH: 28.447, bDx: 262, bDy: 9, bW: 26.483 };
+  /* o gradiente de fundo e o mesmo do @tiagogreis, numero a numero */
+  var FI_BG = TR_BG;
+  /* a marca d'agua e a mesma forma nas duas escalas; a porcentagem do Figma
+     bate com o tamanho natural do SVG, por isso os valores sao absolutos */
+  var FI_MARCA = { x: -5.616, y: 115.02, w: 1091.11, h: 1611 };
+  var FI_MARCA_CAPA = { x: 161.03, y: 56.03, w: 757.903, h: 1119.03 };
+
+  function fiMarca(ctx, naCapa) {
+    var b = naCapa ? FI_MARCA_CAPA : FI_MARCA;
+    if (!naCapa) { ctx.drawImage(IMG.fiMarcaEscura, b.x, b.y, b.w, b.h); return; }
+    /* na capa o arquivo traz branco a 40% em soft-light sobre a foto */
+    ctx.save();
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.drawImage(IMG.fiMarcaCapa, b.x, b.y, b.w, b.h);
+    ctx.restore();
+  }
+
+  function fiFundo(ctx) {
+    ctx.fillStyle = cssGrad(ctx, FI_BG.angle, 0, 0, W, H, FI_BG.stops);
+    ctx.fillRect(0, 0, W, H);
+    fiMarca(ctx, false);
+  }
+
+  /* na capa o avatar ganha um circulo branco atras, para o predio preto do
+     logo ler sobre a foto. Nas laminas de texto o fundo ja e claro. */
+  function fiHeader(ctx, x, y, theme, comAnel) {
+    var m = FI_HEAD, claro = theme === 'light';
+    if (comAnel) {
+      ctx.save(); ctx.fillStyle = '#ffffff'; ctx.beginPath();
+      ctx.arc(x + m.av / 2, y + m.avH / 2, 47, 0, Math.PI * 2);
+      ctx.fill(); ctx.restore();
+    }
+    ctx.drawImage(IMG.fiLogo, x, y, m.av, m.avH);
+    ctx.drawImage(claro ? IMG.fiNomeLight : IMG.fiNomeDark, x + m.nameDx, y + m.nameDy, m.nameW, m.nameH);
+    ctx.drawImage(claro ? IMG.fiHandleLight : IMG.fiHandleDark, x + m.hDx, y + m.hDy, m.hW, m.hH);
+    ctx.drawImage(IMG.fiBadge, x + m.bDx, y + m.bDy, m.bW, m.bW);
+  }
+
+  var FI_CORPO = { font: 'Inter', size: 40, lh: 1.28, ls: -0.8, w: 767, weight: 400,
+                   color: '#000000', emWeight: 700 };
+  var FI = {
+    capa: { label: 'Capa', campos: ['title', 'sub', 'img'],
+      /* ancorada pelo pe, como as outras capas da casa: o subtitulo tem fundo
+         fixo, e manchete e cabecalho sobem conforme o texto cresce */
+      minTop: 40, titleX: 20.5, subX: 179, headX: 401,
+      subBottom: 1256.4, gapTitleSub: 17.2, gapHeadTitle: 60.58,
+      /* o arquivo pede Impact 96 com entrelinha 1,03 (passo de 98,88). Anton,
+         a substituta, tem caixa-alta 8,7% mais alta: a 88 a altura das maiusculas
+         bate com a do Impact (75,6 contra 75,9, medido em canvas), e a entrelinha
+         sobe para 1,1236 para o passo continuar 98,88. O espacamento acompanha o
+         corpo: -0,04em nos dois. */
+      title: { font: 'Anton', size: 88, lh: 1.1236, ls: -3.52, w: 1039, weight: 400,
+               color: '#ffffff', emColor: '#ded28c', caps: true, align: 'center' },
+      sub: { font: 'Adamina', size: 40, lh: 1.28, ls: -0.8, w: 722, weight: 400,
+             color: '#ffffff', align: 'center' } },
+    texto: { label: 'S&oacute; texto', campos: ['body'],
+      /* o bloco de texto e centrado verticalmente num ponto fixo e o
+         cabecalho fica parado: e o que o arquivo faz nas duas laminas */
+      x: 156, bodyX: 151, headTop: 264, textCenter: 784,
+      body: FI_CORPO },
+    imagem: { label: 'Texto + imagem', campos: ['body', 'img'],
+      x: 156, bodyX: 156, headTop: 242, textCenter: 579.5,
+      body: FI_CORPO,
+      img: { x: 0, y: 904, w: W, h: 446 } }
+  };
+
+  function fiCapa(ctx, s, cfg) {
+    var t = FI.capa, of = false;
+    pintaFundo(ctx, function () {
+      ctx.fillStyle = baseCapa('#111111'); ctx.fillRect(0, 0, W, H);
+    });
+    var ts = Object.assign({}, t.title), ss = Object.assign({}, t.sub), tb, sb, headTop;
+    for (var p = 0; p < 14; p++) {
+      tb = layout(ctx, s.title || '', ts, 'titulo');
+      sb = layout(ctx, s.sub || '', ss, 'sub');
+      headTop = (t.subBottom - sb.height) - t.gapTitleSub - tb.height
+                - t.gapHeadTitle - FI_HEAD.avH;
+      if (headTop >= t.minTop || !cfg.autofit) break;
+      ts.size = Math.round(ts.size * 0.94);
+      if (ts.size < 56) ss.size = Math.round(ss.size * 0.94);
+    }
+    if (headTop < t.minTop) of = true, ESTOUROU = 'titulo';
+    var subTop = t.subBottom - sb.height, titleTop = subTop - t.gapTitleSub - tb.height;
+
+    regiao('imagem', 0, 0, W, H);
+    if (s.img) drawCover(ctx, s.img, 0, 0, W, H, s);
+    fiMarca(ctx, true);
+    /* duas sombras empilhadas, como no arquivo: uma de 616 e outra de 456 */
+    shade(ctx, 616, 1, 'rgba(0,0,0,0.06)');
+    shade(ctx, Math.min(456, headTop - 40), 1, 'rgba(0,0,0,0.06)');
+    fiHeader(ctx, t.headX, headTop, cab('dark'), true);
+    paintSolid(ctx, tb, t.titleX, titleTop, 'titulo');
+    paintSolid(ctx, sb, t.subX, subTop, 'sub');
+    return of;
+  }
+
+  function fiCorpo(ctx, s, cfg, comImagem) {
+    var t = comImagem ? FI.imagem : FI.texto, of = false;
+    pintaFundo(ctx, function () { fiFundo(ctx); });
+    var teto = t.headTop + FI_HEAD.avH + 46;
+    var chao = comImagem ? (t.img.y - 40) : (H - 60);
+    var bs = Object.assign({}, t.body), blk, top;
+    for (var p = 0; p < 14; p++) {
+      blk = layout(ctx, s.body || '', bs, 'corpo');
+      top = t.textCenter - blk.height / 2;
+      if ((top >= teto && top + blk.height <= chao) || !cfg.autofit || bs.size < 26) break;
+      bs.size = Math.round(bs.size * 0.94);
+    }
+    if (top < teto || top + blk.height > chao) of = true, ESTOUROU = 'corpo';
+    if (top < teto) top = teto;
+
+    fiHeader(ctx, t.x, t.headTop, cab('light'));
+    paintSolid(ctx, blk, t.bodyX, top, 'corpo');
+    if (comImagem) {
+      var b = t.img;
+      regiao('imagem', b.x, b.y, b.w, b.h);
+      ctx.save(); ctx.beginPath(); ctx.rect(b.x, b.y, b.w, b.h); ctx.clip();
+      if (s.img) drawCover(ctx, s.img, b.x, b.y, b.w, b.h, s);
+      else { ctx.fillStyle = '#e2e2e2'; ctx.fillRect(b.x, b.y, b.w, b.h); }
+      ctx.restore();
+    }
+    return of;
+  }
+  function fiTexto(ctx, s, cfg) { return fiCorpo(ctx, s, cfg, false); }
+  function fiImagem(ctx, s, cfg) { return fiCorpo(ctx, s, cfg, true); }
+
   /* ---------- motor das telas extras ----------
      Serve as marcas cujas laminas originais tem ancoragem propria: elas
      continuam com a funcao de render de sempre, intocada, e as telas novas
@@ -1909,6 +2071,20 @@
     return corpoVar(ctx, s, cfg, FEM);
   }
 
+  /* @fiis.com.br — as laminas de texto da marca nao tem titulo, so corpo */
+  FI.fotoTopo = { label: 'Foto em cima', campos: ['body', 'img'],
+    ordem: 'fotoTopo', x: 156,
+    body: FI.imagem.body, img: { x: 0, w: W, h: 446, r: 0 },
+    vaos: { imgCab: 64, cabTit: 70 } };
+  FI.destaque = { label: 'Frase solta', campos: ['body'], x: 156,
+    body: tituloMaior(FI.texto.body, 1.5), vaos: { cabTit: 70 } };
+
+  var FIM = { spec: FI, folga: 150, minTop: 60, imgX: 0, placeholder: '#e2e2e2',
+    headAv: FI_HEAD.avH,
+    fundo: function (c) { fiFundo(c); },
+    header: function (c, x, y) { fiHeader(c, x, y, cab('light')); } };
+  function fiVar(ctx, s, cfg) { return corpoVar(ctx, s, cfg, FIM); }
+
   /* @SunoConsultoria — a lamina de imagem da marca ja tem a foto no meio,
      entao aqui as extras sao a foto em cima e a foto no fim */
   /* a seta vermelha e cromo fixo da marca, em x 920..980. As telas novas tem a
@@ -2009,7 +2185,14 @@
       tipos: { capa: ST.capa, texto: ST.texto, imagem: ST.imagem,
                fotoTopo: ST.fotoTopo, fotoMeio: ST.fotoMeio, destaque: ST.destaque },
       render: { capa: stCapa, texto: stCorpo, imagem: stCorpo,
-                fotoTopo: stCorpo, fotoMeio: stCorpo, destaque: stCorpo } }
+                fotoTopo: stCorpo, fotoMeio: stCorpo, destaque: stCorpo } },
+    fiis: { nome: 'FIIs', arroba: '@fiis.com.br', cor: '#ded28c',
+      disclaimer: false, topAlign: false,
+      dica: '<kbd>**destaque**</kbd> deixa o trecho em negrito no texto &middot; na capa pinta de dourado',
+      tipos: { capa: FI.capa, texto: FI.texto, imagem: FI.imagem,
+               fotoTopo: FI.fotoTopo, destaque: FI.destaque },
+      render: { capa: fiCapa, texto: fiTexto, imagem: fiImagem,
+                fotoTopo: fiVar, destaque: fiVar } }
   };
 
   function render(canvas, marca, s, cfg) {

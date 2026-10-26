@@ -74,6 +74,15 @@ assets = {
     "feSeta2":     b64("fe-seta2.svg"),
     "feNomeSvg":   b64("fe-nome-light.svg"),    # fill="#1F1F1F" -> recolorido
     "feHandleSvg": b64("fe-handle-light.svg"),
+    "fiLogo":      b64("fi-logo.svg"),      # predio + anel dourado #DED28C
+    "fiBadge":     b64("fi-badge.png"),
+    "fiNomeSvg":   b64("fi-nome.svg"),      # fill="#202020" -> recolorido
+    "fiHandleSvg": b64("fi-handle.svg"),    # fill="#B6B6B6" -> recolorido
+    # marca d'agua: mesma forma nas tres telas, so muda escala, cor e opacidade
+    "fiMarcaSvg":  b64("fi-marca.svg"),     # fill="black" -> recolorido
+    # Impact nao pode ser embutida; Anton e a substituta livre mais proxima
+    "anton":       b64("anton.woff2"),
+    "adamina":     b64("adamina.woff2"),
     "sdMarca":       b64("sd-marca.png"),
     "sdMarcaSm":     b64("sd-marca-sm.png"),
     "sdWordmark":    b64("sd-wordmark.svg"),
